@@ -1,0 +1,15 @@
+# Node dependencies & Next.js builds
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Python cache & virtual environments
+backend/__pycache__/
+backend/*.pyc
+backend/venv/
+backend/.venv/
+
+# Environment & OS files
+.env
+.env.local
+.DS_Store
