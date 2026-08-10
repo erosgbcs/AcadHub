@@ -4,13 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
-            document.getElementById("gcashHidden").classList.add("hidden");
-            document.getElementById("gcashFull").classList.remove("hidden");
-        }
-        function revealGCash() {
-            document.getElementById("gcashHidden").classList.add("hidden");
-            document.getElementById("gcashFull").classList.remove("hidden");
-        }
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -157,24 +150,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- Donation Card -->
+        <div class="glass-card mt-6 text-center">
+            <p class="text-xs opacity-70 mb-2"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> Support this project</p>
+            <p class="text-sm font-semibold">Donate via GCash</p>
+            <div id="gcashHidden" class="my-2">
+                <p class="text-lg font-mono font-bold tracking-wider">0993****971</p>
+                <button onclick="revealGCash()" class="mt-2 px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs rounded-lg transition">
+                    <i class="fa-solid fa-eye mr-1"></i> Show full number
+                </button>
+            </div>
+            <div id="gcashFull" class="hidden my-2">
+                <p class="text-lg font-mono font-bold tracking-wider">09935917971</p>
+                <p class="text-xs opacity-70 mt-1">Gabriel A.</p>
+            </div>
+            <p class="text-xs opacity-50 mt-2">Thank you for your support! ❤️</p>
+        </div>
     </div>
 
-    <!-- Donate Section -->
-    <div class="glass-card mt-6 text-center">
-        <p class="text-xs opacity-70 mb-2"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> Support this project</p>
-        <p class="text-sm font-semibold">Donate via GCash</p>
-        <div id="gcashHidden" class="my-2">
-            <p class="text-lg font-mono font-bold tracking-wider">0993****971</p>
-            <button onclick="revealGCash()" class="mt-2 px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs rounded-lg transition">
-                <i class="fa-solid fa-eye mr-1"></i> Show full number
-            </button>
-        </div>
-        <div id="gcashFull" class="hidden my-2">
-            <p class="text-lg font-mono font-bold tracking-wider">09935917971</p>
-            <p class="text-xs opacity-70 mt-1">Gabriel A.</p>
-        </div>
-        <p class="text-xs opacity-50 mt-2">Thank you for your support! ❤️</p>
-    </div>
     <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
 
     <script>
@@ -250,6 +244,12 @@
         function renderSavedList(){const list=document.getElementById('savedList');const empty=document.getElementById('emptyLibrary');let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');if(saved.length===0){empty.classList.remove('hidden');list.innerHTML='';return;}empty.classList.add('hidden');list.innerHTML=saved.map(entry=>`<div class="saved-card flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><div class="flex-1"><p class="text-sm font-semibold">${entry.date}</p><p class="text-xs opacity-50 truncate">${entry.notes}</p></div><div class="flex gap-2"><button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs hover:bg-indigo-500/30 transition"><i class="fa-solid fa-eye mr-1"></i>Load</button><button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition"><i class="fa-solid fa-trash"></i></button></div></div>`).join('');}
         function loadSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');const entry=saved.find(e=>e.id===id);if(!entry)return;lastGeneratedData=entry.data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');switchTab('reviewer');renderResultsOneByOne(entry.data);}
         function deleteSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved=saved.filter(e=>e.id!==id);localStorage.setItem('acadhub_saved',JSON.stringify(saved));renderSavedList();}
+
+        // ------------------ GCASH REVEAL ------------------
+        function revealGCash() {
+            document.getElementById("gcashHidden").classList.add("hidden");
+            document.getElementById("gcashFull").classList.remove("hidden");
+        }
 
         // ------------------ TEST MY LIMITS ------------------
         let testDifficulty = 'medium';
@@ -425,13 +425,6 @@
             testQuestions = [];
             testCurrentIndex = 0;
             testCorrectCount = 0;
-        }
-            document.getElementById("gcashHidden").classList.add("hidden");
-            document.getElementById("gcashFull").classList.remove("hidden");
-        }
-        function revealGCash() {
-            document.getElementById("gcashHidden").classList.add("hidden");
-            document.getElementById("gcashFull").classList.remove("hidden");
         }
     </script>
 </body>
