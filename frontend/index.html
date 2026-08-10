@@ -193,7 +193,7 @@
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
         const loadingOverlay = document.getElementById('loadingOverlay');
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', () => { setTimeout(() => { if (!document.getElementById('loadingOverlay').classList.contains('hidden')) { document.getElementById('loadingOverlay').classList.add('hidden'); } }, 5000);
             setTimeout(() => { loadingOverlay.classList.add('fade-out'); setTimeout(() => loadingOverlay.classList.add('hidden'), 500); }, 4500);
             updateProviderUI(); renderSavedList();
         });
@@ -270,10 +270,7 @@
         function deleteSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved=saved.filter(e=>e.id!==id);localStorage.setItem('acadhub_saved',JSON.stringify(saved));renderSavedList();}
 
         // ------------------ GCASH REVEAL ------------------
-        function revealGCash() {
-            document.getElementById("gcashHidden").classList.add("hidden");
-            document.getElementById("gcashFull").classList.remove("hidden");
-        }
+        
 
         // ------------------ TEST MY LIMITS ------------------
         let testDifficulty = 'medium';
