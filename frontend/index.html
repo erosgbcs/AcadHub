@@ -7,76 +7,117 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }
-                }
-            }
-        }
-    </script>
     <style>
-        body { background: #0a0f1e; color: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .glass-card { background: rgba(30,41,59,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 1.5rem; }
-        .btn-primary { background: linear-gradient(135deg, #4c6ef5, #22b8cf); }
+        :root {
+            --bg: #0a0f1e;
+            --card: rgba(30,41,59,0.7);
+            --text: #e2e8f0;
+            --border: rgba(148,163,184,0.1);
+        }
+        .light {
+            --bg: #f8fafc;
+            --card: rgba(255,255,255,0.85);
+            --text: #1e293b;
+            --border: rgba(0,0,0,0.08);
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: background 0.3s, color 0.3s;
+        }
+        .glass-card {
+            background: var(--card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4c6ef5, #22b8cf);
+        }
+        /* Reveal animation */
+        .reveal-item {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: reveal 0.3s ease forwards;
+        }
+        @keyframes reveal {
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="min-h-screen p-4">
     <div class="max-w-2xl mx-auto space-y-6">
-        <!-- Header -->
+        <!-- Header with Theme Toggle -->
         <div class="glass-card flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xl"><i class="fa-solid fa-graduation-cap"></i></div>
-                <div><h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1><p class="text-xs text-slate-400">Study Suite</p></div>
+                <div><h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1><p class="text-xs opacity-70">Study Suite</p></div>
             </div>
-            <div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                    <i id="themeIcon" class="fa-solid fa-sun text-yellow-400"></i>
+                </button>
+                <div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
+            </div>
         </div>
 
         <!-- Tabs -->
-        <div class="flex p-1.5 bg-slate-800/50 rounded-2xl">
-            <button id="tabReviewer" class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button>
-            <button id="tabScheduler" class="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-400">Scheduler</button>
+        <div class="flex p-1.5 glass-card rounded-2xl">
+            <button class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button>
+            <button class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Scheduler</button>
         </div>
 
         <!-- Reviewer Tab -->
-        <div id="viewReviewer" class="space-y-6">
+        <div class="space-y-6">
             <div class="glass-card">
                 <h2 class="text-lg font-bold mb-4">Generate Study Materials</h2>
-                <form id="reviewerForm" onsubmit="return false;">
+                <form onsubmit="return false;">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                         <div>
-                            <label class="block text-xs font-semibold mb-1 text-slate-300">AI Engine</label>
-                            <select id="aiProvider" onchange="updateProviderUI()" class="w-full py-3 px-3 bg-slate-800 border border-slate-600 rounded-xl text-sm text-white">
+                            <label class="block text-xs font-semibold mb-1">AI Engine</label>
+                            <select id="aiProvider" onchange="updateProviderUI()" class="w-full py-3 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
                                 <option value="local" selected>🧠 Local NLP (No Key)</option>
                                 <option value="gemini">Google Gemini AI</option>
                                 <option value="deepseek">DeepSeek AI</option>
                             </select>
                         </div>
                         <div id="apiKeyContainer" class="sm:col-span-2" style="display:none;">
-                            <label class="block text-xs font-semibold mb-1 text-slate-300" id="apiKeyLabel">API Key</label>
+                            <label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label>
                             <div class="relative">
-                                <input type="password" id="apiKey" placeholder="Paste API key..." class="w-full pl-10 pr-12 py-3 bg-slate-800 border border-slate-600 rounded-xl text-sm text-white placeholder-slate-500">
-                                <span class="absolute left-3 top-3 text-slate-500"><i class="fa-solid fa-key text-xs"></i></span>
-                                <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 text-slate-500"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button>
+                                <input type="password" id="apiKey" placeholder="Paste API key..." class="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                                <span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span>
+                                <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button>
                             </div>
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold mb-1 text-slate-300">Upload Document</label>
-                        <label for="fileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-slate-600 rounded-2xl cursor-pointer bg-slate-800/40 hover:border-blue-500/50 transition">
+                        <label class="block text-xs font-semibold mb-1">Upload Document</label>
+                        <label for="fileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-blue-500/50 transition bg-white/5">
                             <div class="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-2xl text-blue-400"></i></div>
-                            <p class="text-sm text-slate-300" id="fileNameDisplay">Drop file or click to browse</p>
-                            <p class="text-xs text-slate-500">PDF, DOCX, TXT (max 15 pages)</p>
+                            <p class="text-sm" id="fileNameDisplay">Drop file or click to browse</p>
+                            <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
                             <input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" />
                         </label>
                     </div>
 
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold mb-1 text-slate-300">Notes (Optional)</label>
-                        <textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="w-full p-4 bg-slate-800 border border-slate-600 rounded-xl text-sm text-white placeholder-slate-500 resize-none"></textarea>
+                        <label class="block text-xs font-semibold mb-1">Notes</label>
+                        <textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="w-full p-4 bg-white/10 border border-white/10 rounded-xl text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Custom counts -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">🃏 Flashcards</label>
+                            <input type="number" id="numFlashcards" value="10" min="1" max="20" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">❓ Quiz Questions</label>
+                            <input type="number" id="numQuiz" value="8" min="1" max="15" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                        </div>
                     </div>
 
                     <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg">
@@ -84,23 +125,18 @@
                     </button>
                 </form>
 
-                <!-- Progress Bar -->
-                <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-slate-700">
-                    <div class="flex items-center justify-between text-sm mb-2">
-                        <span id="progressStatus" class="text-blue-300"><i class="fa-solid fa-spinner animate-spin mr-2"></i>Initializing...</span>
-                        <span id="progressPercent" class="text-slate-400 font-mono">0%</span>
-                    </div>
-                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                        <div id="progressBar" class="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all duration-300" style="width:0%"></div>
-                    </div>
+                <!-- Progress Spinner -->
+                <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-white/10 text-center">
+                    <i class="fa-solid fa-spinner animate-spin text-blue-400 text-2xl"></i>
+                    <p class="text-sm mt-2 opacity-70">Processing...</p>
                 </div>
             </div>
 
-            <!-- Results -->
+            <!-- Results (revealed one by one) -->
             <div id="resultsContainer" class="hidden space-y-6">
                 <div class="glass-card border-l-4 border-l-blue-500">
                     <h3 class="text-sm font-bold uppercase text-blue-400 mb-3">📌 Key Concepts</h3>
-                    <ul id="summaryList" class="space-y-2 text-sm text-slate-300"></ul>
+                    <ul id="summaryList" class="space-y-2 text-sm"></ul>
                 </div>
                 <div class="glass-card border-l-4 border-l-cyan-500">
                     <h3 class="text-sm font-bold uppercase text-cyan-400 mb-3">🃏 Flashcards</h3>
@@ -116,7 +152,41 @@
 
     <script>
         const BACKEND_URL = "http://127.0.0.1:8000";
-        let progressTimer = null;
+
+        // ---- Theme Toggle ----
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                icon.style.color = '#6366f1';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                icon.style.color = '#facc15';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        (function() {
+            if (localStorage.getItem('theme') === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                const icon = document.getElementById('themeIcon');
+                if (icon) {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                    icon.style.color = '#6366f1';
+                }
+            }
+        })();
 
         function updateProviderUI() {
             const provider = document.getElementById('aiProvider').value;
@@ -129,10 +199,10 @@
                 box.style.display = 'block';
                 input.required = true;
                 if (provider === 'gemini') {
-                    document.getElementById('apiKeyLabel').innerHTML = '🔑 Gemini API Key';
+                    document.getElementById('apiKeyLabel').textContent = '🔑 Gemini API Key';
                     input.placeholder = 'AIzaSy...';
                 } else if (provider === 'deepseek') {
-                    document.getElementById('apiKeyLabel').innerHTML = '🔑 DeepSeek API Key';
+                    document.getElementById('apiKeyLabel').textContent = '🔑 DeepSeek API Key';
                     input.placeholder = 'sk-...';
                 }
             }
@@ -155,44 +225,12 @@
         function updateFileName(input) {
             const nameDisplay = document.getElementById('fileNameDisplay');
             if (input.files && input.files[0]) {
-                nameDisplay.innerHTML = `<span class="text-blue-400 font-semibold">${input.files[0].name}</span> <span class="text-slate-500 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;
+                nameDisplay.innerHTML = `<span class="text-blue-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;
                 nameDisplay.parentElement.classList.add('border-blue-500/50', 'bg-blue-500/5');
             } else {
                 nameDisplay.textContent = 'Drop file or click to browse';
                 nameDisplay.parentElement.classList.remove('border-blue-500/50', 'bg-blue-500/5');
             }
-        }
-
-        function startProgressAnimation() {
-            const container = document.getElementById('progressContainer');
-            const bar = document.getElementById('progressBar');
-            const status = document.getElementById('progressStatus');
-            const percent = document.getElementById('progressPercent');
-            container.classList.remove('hidden');
-            bar.style.width = '0%';
-            let progress = 0;
-            progressTimer = setInterval(() => {
-                if (progress < 90) {
-                    progress += Math.random() * 15;
-                    if (progress > 90) progress = 90;
-                    bar.style.width = progress + '%';
-                    percent.textContent = Math.floor(progress) + '%';
-                    if (progress < 30) status.innerHTML = '<i class="fa-solid fa-file-lines text-blue-400 mr-2"></i>Extracting content...';
-                    else if (progress < 60) status.innerHTML = '<i class="fa-solid fa-brain text-teal-400 mr-2"></i>Processing...';
-                    else status.innerHTML = '<i class="fa-solid fa-list-check text-amber-400 mr-2"></i>Generating results...';
-                }
-            }, 500);
-        }
-
-        function stopProgressAnimation(success = true) {
-            clearInterval(progressTimer);
-            const bar = document.getElementById('progressBar');
-            const percent = document.getElementById('progressPercent');
-            const status = document.getElementById('progressStatus');
-            bar.style.width = '100%';
-            percent.textContent = '100%';
-            status.innerHTML = success ? '<i class="fa-solid fa-circle-check text-teal-400 mr-2"></i>Complete!' : '<i class="fa-solid fa-circle-exclamation text-rose-400 mr-2"></i>Failed';
-            setTimeout(() => document.getElementById('progressContainer').classList.add('hidden'), 1500);
         }
 
         async function handleGenerate() {
@@ -202,6 +240,8 @@
             const apiKey = document.getElementById('apiKey').value;
             const notes = document.getElementById('studyNotes').value;
             const fileInput = document.getElementById('fileInput');
+            const numFlashcards = document.getElementById('numFlashcards').value || 10;
+            const numQuiz = document.getElementById('numQuiz').value || 8;
 
             if (provider !== 'local' && !apiKey.trim()) {
                 alert('Please enter your API key');
@@ -210,15 +250,18 @@
 
             btn.disabled = true;
             btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
-            startProgressAnimation();
+            document.getElementById('progressContainer').classList.remove('hidden');
+            document.getElementById('resultsContainer').classList.add('hidden');
 
             const formData = new FormData();
             if (provider !== 'local') formData.append('api_key', apiKey);
             formData.append('provider', provider);
             formData.append('notes', notes);
+            formData.append('num_flashcards', numFlashcards);
+            formData.append('num_quiz', numQuiz);
             if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
 
-            const endpoint = provider === 'local'
+            const endpoint = provider === 'local' 
                 ? `${BACKEND_URL}/api/generate-reviewer-local`
                 : `${BACKEND_URL}/api/generate-reviewer`;
 
@@ -226,10 +269,10 @@
                 const response = await fetch(endpoint, { method: 'POST', body: formData });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.detail || 'Generation failed');
-                stopProgressAnimation(true);
-                renderResults(data);
+                document.getElementById('progressContainer').classList.add('hidden');
+                renderResultsOneByOne(data);
             } catch (err) {
-                stopProgressAnimation(false);
+                document.getElementById('progressContainer').classList.add('hidden');
                 alert('Error: ' + err.message);
             } finally {
                 btn.disabled = false;
@@ -237,25 +280,49 @@
             }
         }
 
-        function renderResults(data) {
+        // Reveal items one by one
+        async function renderResultsOneByOne(data) {
             const container = document.getElementById('resultsContainer');
             container.classList.remove('hidden');
             container.scrollIntoView({ behavior: 'smooth' });
 
-            document.getElementById('summaryList').innerHTML = (data.summary || []).map(s => `<li class="flex items-start gap-2 p-3 rounded-xl bg-slate-800/40"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i>${s}</li>`).join('');
+            // Clear previous
+            document.getElementById('summaryList').innerHTML = '';
+            document.getElementById('flashcardGrid').innerHTML = '';
+            document.getElementById('quizContainer').innerHTML = '';
 
-            document.getElementById('flashcardGrid').innerHTML = (data.flashcards || []).map(c => `<div class="bg-slate-800/60 border border-slate-700 p-4 rounded-xl"><p class="text-sm font-bold text-white">${c.term}</p><p class="text-xs text-slate-400 mt-1">${c.definition}</p></div>`).join('');
+            // Reveal summary immediately (they are few)
+            const summaryItems = (data.summary || []).map(s => `<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i>${s}</li>`);
+            document.getElementById('summaryList').innerHTML = summaryItems.join('');
 
-            document.getElementById('quizContainer').innerHTML = (data.quiz || []).map((q, i) => `
-                <div class="bg-slate-800/60 border border-slate-700 p-4 rounded-xl">
-                    <p class="text-sm font-semibold text-white mb-2">${i+1}. ${q.question}</p>
+            // Reveal flashcards one by one
+            const flashcardContainer = document.getElementById('flashcardGrid');
+            for (let i = 0; i < (data.flashcards || []).length; i++) {
+                const card = data.flashcards[i];
+                const cardHTML = `<div class="reveal-item bg-white/5 border border-white/10 p-4 rounded-xl">
+                    <p class="text-sm font-bold">${card.term}</p>
+                    <p class="text-xs opacity-70 mt-1">${card.definition}</p>
+                </div>`;
+                flashcardContainer.insertAdjacentHTML('beforeend', cardHTML);
+                // Wait a tiny bit for the animation
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            // Reveal quiz questions one by one
+            const quizContainer = document.getElementById('quizContainer');
+            for (let i = 0; i < (data.quiz || []).length; i++) {
+                const q = data.quiz[i];
+                const quizHTML = `<div class="reveal-item bg-white/5 border border-white/10 p-4 rounded-xl">
+                    <p class="text-sm font-semibold mb-2">${i+1}. ${q.question}</p>
                     ${q.options.map((opt, idx) => `
-                        <button onclick="checkAnswer(this, '${opt === q.answer}')" class="quiz-option w-full text-left p-3 rounded-lg bg-slate-800 text-sm text-slate-300 border border-slate-700 mt-1 hover:bg-blue-500/10 transition">
-                            <span class="w-6 h-6 rounded-full bg-slate-700 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}
+                        <button onclick="checkAnswer(this, '${opt === q.answer}')" class="w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-blue-500/10 transition">
+                            <span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}
                         </button>
                     `).join('')}
-                </div>
-            `).join('');
+                </div>`;
+                quizContainer.insertAdjacentHTML('beforeend', quizHTML);
+                await new Promise(resolve => setTimeout(resolve, 150));
+            }
         }
 
         function checkAnswer(btn, isCorrect) {
@@ -270,7 +337,7 @@
             }
         }
 
-        // Initialize on page load
+        // Initialize
         window.addEventListener('DOMContentLoaded', () => {
             updateProviderUI();
         });
