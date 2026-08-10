@@ -37,82 +37,82 @@
         footer { margin-top: auto; }
     </style>
 </head>
-<body class="flex flex-col p-4">
+<body class="flex flex-col p-2 sm:p-4">
     <!-- Loading Screen -->
     <div id="loadingOverlay" class="loading-overlay">
-        <div class="text-center animate-fade-in-up">
-            <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center logo-pulse">
-                <i class="fa-solid fa-graduation-cap text-white text-4xl"></i>
+        <div class="text-center animate-fade-in-up px-4">
+            <div class="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center logo-pulse">
+                <i class="fa-solid fa-graduation-cap text-white text-2xl sm:text-4xl"></i>
             </div>
-            <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1>
-            <p class="text-sm text-gray-400 mt-2">Smart Academic Workspace</p>
-            <div class="mt-8 pt-8 border-t border-white/10">
-                <p class="text-xs text-gray-500 mb-4">Developed by</p>
-                <div class="flex flex-col gap-3 text-sm text-gray-300">
-                    <div class="flex items-center justify-center gap-3"><i class="fa-brands fa-github text-xl" style="color:#f0f6fc;"></i><span>erosgbcs</span></div>
-                    <div class="flex items-center justify-center gap-3"><i class="fa-solid fa-envelope text-xl" style="color:#ea4335;"></i><span>gabrielagsamosam@gmail.com</span></div>
-                    <div class="flex items-center justify-center gap-3"><i class="fa-brands fa-facebook text-xl" style="color:#1877f2;"></i><span>Gabriel Agsamosam</span></div>
+            <h1 class="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1>
+            <p class="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">Smart Academic Workspace</p>
+            <div class="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-white/10">
+                <p class="text-xs text-gray-500 mb-3 sm:mb-4">Developed by</p>
+                <div class="flex flex-col gap-2 sm:gap-3 text-sm text-gray-300">
+                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-brands fa-github text-lg sm:text-xl" style="color:#f0f6fc;"></i><span>erosgbcs</span></div>
+                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-solid fa-envelope text-lg sm:text-xl" style="color:#ea4335;"></i><span>gabrielagsamosam@gmail.com</span></div>
+                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-brands fa-facebook text-lg sm:text-xl" style="color:#1877f2;"></i><span>Gabriel Agsamosam</span></div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Main Content -->
-    <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-6">
+    <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6">
         <!-- Header -->
-        <div class="glass-card flex items-center justify-between">
+        <div class="glass-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-xl"><i class="fa-solid fa-graduation-cap"></i></div>
-                <div><h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1><p class="text-xs text-gray-400">Study Suite</p></div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-lg sm:text-xl"><i class="fa-solid fa-graduation-cap"></i></div>
+                <div><h1 class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1><p class="text-xs text-gray-400">Study Suite</p></div>
             </div>
-            <div class="flex items-center gap-3">
-                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400"></i></button>
-                <button onclick="switchTab('library')" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button>
-                <div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
+            <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+                <button onclick="toggleTheme()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400 text-sm sm:text-base"></i></button>
+                <button onclick="switchTab('library')" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button>
+                <div id="backendStatus" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
             </div>
         </div>
 
         <!-- Tabs -->
         <div class="flex p-1.5 glass-card rounded-2xl gap-1">
-            <button id="tabReviewer" class="flex-1 py-3 rounded-xl text-sm font-semibold transition tab-active">AI Reviewer</button>
-            <button id="tabLibrary" class="flex-1 py-3 rounded-xl text-sm font-semibold transition tab-inactive">Saved Library</button>
-            <button id="tabTest" class="flex-1 py-3 rounded-xl text-sm font-semibold transition tab-inactive">Test My Limits</button>
+            <button id="tabReviewer" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active">AI Reviewer</button>
+            <button id="tabLibrary" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Saved Library</button>
+            <button id="tabTest" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Test My Limits</button>
         </div>
 
         <!-- AI Reviewer Tab -->
-        <div id="viewReviewer" class="space-y-6">
+        <div id="viewReviewer" class="space-y-4 sm:space-y-6">
             <div class="glass-card">
-                <h2 class="text-xl font-bold mb-4">Generate Study Materials</h2>
-                <form onsubmit="return false;" class="space-y-4">
+                <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Generate Study Materials</h2>
+                <form onsubmit="return false;" class="space-y-3 sm:space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div><label class="block text-xs font-semibold mb-1">AI Engine</label><select id="aiProvider" onchange="updateProviderUI()" class="w-full"><option value="local" selected>🧠 Local NLP (No Key)</option><option value="gemini">Google Gemini AI</option><option value="deepseek">DeepSeek AI</option></select></div>
-                        <div id="apiKeyContainer" class="sm:col-span-2" style="display:none;"><label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label><div class="relative"><input type="password" id="apiKey" placeholder="Paste API key..."><span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span><button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button></div></div>
+                        <div><label class="block text-xs font-semibold mb-1">AI Engine</label><select id="aiProvider" onchange="updateProviderUI()" class="w-full text-sm"><option value="local" selected>🧠 Local NLP (No Key)</option><option value="gemini">Google Gemini AI</option><option value="deepseek">DeepSeek AI</option></select></div>
+                        <div id="apiKeyContainer" class="sm:col-span-2" style="display:none;"><label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label><div class="relative"><input type="password" id="apiKey" placeholder="Paste API key..." class="text-sm"><span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span><button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button></div></div>
                     </div>
-                    <div><label class="block text-xs font-semibold mb-1">Upload Document</label><label for="fileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5"><div class="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-2xl text-indigo-400"></i></div><p class="text-sm" id="fileNameDisplay">Drop file or click to browse</p><p class="text-xs opacity-50">PDF, DOCX, TXT</p><input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" /></label></div>
-                    <div><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="studyNotes" rows="4" placeholder="Paste your notes here..."></textarea></div>
-                    <div><label class="block text-xs font-semibold mb-1">🃏 Number of Flashcards</label><input type="number" id="numFlashcards" value="10" min="1" max="20"></div>
-                    <div><label class="block text-xs font-semibold mb-2">❓ Quiz Types & Questions per Type</label><div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useTrueFalse" checked class="accent-indigo-500"><label for="useTrueFalse" class="text-xs">True/False</label><input type="number" id="numTrueFalse" value="3" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useIdentification" checked class="accent-indigo-500"><label for="useIdentification" class="text-xs">Identification</label><input type="number" id="numIdentification" value="3" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useEnumeration" checked class="accent-indigo-500"><label for="useEnumeration" class="text-xs">Enumeration</label><input type="number" id="numEnumeration" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useMultipleChoice" checked class="accent-indigo-500"><label for="useMultipleChoice" class="text-xs">Multiple Choice</label><input type="number" id="numMultipleChoice" value="3" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhat" class="accent-indigo-500"><label for="useWhat" class="text-xs">What</label><input type="number" id="numWhat" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useWho" class="accent-indigo-500"><label for="useWho" class="text-xs">Who</label><input type="number" id="numWho" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhere" class="accent-indigo-500"><label for="useWhere" class="text-xs">Where</label><input type="number" id="numWhere" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhen" class="accent-indigo-500"><label for="useWhen" class="text-xs">When</label><input type="number" id="numWhen" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhy" class="accent-indigo-500"><label for="useWhy" class="text-xs">Why</label><input type="number" id="numWhy" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhich" class="accent-indigo-500"><label for="useWhich" class="text-xs">Which</label><input type="number" id="numWhich" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useHow" class="accent-indigo-500"><label for="useHow" class="text-xs">How</label><input type="number" id="numHow" value="2" min="0" max="10" class="w-16 py-1 px-2 text-xs"></div>
-                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhose" class="accent-indigo-500"><label for="useWhose" class="text-xs">Whose</label><input type="number" id="numWhose" value="1" min="0" max="5" class="w-16 py-1 px-2 text-xs"></div>
+                    <div><label class="block text-xs font-semibold mb-1">Upload Document</label><label for="fileInput" class="flex flex-col items-center justify-center w-full p-6 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5"><div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-400"></i></div><p class="text-xs sm:text-sm" id="fileNameDisplay">Drop file or click to browse</p><p class="text-xs opacity-50">PDF, DOCX, TXT</p><input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" /></label></div>
+                    <div><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="text-sm"></textarea></div>
+                    <div><label class="block text-xs font-semibold mb-1">🃏 Number of Flashcards</label><input type="number" id="numFlashcards" value="10" min="1" max="20" class="text-sm"></div>
+                    <div><label class="block text-xs font-semibold mb-2">❓ Quiz Types & Questions per Type</label><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useTrueFalse" checked class="accent-indigo-500"><label for="useTrueFalse" class="text-xs">True/False</label><input type="number" id="numTrueFalse" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useIdentification" checked class="accent-indigo-500"><label for="useIdentification" class="text-xs">Identification</label><input type="number" id="numIdentification" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useEnumeration" checked class="accent-indigo-500"><label for="useEnumeration" class="text-xs">Enumeration</label><input type="number" id="numEnumeration" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useMultipleChoice" checked class="accent-indigo-500"><label for="useMultipleChoice" class="text-xs">Multiple Choice</label><input type="number" id="numMultipleChoice" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhat" class="accent-indigo-500"><label for="useWhat" class="text-xs">What</label><input type="number" id="numWhat" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWho" class="accent-indigo-500"><label for="useWho" class="text-xs">Who</label><input type="number" id="numWho" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhere" class="accent-indigo-500"><label for="useWhere" class="text-xs">Where</label><input type="number" id="numWhere" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhen" class="accent-indigo-500"><label for="useWhen" class="text-xs">When</label><input type="number" id="numWhen" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhy" class="accent-indigo-500"><label for="useWhy" class="text-xs">Why</label><input type="number" id="numWhy" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhich" class="accent-indigo-500"><label for="useWhich" class="text-xs">Which</label><input type="number" id="numWhich" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useHow" class="accent-indigo-500"><label for="useHow" class="text-xs">How</label><input type="number" id="numHow" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhose" class="accent-indigo-500"><label for="useWhose" class="text-xs">Whose</label><input type="number" id="numWhose" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
                     </div></div>
                     <div class="flex items-center gap-2"><input type="checkbox" id="useInternet" class="accent-indigo-500"><label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label></div>
-                    <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full"><span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span></button>
+                    <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base"><span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span></button>
                 </form>
-                <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-white/10 text-center"><i class="fa-solid fa-spinner animate-spin text-indigo-400 text-2xl"></i><p class="text-sm mt-2 opacity-70">Processing...</p></div>
+                <div id="progressContainer" class="hidden mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/10 text-center"><i class="fa-solid fa-spinner animate-spin text-indigo-400 text-xl sm:text-2xl"></i><p class="text-sm mt-2 opacity-70">Processing...</p></div>
             </div>
 
-            <div id="resultsContainer" class="hidden space-y-6">
-                <div class="flex justify-end"><button id="saveToLibraryBtn" class="hidden px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition"><i class="fa-solid fa-bookmark mr-2"></i>Save to Library</button></div>
+            <div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
+                <div class="flex justify-end"><button id="saveToLibraryBtn" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition"><i class="fa-solid fa-bookmark mr-2"></i>Save to Library</button></div>
                 <div class="glass-card border-l-4 border-l-indigo-500"><h3 class="text-sm font-bold uppercase text-indigo-400 mb-3">📌 Key Concepts</h3><ul id="summaryList" class="space-y-2 text-sm"></ul></div>
                 <div class="glass-card border-l-4 border-l-cyan-500"><h3 class="text-sm font-bold uppercase text-cyan-400 mb-3">🃏 Flashcards</h3><div id="flashcardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div></div>
                 <div class="glass-card border-l-4 border-l-teal-500"><h3 class="text-sm font-bold uppercase text-teal-400 mb-3">❓ Practice Quiz</h3><div id="quizContainer" class="space-y-3"></div></div>
@@ -120,39 +120,39 @@
         </div>
 
         <!-- Library Tab -->
-        <div id="viewLibrary" class="hidden space-y-4"><div class="glass-card"><h2 class="text-xl font-bold mb-4">📚 Saved Reviewers</h2><div id="savedList" class="space-y-2"></div><p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p></div></div>
+        <div id="viewLibrary" class="hidden space-y-4"><div class="glass-card"><h2 class="text-lg sm:text-xl font-bold mb-4">📚 Saved Reviewers</h2><div id="savedList" class="space-y-2"></div><p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p></div></div>
 
         <!-- Test My Limits Tab -->
-        <div id="viewTest" class="hidden space-y-6">
+        <div id="viewTest" class="hidden space-y-4 sm:space-y-6">
             <div class="glass-card">
-                <h2 class="text-xl font-bold mb-4">⚡ Test My Limits</h2>
-                <p class="text-xs opacity-70 mb-4">Answer questions based on your notes. Choose difficulty and see how well you know the material.</p>
-                <div class="grid grid-cols-3 gap-3 mb-6">
-                    <button onclick="setDifficulty('easy')" id="diffEasy" class="py-3 px-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟢 Easy</button>
-                    <button onclick="setDifficulty('medium')" id="diffMedium" class="py-3 px-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟡 Medium</button>
-                    <button onclick="setDifficulty('hard')" id="diffHard" class="py-3 px-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🔴 Hard</button>
+                <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">⚡ Test My Limits</h2>
+                <p class="text-xs opacity-70 mb-3 sm:mb-4">Answer questions based on your notes. Choose difficulty and see how well you know the material.</p>
+                <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                    <button onclick="setDifficulty('easy')" id="diffEasy" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟢 Easy</button>
+                    <button onclick="setDifficulty('medium')" id="diffMedium" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟡 Medium</button>
+                    <button onclick="setDifficulty('hard')" id="diffHard" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🔴 Hard</button>
                 </div>
-                <div class="mb-4"><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="testNotes" rows="4" placeholder="Paste your study notes here..."></textarea></div>
-                <div class="mb-4"><label class="block text-xs font-semibold mb-1">Upload Document (optional)</label><label for="testFileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5"><div class="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-2xl text-indigo-400"></i></div><p class="text-sm" id="testFileNameDisplay">Drop file or click to browse</p><p class="text-xs opacity-50">PDF, DOCX, TXT</p><input id="testFileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateTestFileName(this)" /></label></div>
-                <div class="flex items-center gap-2 mb-4"><input type="checkbox" id="useTestInternet" class="accent-indigo-500"><label for="useTestInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label></div>
-                <button id="startTestBtn" onclick="startTest()" class="btn-primary w-full"><i class="fa-solid fa-play mr-2"></i>Start Test</button>
-                <div id="testQuizContainer" class="hidden mt-6 space-y-4">
+                <div class="mb-3 sm:mb-4"><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="testNotes" rows="4" placeholder="Paste your study notes here..." class="text-sm"></textarea></div>
+                <div class="mb-3 sm:mb-4"><label class="block text-xs font-semibold mb-1">Upload Document (optional)</label><label for="testFileInput" class="flex flex-col items-center justify-center w-full p-4 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5"><div class="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-lg sm:text-2xl text-indigo-400"></i></div><p class="text-xs sm:text-sm" id="testFileNameDisplay">Drop file or click to browse</p><p class="text-xs opacity-50">PDF, DOCX, TXT</p><input id="testFileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateTestFileName(this)" /></label></div>
+                <div class="flex items-center gap-2 mb-3 sm:mb-4"><input type="checkbox" id="useTestInternet" class="accent-indigo-500"><label for="useTestInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label></div>
+                <button id="startTestBtn" onclick="startTest()" class="btn-primary w-full text-sm sm:text-base"><i class="fa-solid fa-play mr-2"></i>Start Test</button>
+                <div id="testQuizContainer" class="hidden mt-4 sm:mt-6 space-y-3 sm:space-y-4">
                     <div class="flex items-center justify-between"><span class="text-sm font-semibold" id="questionCounter">Question 1 / 10</span><span class="text-sm font-mono text-amber-400 hidden" id="timerDisplay">⏱ 30s</span></div>
-                    <div id="testQuestionCard" class="bg-white/5 border border-white/10 p-6 rounded-xl"><p class="text-lg font-semibold mb-4" id="testQuestionText"></p><div id="testOptionsContainer" class="space-y-3"></div></div>
-                    <div class="flex justify-end"><button id="nextTestBtn" class="hidden px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition" onclick="nextTestQuestion()">Next <i class="fa-solid fa-arrow-right ml-2"></i></button></div>
+                    <div id="testQuestionCard" class="bg-white/5 border border-white/10 p-4 sm:p-6 rounded-xl"><p class="text-base sm:text-lg font-semibold mb-3 sm:mb-4" id="testQuestionText"></p><div id="testOptionsContainer" class="space-y-2 sm:space-y-3"></div></div>
+                    <div class="flex justify-end"><button id="nextTestBtn" class="hidden px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition" onclick="nextTestQuestion()">Next <i class="fa-solid fa-arrow-right ml-2"></i></button></div>
                 </div>
-                <div id="testResultsContainer" class="hidden mt-6 text-center">
-                    <i class="fa-solid fa-trophy text-4xl text-amber-400 mb-3"></i>
-                    <h3 class="text-xl font-bold mb-2">Your Score</h3>
-                    <p class="text-3xl font-bold"><span id="testCorrectCount">0</span>/<span id="testTotalCount">0"></span></p>
+                <div id="testResultsContainer" class="hidden mt-4 sm:mt-6 text-center">
+                    <i class="fa-solid fa-trophy text-3xl sm:text-4xl text-amber-400 mb-2 sm:mb-3"></i>
+                    <h3 class="text-lg sm:text-xl font-bold mb-2">Your Score</h3>
+                    <p class="text-2xl sm:text-3xl font-bold"><span id="testCorrectCount">0</span>/<span id="testTotalCount">0"></span></p>
                     <p class="text-sm opacity-70" id="testPercentage"></p>
-                    <button onclick="resetTest()" class="mt-4 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition"><i class="fa-solid fa-rotate-right mr-2"></i>Try Again</button>
+                    <button onclick="resetTest()" class="mt-3 sm:mt-4 px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition"><i class="fa-solid fa-rotate-right mr-2"></i>Try Again</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <footer class="text-center text-xs opacity-40 py-4 mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
+    <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
 
     <script>
         const BACKEND_URL = "https://acadhub-api.onrender.com";
