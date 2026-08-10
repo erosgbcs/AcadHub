@@ -536,21 +536,48 @@
             if(document.getElementById('useWhose').checked)quizTypes.whose=parseInt(document.getElementById('numWhose').value)||0;
             const useInternet = document.getElementById('useInternet').checked;
             if(provider!=='local'&&!apiKey.trim()){alert('Please enter your API key');return;}
-            // Use client-side NLP for Local NLP (offline)
+            // Local NLP: try backend first (with wake‑up); if offline, show friendly message
             if(provider==='local'){
                 btn.disabled=true;
-                btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+                btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
                 document.getElementById('progressContainer').classList.remove('hidden');
-                // simulate a tiny delay for UX
-                setTimeout(() => {
-                    const result = clientSideNLP(notes, numFlashcards, quizTypes);
-                    lastGeneratedData = result;
+                let wakeSuccess = false;
+                try {
+                    const wakeRes = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(20000) });
+                    if (wakeRes.ok) wakeSuccess = true;
+                } catch (e) {}
+                if (!wakeSuccess) {
                     document.getElementById('progressContainer').classList.add('hidden');
-                    document.getElementById('saveToLibraryBtn').classList.remove('hidden');
-                    renderResultsOneByOne(result);
-                    btn.disabled = false;
                     btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
-                }, 300);
+                    btn.disabled = false;
+                    alert('⏳ The server is waking up from sleep (free plan). Please wait about 30 seconds, then tap Generate again.');
+                    return;
+                }
+                btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+                const formDataLocal = new FormData();
+                formDataLocal.append('provider', 'local');
+                formDataLocal.append('notes', notes);
+                formDataLocal.append('num_flashcards', numFlashcards);
+                formDataLocal.append('quiz_types', JSON.stringify(quizTypes));
+                formDataLocal.append('use_internet', document.getElementById('useInternet').checked);
+                if(fileInput.files[0]) formDataLocal.append('file', fileInput.files[0]);
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, {
+                        method: 'POST',
+                        body: formDataLocal
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.detail || 'Generation failed');
+                    document.getElementById('progressContainer').classList.add('hidden');
+                    lastGeneratedData = data;
+                    document.getElementById('saveToLibraryBtn').classList.remove('hidden');
+                    renderResultsOneByOne(data);
+                } catch (err) {
+                    document.getElementById('progressContainer').classList.add('hidden');
+                    alert('Error: ' + err.message);
+                }
+                btn.disabled = false;
+                btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
                 return;
             }
             btn.disabled=true;btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
