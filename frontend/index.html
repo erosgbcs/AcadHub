@@ -124,7 +124,23 @@
             if(provider!=='local'&&!apiKey.trim()){alert('Please enter your API key');return;}
             btn.disabled=true;btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
             document.getElementById('progressContainer').classList.remove('hidden');
-            try{const wakeRes=await fetch(`${BACKEND_URL}/api/health`);if(!wakeRes.ok)throw new Error('Backend not reachable');}catch(e){document.getElementById('progressContainer').classList.add('hidden');alert('Cannot reach the server. Please try again in a few seconds.');btn.disabled=false;btnContent.innerHTML='<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';return;}
+            // Retry waking up the backend up to 3 times
+            let wakeSuccess = false;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const wakeRes = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(10000) });
+                    if (wakeRes.ok) { wakeSuccess = true; break; }
+                } catch (e) {
+                    if (attempt < 2) await new Promise(r => setTimeout(r, 3000));
+                }
+            }
+            if (!wakeSuccess) {
+                document.getElementById('progressContainer').classList.add('hidden');
+                alert('Cannot reach the server after several attempts. Please try again in a minute.');
+                btn.disabled = false;
+                btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+                return;
+            }
             btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
             const formData=new FormData();if(provider!=='local')formData.append('api_key',apiKey);formData.append('provider',provider);formData.append('notes',notes);formData.append('num_flashcards',numFlashcards);formData.append('quiz_types',JSON.stringify(quizTypes));if(fileInput.files[0])formData.append('file',fileInput.files[0]);
             const endpoint=provider==='local'?`${BACKEND_URL}/api/generate-reviewer-local`:`${BACKEND_URL}/api/generate-reviewer`;
