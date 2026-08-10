@@ -4,7 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -35,6 +62,42 @@
         .quiz-option:hover { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); transform: translateX(4px); }
         .saved-card:hover { background: rgba(255,255,255,0.05); }
         footer { margin-top: auto; }
+    
+        /* Flashcard flip */
+        .flashcard {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+        .flashcard-front, .flashcard-back {
+            backface-visibility: hidden;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+        }
+        .flashcard-front {
+            background: rgba(255,255,255,0.05);
+        }
+        .flashcard-back {
+            background: rgba(99,102,241,0.1);
+            transform: rotateY(180deg);
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
     </style>
     <link rel="manifest" href="/AcadHub/manifest.json">
     <link rel="manifest" href="/AcadHub/manifest.json">
@@ -82,11 +145,92 @@
                 }, 4500);
             }
         })();
+    
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
     </script>
 
     <!-- Firebase SDK & Config -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
     <script>
         if ("serviceWorker" in navigator) {
             navigator.serviceWorker.register("/AcadHub/sw.js");
@@ -101,6 +245,33 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+    
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
     </script>
 
     <!-- Main Content -->
@@ -113,6 +284,12 @@
             </div>
             <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                 <button onclick="toggleTheme()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400 text-sm sm:text-base"></i></button>
+
+<label class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition cursor-pointer" title="Change accent colour">
+    <input type="color" id="accentPicker" value="#6366f1" class="absolute opacity-0 w-8 h-8 cursor-pointer">
+    <i class="fa-solid fa-palette text-xs"></i>
+</label>
+
                 <button onclick="switchTab('library')" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button>
                 <button onclick="showProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
                     <i class="fa-solid fa-user text-xs"></i>
@@ -769,6 +946,33 @@ async function handleGenerate(){
             testCurrentIndex = 0;
             testCorrectCount = 0;
         }
+    
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
     </script>
 </body>
 </html>
