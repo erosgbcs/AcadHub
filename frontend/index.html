@@ -310,6 +310,10 @@
         if ("serviceWorker" in navigator) {
             navigator.serviceWorker.register("/AcadHub/sw.js");
         }
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/AcadHub/sw.js');
+        }
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
 
