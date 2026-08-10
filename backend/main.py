@@ -1,9 +1,10 @@
-import json, io, zipfile, xml.etree.ElementTree as ET, re, random, time
+import json, io, zipfile, xml.etree.ElementTree as ET, re, random, time, asyncio
 from collections import Counter
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pypdf
+import aiohttp
 
 app = FastAPI(title="AcademicHub API Engine")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -84,215 +85,31 @@ def find_definition_sentence(text, phrase):
             return sent[:300]
     return f"Related to {phrase}"
 
-# ---------- NEW ENTITY EXTRACTORS ----------
-def extract_persons(text):
-    """Extract potential person names (two consecutive capitalized words that are not stopwords)."""
-    words = WORD_PATTERN.findall(text)
-    persons = set()
-    for i in range(len(words)-1):
-        if words[i][0].isupper() and words[i+1][0].isupper():
-            full = f"{words[i]} {words[i+1]}"
-            if not any(w.lower() in STOP_WORDS for w in full.split()):
-                persons.add(full)
-    return list(persons)
+# ---------- WIKIPEDIA ENRICHMENT ----------
+async def fetch_wikipedia_summary(term):
+    """Fetch a short summary from Wikipedia for a given term."""
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{term.replace(' ', '_')}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=5) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    extract = data.get('extract', '')
+                    if extract:
+                        return f"{term}: {extract[:300]}"
+    except Exception:
+        pass
+    return None
 
-def extract_locations(text):
-    """Extract location-like phrases using simple patterns (capitalized place names)."""
-    # Look for phrases following "in", "at", "from" etc.
-    loc_patterns = [
-        r'\b(?:in|at|from|near)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
-        r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:city|street|road|avenue|country|state|province|district)',
-        r'\b([A-Z][a-z]+)\s+(?:headquarters|office|center|lab|studio)'
-    ]
-    locs = set()
-    for pat in loc_patterns:
-        for m in re.finditer(pat, text):
-            locs.add(m.group(1).strip())
-    return list(locs)[:10]
-
-def extract_dates(text):
-    """Extract dates/years using simple patterns."""
-    dates = re.findall(r'\b(?:19|20)\d{2}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b', text)
-    return dates
-
-def extract_reason_sentences(text):
-    """Find sentences containing causal clues."""
-    sents = smart_sentences(text)
-    reason_sents = [s for s in sents if any(w in s.lower() for w in ['because','due to','reason','cause','lead to','result in'])]
-    return reason_sents
-
-def extract_method_sentences(text):
-    """Find sentences describing a process/method."""
-    sents = smart_sentences(text)
-    method_sents = [s for s in sents if any(w in s.lower() for w in ['how','method','process','steps','procedure','way','by'])]
-    return method_sents
-
-# ---------- NEW QUESTION GENERATORS ----------
-def generate_what_questions(phrases, text, n):
-    """What is {term}? – use key concepts and their definitions."""
-    questions = []
-    for phrase in phrases[:n]:
-        def_sent = find_definition_sentence(text, phrase)
-        # distractors: other definitions
-        other_defs = [find_definition_sentence(text, p) for p in phrases if p != phrase][:3]
-        while len(other_defs) < 3: other_defs.append("None of the above")
-        options = [def_sent] + other_defs
-        random.shuffle(options)
-        questions.append({
-            "id": len(questions)+1,
-            "type": "what",
-            "question": f"What is {phrase}?",
-            "options": options,
-            "answer": def_sent,
-            "explanation": f"The description of {phrase}."
-        })
-    return questions
-
-def generate_who_questions(persons, sents, n):
-    """Who is {person}? – use a sentence containing that person."""
-    questions = []
-    for person in persons[:n]:
-        related = [s for s in sents if person.lower() in s.lower()]
-        if not related: continue
-        correct = related[0][:200]
-        # distractors: other sentences that don't contain this person
-        other_sents = [s[:200] for s in sents if person.lower() not in s.lower()][:3]
-        while len(other_sents) < 3: other_sents.append("None of the above")
-        options = [correct] + other_sents
-        random.shuffle(options)
-        questions.append({
-            "id": len(questions)+1,
-            "type": "who",
-            "question": f"Who is {person}?",
-            "options": options,
-            "answer": correct,
-            "explanation": f"About {person}."
-        })
-    return questions
-
-def generate_where_questions(locations, sents, n):
-    """Where is {location}? – use a sentence containing that location."""
-    questions = []
-    for loc in locations[:n]:
-        related = [s for s in sents if loc.lower() in s.lower()]
-        if not related: continue
-        correct = related[0][:200]
-        other_sents = [s[:200] for s in sents if loc.lower() not in s.lower()][:3]
-        while len(other_sents) < 3: other_sents.append("None of the above")
-        options = [correct] + other_sents
-        random.shuffle(options)
-        questions.append({
-            "id": len(questions)+1,
-            "type": "where",
-            "question": f"Where is {loc}?",
-            "options": options,
-            "answer": correct,
-            "explanation": f"About {loc}."
-        })
-    return questions
-
-def generate_when_questions(dates, sents, n):
-    """When did {event} happen? – use the sentence containing the date."""
-    questions = []
-    for date in dates[:n]:
-        related = [s for s in sents if date in s]
-        if not related: continue
-        correct = related[0][:200]
-        other_sents = [s[:200] for s in sents if date not in s][:3]
-        while len(other_sents) < 3: other_sents.append("None of the above")
-        options = [correct] + other_sents
-        random.shuffle(options)
-        questions.append({
-            "id": len(questions)+1,
-            "type": "when",
-            "question": f"When did this occur?",
-            "options": options,
-            "answer": correct,
-            "explanation": f"This sentence contains the date {date}."
-        })
-    return questions
-
-def generate_why_questions(reason_sents, n):
-    """Why did something happen? – use a reason sentence as the question (blank out the reason)."""
-    questions = []
-    for sent in reason_sents[:n]:
-        # find the causal phrase and blank it
-        causal_phrases = re.findall(r'\b(because|due to|reason|as a result)\b', sent, re.IGNORECASE)
-        if not causal_phrases: continue
-        blanked = re.sub(r'\b(because|due to|reason|as a result)\b', '________', sent, count=1, flags=re.IGNORECASE)
-        correct = causal_phrases[0]
-        distractors = ["because", "due to", "as a result", "therefore"]
-        distractors = [d for d in distractors if d != correct][:3]
-        while len(distractors) < 3: distractors.append("None of the above")
-        options = [correct] + distractors
-        random.shuffle(options)
-        questions.append({
-            "id": len(questions)+1,
-            "type": "why",
-            "question": f"Why did this happen? Fill in the blank: \"{blanked}\"",
-            "options": options,
-            "answer": correct,
-            "explanation": f"The missing cause is '{correct}'."
-        })
-    return questions
-
-def generate_how_questions(method_sents, n):
-    """How to do something? – use a method sentence as the question."""
-    questions = []
-    for sent in method_sents[:n]:
-        questions.append({
-            "id": len(questions)+1,
-            "type": "how",
-            "question": f"How can we understand this? \"{sent[:150]}...\"",
-            "options": [],
-            "answer": sent[:200],
-            "explanation": "This sentence describes a method or process."
-        })
-    return questions
-
-def generate_which_questions(phrases, text, n):
-    """Which of the following is true about {concept}? – statement selection."""
-    questions = []
-    for phrase in phrases[:n]:
-        true_stmt = find_definition_sentence(text, phrase)
-        # generate a false statement by swapping a word
-        words = WORD_PATTERN.findall(true_stmt)
-        if words:
-            random_word = random.choice([w for w in words if w.lower() not in STOP_WORDS and len(w)>4])
-            if random_word:
-                false_stmt = true_stmt.replace(random_word, "something")
-                options = [true_stmt, false_stmt, "None of the above", "Both A and B"]
-                random.shuffle(options)
-                questions.append({
-                    "id": len(questions)+1,
-                    "type": "which",
-                    "question": f"Which statement is correct about {phrase}?",
-                    "options": options,
-                    "answer": true_stmt,
-                    "explanation": f"The correct description of {phrase}."
-                })
-    return questions
-
-def generate_whose_questions(persons, sents, n):
-    """Whose {thing}? – only if we find possessive constructs."""
-    # Look for "'s" or "of" constructions
-    questions = []
-    # Simple: find sentences with "of" and a person name
-    for sent in sents:
-        for person in persons:
-            if person in sent and re.search(r'\bof\b', sent):
-                # treat the whole sentence as answer
-                questions.append({
-                    "id": len(questions)+1,
-                    "type": "whose",
-                    "question": f"Whose responsibility is this? \"{sent[:120]}...\"",
-                    "options": [],
-                    "answer": sent[:200],
-                    "explanation": f"Related to {person}."
-                })
-                if len(questions) >= n: break
-        if len(questions) >= n: break
-    return questions
+async def enrich_with_internet(key_phrases):
+    """Fetch Wikipedia summaries for the top key phrases concurrently."""
+    summaries = []
+    tasks = [fetch_wikipedia_summary(phrase) for phrase in key_phrases[:5]]
+    results = await asyncio.gather(*tasks)
+    for res in results:
+        if res:
+            summaries.append(res)
+    return "\n".join(summaries)
 
 # ---------- MAIN GENERATION ENDPOINT ----------
 @app.post("/api/generate-reviewer-local")
@@ -300,7 +117,8 @@ async def gen_local(
     notes: str = Form(""),
     file: UploadFile = File(None),
     num_flashcards: int = Form(12),
-    quiz_types: str = Form('{"identification":5}')
+    quiz_types: str = Form('{"identification":5}'),
+    use_internet: bool = Form(False)
 ):
     start = time.time()
     text = notes.strip() if notes else ""
@@ -309,11 +127,23 @@ async def gen_local(
         text += "\n" + extract_text_fast(fb, file.filename)
     if not text.strip():
         raise HTTPException(400, "Provide notes or a file.")
+
+    # Extract initial phrases (before enrichment)
     sents = smart_sentences(text)
     phrases = extract_key_phrases(text, top_n=max(num_flashcards, 25))
+
+    # ---- INTERNET ENRICHMENT ----
+    if use_internet and phrases:
+        extra = await enrich_with_internet(phrases)
+        if extra:
+            text += "\n\n--- Additional Context from Wikipedia ---\n" + extra
+            # Re-extract sentences and phrases with the enriched text
+            sents = smart_sentences(text)
+            phrases = extract_key_phrases(text, top_n=max(num_flashcards, 25))
+
     summary = sents[:5] if len(sents) >= 5 else sents
 
-    # Flashcards
+    # Flashcards (unchanged logic)
     flashcards = []
     used_defs = set()
     multi = [p for p in phrases if len(p.split()) >= 2]
@@ -330,7 +160,7 @@ async def gen_local(
 
     quiz = []
 
-    # ---- True/False ----
+    # True/False
     tf_count = qt.get("truefalse",0)
     for i in range(tf_count):
         sent = random.choice(sents) if sents else ""
@@ -354,7 +184,7 @@ async def gen_local(
                      "options":["True","False"], "answer":correct,
                      "explanation":f"The statement is {correct.lower()}."})
 
-    # ---- Identification ----
+    # Identification
     id_count = qt.get("identification",0)
     for _ in range(id_count):
         sent = random.choice(sents) if sents else ""
@@ -380,7 +210,7 @@ async def gen_local(
                      "options":options, "answer":correct,
                      "explanation":f"The missing term is '{correct}'."})
 
-    # ---- Enumeration ----
+    # Enumeration
     enum_count = qt.get("enumeration",0)
     if enum_count > 0:
         enum_concepts = [p for p in phrases if len(p.split()) >= 2]
@@ -400,7 +230,7 @@ async def gen_local(
                          "answer":answer,
                          "explanation":f"Points about {concept}."})
 
-    # ---- Multiple Choice (definition-based) ----
+    # Multiple Choice
     mc_count = qt.get("multiplechoice",0)
     if mc_count > 0:
         for _ in range(mc_count):
@@ -417,33 +247,184 @@ async def gen_local(
                          "answer": def_sent,
                          "explanation": f"The definition of {phrase}."})
 
-    # ----- NEW W/H QUESTION TYPES -----
+    # WH‑question types (unchanged – they use the same enriched text)
     persons = extract_persons(text)
     locations = extract_locations(text)
     dates = extract_dates(text)
     reason_sents = extract_reason_sentences(text)
     method_sents = extract_method_sentences(text)
 
-    # What
     quiz.extend(generate_what_questions(phrases, text, qt.get("what",0)))
-    # Who
     quiz.extend(generate_who_questions(persons, sents, qt.get("who",0)))
-    # Where
     quiz.extend(generate_where_questions(locations, sents, qt.get("where",0)))
-    # When
     quiz.extend(generate_when_questions(dates, sents, qt.get("when",0)))
-    # Why
     quiz.extend(generate_why_questions(reason_sents, qt.get("why",0)))
-    # How
     quiz.extend(generate_how_questions(method_sents, qt.get("how",0)))
-    # Which
     quiz.extend(generate_which_questions(phrases, text, qt.get("which",0)))
-    # Whose
     quiz.extend(generate_whose_questions(persons, sents, qt.get("whose",0)))
 
     elapsed = round(time.time()-start,2)
-    return JSONResponse(content={"summary":summary,"flashcards":flashcards,"quiz":quiz,"metadata":{"method":"WH_questions","length":len(text),"time":elapsed}})
+    return JSONResponse(content={"summary":summary,"flashcards":flashcards,"quiz":quiz,"metadata":{"method":"enriched_v1","length":len(text),"time":elapsed}})
 
+# ---------- WH‑QUESTION GENERATORS ----------
+def extract_persons(text):
+    words = WORD_PATTERN.findall(text)
+    persons = set()
+    for i in range(len(words)-1):
+        if words[i][0].isupper() and words[i+1][0].isupper():
+            full = f"{words[i]} {words[i+1]}"
+            if not any(w.lower() in STOP_WORDS for w in full.split()):
+                persons.add(full)
+    return list(persons)
+
+def extract_locations(text):
+    loc_patterns = [
+        r'\b(?:in|at|from|near)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
+        r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:city|street|road|avenue|country|state|province|district)',
+        r'\b([A-Z][a-z]+)\s+(?:headquarters|office|center|lab|studio)'
+    ]
+    locs = set()
+    for pat in loc_patterns:
+        for m in re.finditer(pat, text):
+            locs.add(m.group(1).strip())
+    return list(locs)[:10]
+
+def extract_dates(text):
+    dates = re.findall(r'\b(?:19|20)\d{2}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b', text)
+    return dates
+
+def extract_reason_sentences(text):
+    sents = smart_sentences(text)
+    reason_sents = [s for s in sents if any(w in s.lower() for w in ['because','due to','reason','cause','lead to','result in'])]
+    return reason_sents
+
+def extract_method_sentences(text):
+    sents = smart_sentences(text)
+    method_sents = [s for s in sents if any(w in s.lower() for w in ['how','method','process','steps','procedure','way','by'])]
+    return method_sents
+
+def generate_what_questions(phrases, text, n):
+    questions = []
+    for phrase in phrases[:n]:
+        def_sent = find_definition_sentence(text, phrase)
+        other_defs = [find_definition_sentence(text, p) for p in phrases if p != phrase][:3]
+        while len(other_defs) < 3: other_defs.append("None of the above")
+        options = [def_sent] + other_defs
+        random.shuffle(options)
+        questions.append({"id": len(questions)+1, "type":"what",
+                         "question": f"What is {phrase}?",
+                         "options":options, "answer":def_sent,
+                         "explanation":f"The description of {phrase}."})
+    return questions
+
+def generate_who_questions(persons, sents, n):
+    questions = []
+    for person in persons[:n]:
+        related = [s for s in sents if person.lower() in s.lower()]
+        if not related: continue
+        correct = related[0][:200]
+        other_sents = [s[:200] for s in sents if person.lower() not in s.lower()][:3]
+        while len(other_sents) < 3: other_sents.append("None of the above")
+        options = [correct] + other_sents
+        random.shuffle(options)
+        questions.append({"id": len(questions)+1, "type":"who",
+                         "question": f"Who is {person}?",
+                         "options":options, "answer":correct,
+                         "explanation":f"About {person}."})
+    return questions
+
+def generate_where_questions(locations, sents, n):
+    questions = []
+    for loc in locations[:n]:
+        related = [s for s in sents if loc.lower() in s.lower()]
+        if not related: continue
+        correct = related[0][:200]
+        other_sents = [s[:200] for s in sents if loc.lower() not in s.lower()][:3]
+        while len(other_sents) < 3: other_sents.append("None of the above")
+        options = [correct] + other_sents
+        random.shuffle(options)
+        questions.append({"id": len(questions)+1, "type":"where",
+                         "question": f"Where is {loc}?",
+                         "options":options, "answer":correct,
+                         "explanation":f"About {loc}."})
+    return questions
+
+def generate_when_questions(dates, sents, n):
+    questions = []
+    for date in dates[:n]:
+        related = [s for s in sents if date in s]
+        if not related: continue
+        correct = related[0][:200]
+        other_sents = [s[:200] for s in sents if date not in s][:3]
+        while len(other_sents) < 3: other_sents.append("None of the above")
+        options = [correct] + other_sents
+        random.shuffle(options)
+        questions.append({"id": len(questions)+1, "type":"when",
+                         "question": f"When did this occur?",
+                         "options":options, "answer":correct,
+                         "explanation":f"This sentence contains the date {date}."})
+    return questions
+
+def generate_why_questions(reason_sents, n):
+    questions = []
+    for sent in reason_sents[:n]:
+        causal_phrases = re.findall(r'\b(because|due to|reason|as a result)\b', sent, re.IGNORECASE)
+        if not causal_phrases: continue
+        blanked = re.sub(r'\b(because|due to|reason|as a result)\b', '________', sent, count=1, flags=re.IGNORECASE)
+        correct = causal_phrases[0]
+        distractors = ["because", "due to", "as a result", "therefore"]
+        distractors = [d for d in distractors if d != correct][:3]
+        while len(distractors) < 3: distractors.append("None of the above")
+        options = [correct] + distractors
+        random.shuffle(options)
+        questions.append({"id": len(questions)+1, "type":"why",
+                         "question": f"Why did this happen? Fill in the blank: \"{blanked}\"",
+                         "options":options, "answer":correct,
+                         "explanation":f"The missing cause is '{correct}'."})
+    return questions
+
+def generate_how_questions(method_sents, n):
+    questions = []
+    for sent in method_sents[:n]:
+        questions.append({"id": len(questions)+1, "type":"how",
+                         "question": f"How can we understand this? \"{sent[:150]}...\"",
+                         "options":[],
+                         "answer": sent[:200],
+                         "explanation": "This sentence describes a method or process."})
+    return questions
+
+def generate_which_questions(phrases, text, n):
+    questions = []
+    for phrase in phrases[:n]:
+        true_stmt = find_definition_sentence(text, phrase)
+        words = WORD_PATTERN.findall(true_stmt)
+        if words:
+            random_word = random.choice([w for w in words if w.lower() not in STOP_WORDS and len(w)>4])
+            if random_word:
+                false_stmt = true_stmt.replace(random_word, "something")
+                options = [true_stmt, false_stmt, "None of the above", "Both A and B"]
+                random.shuffle(options)
+                questions.append({"id": len(questions)+1, "type":"which",
+                                 "question": f"Which statement is correct about {phrase}?",
+                                 "options":options, "answer":true_stmt,
+                                 "explanation":f"The correct description of {phrase}."})
+    return questions
+
+def generate_whose_questions(persons, sents, n):
+    questions = []
+    for sent in sents:
+        for person in persons:
+            if person in sent and re.search(r'\bof\b', sent):
+                questions.append({"id": len(questions)+1, "type":"whose",
+                                 "question": f"Whose responsibility is this? \"{sent[:120]}...\"",
+                                 "options":[],
+                                 "answer": sent[:200],
+                                 "explanation": f"Related to {person}."})
+                if len(questions) >= n: break
+        if len(questions) >= n: break
+    return questions
+
+# AI endpoints
 def call_gemini(prompt, key):
     import urllib.request, urllib.error
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
