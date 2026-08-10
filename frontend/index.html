@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
+        function revealGCash() {
+            document.getElementById("gcashHidden").classList.add("hidden");
+            document.getElementById("gcashFull").classList.remove("hidden");
+        }
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -156,8 +160,16 @@
     <div class="glass-card mt-6 text-center">
         <p class="text-xs opacity-70 mb-2"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> Support this project</p>
         <p class="text-sm font-semibold">Donate via GCash</p>
-        <p class="text-lg font-mono font-bold tracking-wider my-2">0993****971</p>
-        <p class="text-xs opacity-70">Account Name: Gabriel A.</p>
+        <div id="gcashHidden" class="my-2">
+            <p class="text-lg font-mono font-bold tracking-wider">0993****971</p>
+            <button onclick="revealGCash()" class="mt-2 px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs rounded-lg transition">
+                <i class="fa-solid fa-eye mr-1"></i> Show full number
+            </button>
+        </div>
+        <div id="gcashFull" class="hidden my-2">
+            <p class="text-lg font-mono font-bold tracking-wider">09935917971</p>
+            <p class="text-xs opacity-70 mt-1">Gabriel A.</p>
+        </div>
         <p class="text-xs opacity-50 mt-2">Thank you for your support! ❤️</p>
     </div>
     <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
@@ -410,6 +422,10 @@
             testQuestions = [];
             testCurrentIndex = 0;
             testCorrectCount = 0;
+        }
+        function revealGCash() {
+            document.getElementById("gcashHidden").classList.add("hidden");
+            document.getElementById("gcashFull").classList.remove("hidden");
         }
     </script>
 </body>
