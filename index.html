@@ -37,6 +37,16 @@
         .animate-fade-in-up { animation: fadeInUp 0.6s ease forwards; }
         .saved-card { transition: all 0.2s; }
         .saved-card:hover { background: rgba(255,255,255,0.08); }
+
+        /* Loading screen icons */
+        .loading-icon {
+            transition: transform 0.3s;
+            display: inline-block;
+        }
+        .loading-icon:hover {
+            transform: scale(1.2);
+            color: #fff;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col">
@@ -48,13 +58,23 @@
             </div>
             <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1>
             <p class="text-sm text-slate-400 mt-2">Smart Academic Workspace</p>
-            <!-- Developer credits on loading screen -->
-            <div class="mt-6 pt-6 border-t border-white/10">
-                <p class="text-xs text-slate-500">Developed by</p>
-                <div class="flex justify-center gap-3 mt-2 text-xs text-slate-400">
-                    <span><i class="fa-brands fa-github mr-1"></i>erosgbcs</span>
-                    <span><i class="fa-solid fa-envelope mr-1"></i>gabrielagsamosam@gmail.com</span>
-                    <span><i class="fa-brands fa-facebook mr-1"></i>Gabriel Agsamosam</span>
+
+            <!-- Developer credits with prominent logos -->
+            <div class="mt-8 pt-8 border-t border-white/10">
+                <p class="text-xs text-slate-500 mb-4">Developed by</p>
+                <div class="flex flex-col gap-3 text-sm text-slate-300">
+                    <div class="flex items-center justify-center gap-3">
+                        <i class="fa-brands fa-github text-xl loading-icon" style="color: #f0f6fc;"></i>
+                        <span>erosgbcs</span>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-envelope text-xl loading-icon" style="color: #ea4335;"></i>
+                        <span>gabrielagsamosam@gmail.com</span>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <i class="fa-brands fa-facebook text-xl loading-icon" style="color: #1877f2;"></i>
+                        <span>Gabriel Agsamosam</span>
+                    </div>
                 </div>
             </div>
         </div>
