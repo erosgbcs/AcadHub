@@ -36,6 +36,7 @@
         .saved-card:hover { background: rgba(255,255,255,0.05); }
         footer { margin-top: auto; }
     </style>
+    <link rel="manifest" href="/AcadHub/manifest.json">
 </head>
 <body class="flex flex-col p-2 sm:p-4">
     <!-- Loading Screen (standalone timer, no dependencies) -->
@@ -59,6 +60,9 @@
 
     <!-- Guaranteed fade-out after 4.5s (even if other scripts fail) -->
     <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/AcadHub/sw.js");
+        }
         (function() {
             var overlay = document.getElementById('loadingOverlay');
             if (overlay) {
@@ -83,6 +87,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/AcadHub/sw.js");
+        }
         const firebaseConfig = {
             apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
             authDomain: "acadhub-visitors-69180.firebaseapp.com",
@@ -300,6 +307,9 @@
     </div>
 
     <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/AcadHub/sw.js");
+        }
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
 
