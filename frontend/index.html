@@ -334,7 +334,99 @@
         function updateTestFileName(input){const nameDisplay=document.getElementById('testFileNameDisplay');if(input.files&&input.files[0]){nameDisplay.innerHTML=`<span class="text-indigo-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;nameDisplay.parentElement.classList.add('border-indigo-500/50','bg-indigo-500/5');}else{nameDisplay.textContent='Drop file or click to browse';nameDisplay.parentElement.classList.remove('border-indigo-500/50','bg-indigo-500/5');}}
 
         // Handle Generate
-        async function handleGenerate(){
+        // ========== CLIENT-SIDE LOCAL NLP ENGINE (offline) ==========
+function clientSideNLP(text, numFlashcards = 10, quizTypes = {}) {
+    const sentences = text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
+    if (sentences.length === 0) return { summary: [], flashcards: [], quiz: [] };
+
+    const summary = sentences
+        .filter(s => s.split(' ').length > 4)
+        .sort((a, b) => b.length - a.length)
+        .slice(0, 5);
+
+    const phraseRegex = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g;
+    const phrases = [...new Set(text.match(phraseRegex) || [])];
+    const flashcards = phrases.slice(0, numFlashcards).map((term, i) => {
+        const relatedSentence = sentences.find(s => s.includes(term)) || '';
+        return { id: i+1, term, definition: relatedSentence.slice(0, 200) };
+    });
+
+    const quiz = [];
+    const usedSentences = new Set();
+
+    if (quizTypes.truefalse) {
+        for (let i = 0; i < quizTypes.truefalse && i < sentences.length; i++) {
+            const sent = sentences[i];
+            if (usedSentences.has(sent)) continue;
+            usedSentences.add(sent);
+            const isTrue = Math.random() > 0.5;
+            let question = sent;
+            if (!isTrue) {
+                const words = sent.split(' ');
+                if (words.length > 3) {
+                    const idx = Math.floor(Math.random() * words.length);
+                    words[idx] = '________';
+                    question = words.join(' ');
+                }
+            }
+            quiz.push({
+                id: quiz.length + 1,
+                type: 'truefalse',
+                question: `True or False: "${question}"`,
+                options: ['True', 'False'],
+                answer: isTrue ? 'True' : 'False',
+                explanation: isTrue ? 'The statement is true.' : 'The statement has been altered and is false.'
+            });
+        }
+    }
+
+    if (quizTypes.identification) {
+        for (let i = 0; i < quizTypes.identification && i < sentences.length; i++) {
+            const sent = sentences[i];
+            if (usedSentences.has(sent)) continue;
+            usedSentences.add(sent);
+            const words = sent.split(' ');
+            if (words.length < 4) continue;
+            const blankIdx = Math.floor(Math.random() * (words.length - 1)) + 1;
+            const correct = words[blankIdx];
+            words[blankIdx] = '________';
+            const blanked = words.join(' ');
+            quiz.push({
+                id: quiz.length + 1,
+                type: 'identification',
+                question: `Fill in the blank: "${blanked}"`,
+                options: [correct, 'None of the above', 'None of the above', 'None of the above'],
+                answer: correct,
+                explanation: `The missing word is '${correct}'.`
+            });
+        }
+    }
+
+    if (quizTypes.multiplechoice) {
+        for (let i = 0; i < quizTypes.multiplechoice && i < sentences.length; i++) {
+            const sent = sentences[i];
+            if (usedSentences.has(sent)) continue;
+            usedSentences.add(sent);
+            const correct = phrases[i % phrases.length] || 'concept';
+            const wrong1 = phrases[(i+1) % phrases.length] || 'wrong1';
+            const wrong2 = phrases[(i+2) % phrases.length] || 'wrong2';
+            const wrong3 = 'None of the above';
+            const options = [correct, wrong1, wrong2, wrong3].sort(() => Math.random() - 0.5);
+            quiz.push({
+                id: quiz.length + 1,
+                type: 'multiplechoice',
+                question: `Which term is related to: "${sent.slice(0, 100)}..."`,
+                options,
+                answer: correct,
+                explanation: `The correct term is '${correct}'.`
+            });
+        }
+    }
+
+    return { summary, flashcards, quiz };
+}
+
+async function handleGenerate(){
             const btn=document.getElementById('submitBtn');const btnContent=document.getElementById('btnContent');
             const provider=document.getElementById('aiProvider').value;const apiKey=document.getElementById('apiKey').value;
             const notes=document.getElementById('studyNotes').value;const fileInput=document.getElementById('fileInput');
@@ -354,6 +446,23 @@
             if(document.getElementById('useWhose').checked)quizTypes.whose=parseInt(document.getElementById('numWhose').value)||0;
             const useInternet = document.getElementById('useInternet').checked;
             if(provider!=='local'&&!apiKey.trim()){alert('Please enter your API key');return;}
+            // Use client-side NLP for Local NLP (offline)
+            if(provider==='local'){
+                btn.disabled=true;
+                btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+                document.getElementById('progressContainer').classList.remove('hidden');
+                // simulate a tiny delay for UX
+                setTimeout(() => {
+                    const result = clientSideNLP(notes, numFlashcards, quizTypes);
+                    lastGeneratedData = result;
+                    document.getElementById('progressContainer').classList.add('hidden');
+                    document.getElementById('saveToLibraryBtn').classList.remove('hidden');
+                    renderResultsOneByOne(result);
+                    btn.disabled = false;
+                    btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+                }, 300);
+                return;
+            }
             btn.disabled=true;btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
             document.getElementById('progressContainer').classList.remove('hidden');
             let wakeSuccess = false;
