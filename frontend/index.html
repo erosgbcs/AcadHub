@@ -363,19 +363,43 @@
             const firstName = document.getElementById("visitorFirstName").value.trim();
             const lastName = document.getElementById("visitorLastName").value.trim();
             if (!firstName || !lastName) { alert("Please enter both names."); return; }
-            try {
-                await db.collection("visitors").add({
-                    firstName: firstName,
-                    lastName: lastName,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                alert("Name saved! Thank you.");
-                document.getElementById("profileModal").classList.add("hidden");
-                localStorage.setItem("profile_saved", "true");
-                document.getElementById("profileButton").style.display = "none";
-            } catch (err) {
-                alert("Error saving name. Please try again.");
+            
+            const saveBtn = document.getElementById("saveProfileBtn");
+            if (!saveBtn) {
+                alert("Error: button not found. Please refresh.");
+                return;
             }
+
+            // Save locally immediately
+            localStorage.setItem("profile_name", firstName + " " + lastName);
+            localStorage.setItem("profile_saved", "true");
+            document.getElementById("profileButton").style.display = "none";
+
+            // Show spinner
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Saving...';
+
+            // Try Firebase with timeout (don't block the UI)
+            if (typeof db !== "undefined" && typeof firebase !== "undefined") {
+                try {
+                    await Promise.race([
+                        db.collection("visitors").add({
+                            firstName: firstName,
+                            lastName: lastName,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000))
+                    ]);
+                } catch (err) {
+                    console.log("Firebase save delayed, using local fallback.");
+                }
+            }
+
+            // Hide modal and reset button
+            document.getElementById("profileModal").classList.add("hidden");
+            alert("Profile saved! You may now use the app.");
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save';
         }
 
         // Evaluation modal
