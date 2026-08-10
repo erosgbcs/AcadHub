@@ -5,16 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
     <script src="https://cdn.tailwindcss.com">
-        // Enable Save button only when all fields are filled and agreed
-        (function() {
-            const firstName = document.getElementById('visitorFirstName');
-            const lastName = document.getElementById('visitorLastName');
-            const agree = document.getElementById('agreeTerms');
-            const saveBtn = document.getElementById('saveProfileBtn');
-            function checkFields() {
-                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
-                    saveBtn.disabled = false;
-                } else {
+        else {
                     saveBtn.disabled = true;
                 }
             }
@@ -83,21 +74,12 @@
             if (overlay) {
                 setTimeout(function() {
                     overlay.classList.add('fade-out');
-                    setTimeout(function() { overlay.classList.add('hidden'); toggleProfileModal(); }, 500);
+                    setTimeout(function() { overlay.classList.add('hidden'); toggleProfileModal(true); }, 500);
                 }, 4500);
             }
         })();
     
-        // Enable Save button only when all fields are filled and agreed
-        (function() {
-            const firstName = document.getElementById('visitorFirstName');
-            const lastName = document.getElementById('visitorLastName');
-            const agree = document.getElementById('agreeTerms');
-            const saveBtn = document.getElementById('saveProfileBtn');
-            function checkFields() {
-                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
-                    saveBtn.disabled = false;
-                } else {
+        else {
                     saveBtn.disabled = true;
                 }
             }
@@ -110,16 +92,7 @@
 
     <!-- Firebase SDK & Config -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
-        // Enable Save button only when all fields are filled and agreed
-        (function() {
-            const firstName = document.getElementById('visitorFirstName');
-            const lastName = document.getElementById('visitorLastName');
-            const agree = document.getElementById('agreeTerms');
-            const saveBtn = document.getElementById('saveProfileBtn');
-            function checkFields() {
-                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
-                    saveBtn.disabled = false;
-                } else {
+        else {
                     saveBtn.disabled = true;
                 }
             }
@@ -130,16 +103,7 @@
 
     </script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
-        // Enable Save button only when all fields are filled and agreed
-        (function() {
-            const firstName = document.getElementById('visitorFirstName');
-            const lastName = document.getElementById('visitorLastName');
-            const agree = document.getElementById('agreeTerms');
-            const saveBtn = document.getElementById('saveProfileBtn');
-            function checkFields() {
-                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
-                    saveBtn.disabled = false;
-                } else {
+        else {
                     saveBtn.disabled = true;
                 }
             }
@@ -161,16 +125,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
     
-        // Enable Save button only when all fields are filled and agreed
-        (function() {
-            const firstName = document.getElementById('visitorFirstName');
-            const lastName = document.getElementById('visitorLastName');
-            const agree = document.getElementById('agreeTerms');
-            const saveBtn = document.getElementById('saveProfileBtn');
-            function checkFields() {
-                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
-                    saveBtn.disabled = false;
-                } else {
+        else {
                     saveBtn.disabled = true;
                 }
             }
@@ -425,12 +380,17 @@
         }
 
         // Profile modal
-        function toggleProfileModal() {
-            // Prevent closing if profile not saved yet (mandatory)
-            if (localStorage.getItem("profile_saved") !== "true") {
-                return; // Do nothing – user must fill form
+        function toggleProfileModal(forceShow = false) {
+            const modal = document.getElementById("profileModal");
+            if (forceShow) {
+                modal.classList.remove("hidden");
+                return;
             }
-            document.getElementById("profileModal").classList.toggle("hidden");
+            // Prevent manual closing if profile not saved yet
+            if (localStorage.getItem("profile_saved") !== "true") {
+                return;
+            }
+            modal.classList.toggle("hidden");
         }
         function validateProfile() {
             const firstName = document.getElementById("visitorFirstName").value.trim();
