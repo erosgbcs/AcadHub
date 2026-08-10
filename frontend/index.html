@@ -251,7 +251,7 @@
                 <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="5"></i>
             </div>
             <textarea id="evalSuggestions" rows="3" placeholder="Any suggestions for new features? (optional)" class="w-full p-3 bg-white/10 border border-white/10 rounded-xl text-sm resize-none mb-4"></textarea>
-            <button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
+            <p id="evalProfileName" class="text-xs opacity-50 text-center mb-2"></p><button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
         </div>
     </div>
 
@@ -395,13 +395,24 @@
             });
         });
         function toggleEvalModal() {
-            document.getElementById("evalModal").classList.toggle("hidden");
+            const modal = document.getElementById("evalModal");
+            modal.classList.toggle("hidden");
+            if (!modal.classList.contains("hidden")) {
+                const name = localStorage.getItem("profile_name") || "Anonymous";
+                document.getElementById("evalProfileName").textContent = "Submitting as: " + name;
+            }
         }
         async function submitEval() {
             if (selectedRating === 0) { alert("Please select a star rating."); return; }
             const suggestions = document.getElementById("evalSuggestions").value.trim();
+            const profileName = localStorage.getItem("profile_name") || "Anonymous";
+            const evalBtn = document.querySelector("#evalModal .btn-primary");
+            const originalHTML = evalBtn.innerHTML;
+            evalBtn.disabled = true;
+            evalBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Submitting...';
             try {
                 await db.collection("feedback").add({
+                    name: profileName,
                     rating: selectedRating,
                     suggestions: suggestions,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -416,6 +427,9 @@
                 document.getElementById("evalSuggestions").value = "";
             } catch (err) {
                 alert("Error submitting feedback. Please try again.");
+            } finally {
+                evalBtn.disabled = false;
+                evalBtn.innerHTML = originalHTML;
             }
         }
 
