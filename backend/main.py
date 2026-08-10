@@ -62,44 +62,90 @@ def extract_text_from_file(file_bytes: bytes, filename: str) -> str:
         
     return text
 
-def find_working_model(api_key: str) -> str:
+def find_working_gemini_model(api_key: str) -> str:
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     try:
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             models = data.get("models", [])
-            
             preferred = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
             available_dict = {}
-            
             for m in models:
                 name = m.get("name", "").replace("models/", "")
                 methods = m.get("supportedGenerationMethods", [])
                 if "generateContent" in methods:
                     available_dict[name] = True
-
             for pref in preferred:
                 if pref in available_dict:
                     return pref
-            
             if available_dict:
                 return list(available_dict.keys())[0]
+    except Exception:
+        pass
+    return "gemini-1.5-flash"
 
+def call_deepseek_api(prompt: str, api_key: str) -> dict:
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are an academic reviewer generator. You must reply strictly with a JSON object."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2
+    }
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(req, timeout=40) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            content = result["choices"][0]["message"]["content"]
+            return json.loads(content)
     except urllib.error.HTTPError as e:
         error_body = e.read().decode("utf-8")
-        raise HTTPException(status_code=e.code, detail=f"API Key Validation Error: {error_body}")
+        raise HTTPException(status_code=e.code, detail=f"DeepSeek API Error: {error_body}")
     except Exception as e:
-        pass
+        raise HTTPException(status_code=500, detail=f"DeepSeek Request Failed: {str(e)}")
 
-    raise HTTPException(
-        status_code=400, 
-        detail="Could not retrieve available models for this API Key. Generate a fresh key at aistudio.google.com"
-    )
+def call_gemini_api(prompt: str, api_key: str) -> dict:
+    selected_model = find_working_gemini_model(api_key)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "responseMimeType": "application/json"
+        }
+    }
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            text_response = result["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text_response)
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        raise HTTPException(status_code=e.code, detail=f"Gemini API Error ({selected_model}): {error_body}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gemini Request Failed: {str(e)}")
 
 @app.post("/api/generate-reviewer")
 def generate_reviewer(
     api_key: str = Form(...),
+    provider: str = Form("gemini"),
     notes: str = Form(""),
     file: UploadFile = File(None)
 ):
@@ -113,9 +159,8 @@ def generate_reviewer(
     if not combined_notes.strip():
         raise HTTPException(status_code=400, detail="Provide study notes or upload a PDF/DOCX file.")
     if not api_key.strip():
-        raise HTTPException(status_code=400, detail="Gemini API Key is required.")
+        raise HTTPException(status_code=400, detail="API Key is required.")
 
-    selected_model = find_working_model(api_key.strip())
     truncated_notes = combined_notes[:15000]
 
     prompt = f"""
@@ -152,25 +197,7 @@ Study Notes:
 {truncated_notes}
 """
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={api_key}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.2,
-            "responseMimeType": "application/json"
-        }
-    }
-
-    try:
-        data = json.dumps(payload).encode("utf-8")
-        request = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-        
-        with urllib.request.urlopen(request, timeout=30) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            text_response = result["candidates"][0]["content"]["parts"][0]["text"]
-            return json.loads(text_response)
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode("utf-8")
-        raise HTTPException(status_code=e.code, detail=f"Gemini API Error ({selected_model}): {error_body}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
+    if provider.lower() == "deepseek":
+        return call_deepseek_api(prompt, api_key.strip())
+    else:
+        return call_gemini_api(prompt, api_key.strip())
