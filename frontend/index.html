@@ -101,6 +101,16 @@
                     <button onclick="setDifficulty('hard')" id="diffHard" class="py-3 px-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🔴 Hard</button>
                 </div>
                 <div class="mb-4"><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="testNotes" rows="4" placeholder="Paste your study notes here..." class="w-full p-4 bg-white/10 border border-white/10 rounded-xl text-sm resize-none"></textarea></div>
+                <!-- File upload for Test tab -->
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold mb-1">Upload Document (optional)</label>
+                    <label for="testFileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-blue-500/50 transition bg-white/5">
+                        <div class="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-2xl text-blue-400"></i></div>
+                        <p class="text-sm" id="testFileNameDisplay">Drop file or click to browse</p>
+                        <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
+                        <input id="testFileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateTestFileName(this)" />
+                    </label>
+                </div>
                 <button id="startTestBtn" onclick="startTest()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg"><i class="fa-solid fa-play mr-2"></i>Start Test</button>
                 <div id="testQuizContainer" class="hidden mt-6 space-y-4">
                     <div class="flex items-center justify-between"><span class="text-sm font-semibold" id="questionCounter">Question 1 / 10</span><span class="text-sm font-mono text-amber-400 hidden" id="timerDisplay">⏱ 30s</span></div>
@@ -180,6 +190,16 @@
             const endpoint=provider==='local'?`${BACKEND_URL}/api/generate-reviewer-local`:`${BACKEND_URL}/api/generate-reviewer`;
             try{const response=await fetch(endpoint,{method:'POST',body:formData});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Generation failed');document.getElementById('progressContainer').classList.add('hidden');lastGeneratedData=data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');renderResultsOneByOne(data);}catch(err){document.getElementById('progressContainer').classList.add('hidden');alert('Error: '+err.message);}finally{btn.disabled=false;btnContent.innerHTML='<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';}
         }
+        function updateTestFileName(input) {
+            const nameDisplay = document.getElementById("testFileNameDisplay");
+            if (input.files && input.files[0]) {
+                nameDisplay.innerHTML = `<span class="text-blue-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;
+                nameDisplay.parentElement.classList.add("border-blue-500/50", "bg-blue-500/5");
+            } else {
+                nameDisplay.textContent = "Drop file or click to browse";
+                nameDisplay.parentElement.classList.remove("border-blue-500/50", "bg-blue-500/5");
+            }
+        }
         async function renderResultsOneByOne(data){const container=document.getElementById('resultsContainer');container.classList.remove('hidden');container.scrollIntoView({behavior:'smooth'});document.getElementById('summaryList').innerHTML='';document.getElementById('flashcardGrid').innerHTML='';document.getElementById('quizContainer').innerHTML='';
         const summaryItems=(data.summary||[]).map(s=>`<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i>${s}</li>`);document.getElementById('summaryList').innerHTML=summaryItems.join('');
         const flashcardContainer=document.getElementById('flashcardGrid');for(let i=0;i<(data.flashcards||[]).length;i++){const card=data.flashcards[i];const div=document.createElement('div');div.className='reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';div.innerHTML=`<p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p>`;flashcardContainer.appendChild(div);await new Promise(resolve=>setTimeout(resolve,150));}
@@ -235,6 +255,8 @@
 
             const formData = new FormData();
             formData.append('notes', notes);
+            const testFileInput = document.getElementById("testFileInput");
+            if (testFileInput.files[0]) formData.append("file", testFileInput.files[0]);
             formData.append('num_flashcards', 0);
             formData.append('quiz_types', JSON.stringify(quizTypes));
 
