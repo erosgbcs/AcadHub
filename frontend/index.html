@@ -134,6 +134,20 @@
                         <span id="btnText">Build Complete Reviewer</span>
                     </button>
                 </form>
+
+                <!-- Processing Progress Bar -->
+                <div id="progressContainer" class="hidden mt-4 pt-4 border-t border-white/10 space-y-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span id="progressStatus" class="font-medium text-indigo-300 flex items-center gap-2">
+                            <i class="fa-solid fa-spinner animate-spin text-indigo-400"></i> Parsing document...
+                        </span>
+                        <span id="progressPercent" class="text-gray-400 font-mono">15%</span>
+                    </div>
+                    <div class="w-full bg-gray-900/90 rounded-full h-2.5 overflow-hidden border border-white/10 p-0.5">
+                        <div id="progressBar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 h-1.5 rounded-full transition-all duration-300" style="width: 15%"></div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Results Container -->
@@ -171,6 +185,7 @@
 
     <script>
         const BACKEND_URL = "http://127.0.0.1:8000";
+        let progressTimer = null;
 
         function updateProviderPlaceholder() {
             const provider = document.getElementById('aiProvider').value;
@@ -214,6 +229,58 @@
             }
         }
 
+        function startProgressAnimation(provider) {
+            const container = document.getElementById('progressContainer');
+            const status = document.getElementById('progressStatus');
+            const percent = document.getElementById('progressPercent');
+            const bar = document.getElementById('progressBar');
+
+            container.classList.remove('hidden');
+
+            const stages = [
+                { pct: 15, msg: `<i class="fa-solid fa-spinner animate-spin text-indigo-400"></i> Reading & extracting document text...` },
+                { pct: 40, msg: `<i class="fa-solid fa-paper-plane text-violet-400 animate-bounce"></i> Sending prompt to ${provider.toUpperCase()} AI...` },
+                { pct: 70, msg: `<i class="fa-solid fa-brain text-purple-400 animate-pulse"></i> Generating flashcards & quiz questions...` },
+                { pct: 90, msg: `<i class="fa-solid fa-code text-emerald-400"></i> Parsing JSON structured data...` }
+            ];
+
+            let stageIdx = 0;
+            
+            const updateStage = (idx) => {
+                bar.style.width = `${stages[idx].pct}%`;
+                percent.textContent = `${stages[idx].pct}%`;
+                status.innerHTML = stages[idx].msg;
+            };
+
+            updateStage(0);
+
+            progressTimer = setInterval(() => {
+                if (stageIdx < stages.length - 1) {
+                    stageIdx++;
+                    updateStage(stageIdx);
+                }
+            }, 3500);
+        }
+
+        function stopProgressAnimation(success = true) {
+            clearInterval(progressTimer);
+            const container = document.getElementById('progressContainer');
+            const status = document.getElementById('progressStatus');
+            const percent = document.getElementById('progressPercent');
+            const bar = document.getElementById('progressBar');
+
+            if (success) {
+                bar.style.width = '100%';
+                percent.textContent = '100%';
+                status.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> Reviewer complete!`;
+                setTimeout(() => {
+                    container.classList.add('hidden');
+                }, 2000);
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
         async function handleGenerate(e) {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
@@ -224,7 +291,9 @@
             const notes = document.getElementById('studyNotes').value;
 
             btn.disabled = true;
-            btnText.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Processing with ${provider.toUpperCase()}...`;
+            btnText.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Processing...`;
+
+            startProgressAnimation(provider);
 
             const formData = new FormData();
             formData.append('api_key', apiKey);
@@ -243,8 +312,10 @@
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.detail || 'Generation failed');
 
+                stopProgressAnimation(true);
                 renderResults(data);
             } catch (err) {
+                stopProgressAnimation(false);
                 alert(`Error: ${err.message}`);
             } finally {
                 btn.disabled = false;
