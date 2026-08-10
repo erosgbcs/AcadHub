@@ -15,10 +15,41 @@
         .btn-primary { background: linear-gradient(135deg, #4c6ef5, #22b8cf); }
         .reveal-item { opacity: 0; transform: translateY(10px); animation: reveal 0.3s ease forwards; }
         @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .loading-overlay.fade-out { opacity: 0; transform: scale(0.95); pointer-events: none; }
+        .loading-overlay.hidden { display: none; }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(76, 110, 245, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(76, 110, 245, 0.7); }
+        }
+        .logo-pulse { animation: pulse-glow 2s infinite; border-radius: 50%; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.6s ease forwards; }
+        .saved-card { transition: all 0.2s; }
+        .saved-card:hover { background: rgba(255,255,255,0.08); }
     </style>
 </head>
-<body class="min-h-screen p-4">
-    <div class="max-w-2xl mx-auto space-y-6">
+<body class="min-h-screen p-4 flex flex-col">
+    <!-- Initial Loading Screen -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="text-center animate-fade-in-up">
+            <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center logo-pulse">
+                <i class="fa-solid fa-graduation-cap text-white text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1>
+            <p class="text-sm text-slate-400 mt-2">Smart Academic Workspace</p>
+        </div>
+    </div>
+
+    <div class="max-w-2xl mx-auto space-y-6 flex-1">
+        <!-- Header with Theme Toggle -->
         <div class="glass-card flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xl"><i class="fa-solid fa-graduation-cap"></i></div>
@@ -28,14 +59,21 @@
                 <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
                     <i id="themeIcon" class="fa-solid fa-sun text-yellow-400"></i>
                 </button>
+                <button onclick="toggleLibrary()" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition">
+                    <i class="fa-solid fa-bookmark mr-1"></i> Library
+                </button>
                 <div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
             </div>
         </div>
+
+        <!-- Tabs -->
         <div class="flex p-1.5 glass-card rounded-2xl">
-            <button class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button>
-            <button class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Scheduler</button>
+            <button id="tabReviewer" class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button>
+            <button id="tabLibrary" class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Saved Library</button>
         </div>
-        <div class="space-y-6">
+
+        <!-- Reviewer Tab -->
+        <div id="viewReviewer" class="space-y-6">
             <div class="glass-card">
                 <h2 class="text-lg font-bold mb-4">Generate Study Materials</h2>
                 <form onsubmit="return false;">
@@ -57,6 +95,7 @@
                             </div>
                         </div>
                     </div>
+
                     <div class="mb-4">
                         <label class="block text-xs font-semibold mb-1">Upload Document</label>
                         <label for="fileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-blue-500/50 transition bg-white/5">
@@ -66,14 +105,17 @@
                             <input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" />
                         </label>
                     </div>
+
                     <div class="mb-4">
                         <label class="block text-xs font-semibold mb-1">Notes</label>
                         <textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="w-full p-4 bg-white/10 border border-white/10 rounded-xl text-sm resize-none"></textarea>
                     </div>
+
                     <div class="mb-4">
                         <label class="block text-xs font-semibold mb-1">🃏 Number of Flashcards</label>
                         <input type="number" id="numFlashcards" value="10" min="1" max="20" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
                     </div>
+
                     <div class="mb-4">
                         <label class="block text-xs font-semibold mb-2">❓ Quiz Types & Questions per Type</label>
                         <div class="grid grid-cols-2 gap-3">
@@ -99,16 +141,25 @@
                             </div>
                         </div>
                     </div>
+
                     <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg">
                         <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
                     </button>
                 </form>
+
                 <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-white/10 text-center">
                     <i class="fa-solid fa-spinner animate-spin text-blue-400 text-2xl"></i>
                     <p class="text-sm mt-2 opacity-70">Processing...</p>
                 </div>
             </div>
+
+            <!-- Results + Save Button -->
             <div id="resultsContainer" class="hidden space-y-6">
+                <div class="flex justify-end gap-2">
+                    <button id="saveToLibraryBtn" class="hidden px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition">
+                        <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
+                    </button>
+                </div>
                 <div class="glass-card border-l-4 border-l-blue-500">
                     <h3 class="text-sm font-bold uppercase text-blue-400 mb-3">📌 Key Concepts</h3>
                     <ul id="summaryList" class="space-y-2 text-sm"></ul>
@@ -123,9 +174,38 @@
                 </div>
             </div>
         </div>
+
+        <!-- Library Tab (hidden by default) -->
+        <div id="viewLibrary" class="hidden space-y-4">
+            <div class="glass-card">
+                <h2 class="text-lg font-bold mb-4">📚 Saved Reviewers</h2>
+                <div id="savedList" class="space-y-2"></div>
+                <p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet. Generate one and click "Save to Library".</p>
+            </div>
+        </div>
     </div>
+
+    <!-- Footer with Credits -->
+    <footer class="mt-8 text-center text-xs opacity-50 py-4">
+        Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-blue-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com
+    </footer>
+
     <script>
         const BACKEND_URL = "http://127.0.0.1:8000";
+        let lastGeneratedData = null;
+
+        // ---- Initial loading overlay ----
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                loadingOverlay.classList.add('fade-out');
+                setTimeout(() => loadingOverlay.classList.add('hidden'), 500);
+            }, 2500);
+            updateProviderUI();
+            renderSavedList();
+        });
+
+        // ---- Theme Toggle ----
         function toggleTheme() {
             const html = document.documentElement;
             const icon = document.getElementById('themeIcon');
@@ -148,6 +228,28 @@
                 if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); icon.style.color = '#6366f1'; }
             }
         })();
+
+        // ---- Tabs (Reviewer / Library) ----
+        function toggleLibrary() {
+            document.getElementById('viewReviewer').classList.add('hidden');
+            document.getElementById('viewLibrary').classList.remove('hidden');
+            document.getElementById('tabReviewer').classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
+            document.getElementById('tabReviewer').classList.add('opacity-60');
+            document.getElementById('tabLibrary').classList.add('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
+            document.getElementById('tabLibrary').classList.remove('opacity-60');
+            renderSavedList();
+        }
+        document.getElementById('tabReviewer').addEventListener('click', () => {
+            document.getElementById('viewReviewer').classList.remove('hidden');
+            document.getElementById('viewLibrary').classList.add('hidden');
+            document.getElementById('tabReviewer').classList.add('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
+            document.getElementById('tabReviewer').classList.remove('opacity-60');
+            document.getElementById('tabLibrary').classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
+            document.getElementById('tabLibrary').classList.add('opacity-60');
+        });
+        document.getElementById('tabLibrary').addEventListener('click', toggleLibrary);
+
+        // ---- Provider UI ----
         function updateProviderUI() {
             const provider = document.getElementById('aiProvider').value;
             const box = document.getElementById('apiKeyContainer');
@@ -171,6 +273,8 @@
                 nameDisplay.parentElement.classList.remove('border-blue-500/50', 'bg-blue-500/5');
             }
         }
+
+        // ---- Generate ----
         async function handleGenerate() {
             const btn = document.getElementById('submitBtn');
             const btnContent = document.getElementById('btnContent');
@@ -185,10 +289,11 @@
             if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById('numEnumeration').value) || 0;
             if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document.getElementById('numMultipleChoice').value) || 0;
             if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
+
             btn.disabled = true;
             btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
             document.getElementById('progressContainer').classList.remove('hidden');
-            document.getElementById('resultsContainer').classList.add('hidden');
+
             const formData = new FormData();
             if (provider !== 'local') formData.append('api_key', apiKey);
             formData.append('provider', provider);
@@ -196,12 +301,16 @@
             formData.append('num_flashcards', numFlashcards);
             formData.append('quiz_types', JSON.stringify(quizTypes));
             if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+
             const endpoint = provider === 'local' ? `${BACKEND_URL}/api/generate-reviewer-local` : `${BACKEND_URL}/api/generate-reviewer`;
+
             try {
                 const response = await fetch(endpoint, { method: 'POST', body: formData });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.detail || 'Generation failed');
                 document.getElementById('progressContainer').classList.add('hidden');
+                lastGeneratedData = data;
+                document.getElementById('saveToLibraryBtn').classList.remove('hidden');
                 renderResultsOneByOne(data);
             } catch (err) {
                 document.getElementById('progressContainer').classList.add('hidden');
@@ -211,6 +320,7 @@
                 btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
             }
         }
+
         async function renderResultsOneByOne(data) {
             const container = document.getElementById('resultsContainer');
             container.classList.remove('hidden');
@@ -218,26 +328,37 @@
             document.getElementById('summaryList').innerHTML = '';
             document.getElementById('flashcardGrid').innerHTML = '';
             document.getElementById('quizContainer').innerHTML = '';
+
             const summaryItems = (data.summary || []).map(s => `<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i>${s}</li>`);
             document.getElementById('summaryList').innerHTML = summaryItems.join('');
+
             const flashcardContainer = document.getElementById('flashcardGrid');
             for (let i = 0; i < (data.flashcards || []).length; i++) {
                 const card = data.flashcards[i];
-                const cardHTML = `<div class="reveal-item bg-white/5 border border-white/10 p-4 rounded-xl"><p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p></div>`;
-                flashcardContainer.insertAdjacentHTML('beforeend', cardHTML);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                const div = document.createElement('div');
+                div.className = 'reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';
+                div.innerHTML = `<p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p>`;
+                flashcardContainer.appendChild(div);
+                await new Promise(resolve => setTimeout(resolve, 150));
             }
+
             const quizContainer = document.getElementById('quizContainer');
             for (let i = 0; i < (data.quiz || []).length; i++) {
                 const q = data.quiz[i];
-                const quizHTML = `<div class="reveal-item bg-white/5 border border-white/10 p-4 rounded-xl">
-                    <p class="text-sm font-semibold mb-2">${i+1}. ${q.question}</p>
-                    ${(q.options && q.options.length) ? q.options.map((opt, idx) => `<button onclick="checkAnswer(this, '${opt === q.answer}')" class="w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-blue-500/10 transition"><span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}</button>`).join('') : `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`}
-                </div>`;
-                quizContainer.insertAdjacentHTML('beforeend', quizHTML);
-                await new Promise(resolve => setTimeout(resolve, 150));
+                const div = document.createElement('div');
+                div.className = 'reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';
+                let optionsHTML = '';
+                if (q.options && q.options.length) {
+                    optionsHTML = q.options.map((opt, idx) => `<button onclick="checkAnswer(this, '${opt === q.answer}')" class="w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-blue-500/10 transition"><span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}</button>`).join('');
+                } else {
+                    optionsHTML = `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;
+                }
+                div.innerHTML = `<p class="text-sm font-semibold mb-2">${i+1}. ${q.question}</p>${optionsHTML}`;
+                quizContainer.appendChild(div);
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
         }
+
         function checkAnswer(btn, isCorrect) {
             const parent = btn.parentElement;
             Array.from(parent.children).forEach(child => {
@@ -246,7 +367,68 @@
             if (isCorrect === 'true') btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
             else btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
         }
-        window.addEventListener('DOMContentLoaded', () => { updateProviderUI(); });
+
+        // ---- Save to Library (localStorage) ----
+        document.getElementById('saveToLibraryBtn').addEventListener('click', () => {
+            if (!lastGeneratedData) return;
+            const entry = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                notes: document.getElementById('studyNotes').value.slice(0, 100) + '...',
+                data: lastGeneratedData
+            };
+            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+            saved.unshift(entry);  // newest first
+            localStorage.setItem('acadhub_saved', JSON.stringify(saved));
+            alert('Saved to Library!');
+            renderSavedList();
+        });
+
+        function renderSavedList() {
+            const list = document.getElementById('savedList');
+            const empty = document.getElementById('emptyLibrary');
+            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+            if (saved.length === 0) {
+                empty.classList.remove('hidden');
+                list.innerHTML = '';
+                return;
+            }
+            empty.classList.add('hidden');
+            list.innerHTML = saved.map(entry => `
+                <div class="saved-card flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold">${entry.date}</p>
+                        <p class="text-xs opacity-50 truncate">${entry.notes}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 text-xs hover:bg-blue-500/30 transition">
+                            <i class="fa-solid fa-eye mr-1"></i>Load
+                        </button>
+                        <button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadSaved(id) {
+            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+            const entry = saved.find(e => e.id === id);
+            if (!entry) return;
+            lastGeneratedData = entry.data;
+            document.getElementById('saveToLibraryBtn').classList.remove('hidden');
+            // Switch to reviewer tab
+            document.getElementById('tabReviewer').click();
+            renderResultsOneByOne(entry.data);
+        }
+
+        function deleteSaved(id) {
+            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+            saved = saved.filter(e => e.id !== id);
+            localStorage.setItem('acadhub_saved', JSON.stringify(saved));
+            renderSavedList();
+        }
     </script>
 </body>
 </html>
