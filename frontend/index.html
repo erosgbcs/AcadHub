@@ -75,6 +75,11 @@
                 <div class="flex items-center gap-2"><input type="checkbox" id="useHow" class="accent-blue-500"><label for="useHow" class="text-xs">How</label><input type="number" id="numHow" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
                 <div class="flex items-center gap-2"><input type="checkbox" id="useWhose" class="accent-blue-500"><label for="useWhose" class="text-xs">Whose</label><input type="number" id="numWhose" value="1" min="0" max="5" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
             </div></div>
+<!-- Internet enrichment toggle -->
+<div class="flex items-center gap-2 mb-4">
+    <input type="checkbox" id="useInternet" class="accent-blue-500">
+    <label for="useInternet" class="text-xs">🌐 Enrich with Internet (Wikipedia)</label>
+</div>
             <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg"><span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span></button>
         </form>
         <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-white/10 text-center"><i class="fa-solid fa-spinner animate-spin text-blue-400 text-2xl"></i><p class="text-sm mt-2 opacity-70">Processing...</p></div></div>
