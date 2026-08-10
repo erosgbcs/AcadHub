@@ -38,6 +38,18 @@
     </style>
 </head>
 <body class="flex flex-col p-2 sm:p-4">
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
+            authDomain: "acadhub-visitors-69180.firebaseapp.com",
+            projectId: "acadhub-visitors-69180",
+            storageBucket: "acadhub-visitors-69180.firebasestorage.app",
+            messagingSenderId: "292893836149",
+            appId: "1:292893836149:web:8345f25b7c68974eaec93c"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
     <!-- Loading Screen -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center animate-fade-in-up px-4">
