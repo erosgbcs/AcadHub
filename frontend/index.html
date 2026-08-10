@@ -193,10 +193,7 @@
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
         const loadingOverlay = document.getElementById('loadingOverlay');
-        window.addEventListener('DOMContentLoaded', () => { setTimeout(() => { if (!document.getElementById('loadingOverlay').classList.contains('hidden')) { document.getElementById('loadingOverlay').classList.add('hidden'); } }, 5000);
-            setTimeout(() => { loadingOverlay.classList.add('fade-out'); setTimeout(() => loadingOverlay.classList.add('hidden'), 500); }, 4500);
-            updateProviderUI(); renderSavedList();
-        });
+        
         function toggleTheme(){const html=document.documentElement;const icon=document.getElementById('themeIcon');if(html.classList.contains('dark')){html.classList.remove('dark');html.classList.add('light');icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';localStorage.setItem('theme','light');}else{html.classList.remove('light');html.classList.add('dark');icon.classList.remove('fa-moon');icon.classList.add('fa-sun');icon.style.color='#facc15';localStorage.setItem('theme','dark');}}
         (function(){if(localStorage.getItem('theme')==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');const icon=document.getElementById('themeIcon');if(icon){icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';}}})();
         function switchTab(tab){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('viewTest').classList.add('hidden');document.getElementById('tabReviewer').classList.remove('tab-active');document.getElementById('tabReviewer').classList.add('tab-inactive');document.getElementById('tabLibrary').classList.remove('tab-active');document.getElementById('tabLibrary').classList.add('tab-inactive');document.getElementById('tabTest').classList.remove('tab-active');document.getElementById('tabTest').classList.add('tab-inactive');if(tab==='reviewer'){document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('tabReviewer').classList.remove('tab-inactive');document.getElementById('tabReviewer').classList.add('tab-active');}else if(tab==='library'){document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabLibrary').classList.remove('tab-inactive');document.getElementById('tabLibrary').classList.add('tab-active');renderSavedList();}else if(tab==='test'){document.getElementById('viewTest').classList.remove('hidden');document.getElementById('tabTest').classList.remove('tab-inactive');document.getElementById('tabTest').classList.add('tab-active');}}
@@ -488,5 +485,19 @@
             <button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
         </div>
     </div>
+
+<script>
+    // Guaranteed fade-out after 4.5 seconds
+    (function() {
+        var overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            setTimeout(function() {
+                overlay.classList.add('fade-out');
+                setTimeout(function() { overlay.classList.add('hidden'); }, 500);
+            }, 4500);
+        }
+    })();
+</script>
+
 </body>
 </html>
