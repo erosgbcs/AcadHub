@@ -536,17 +536,17 @@
             if(document.getElementById('useWhose').checked)quizTypes.whose=parseInt(document.getElementById('numWhose').value)||0;
             const useInternet = document.getElementById('useInternet').checked;
             if(provider!=='local'&&!apiKey.trim()){alert('Please enter your API key');return;}
-            // Local NLP: try backend first (with wake‑up); if offline, show friendly message
+            // Local NLP: fast health check (3s) – no offline fallback
             if(provider==='local'){
                 btn.disabled=true;
-                btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
+                btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Checking server...';
                 document.getElementById('progressContainer').classList.remove('hidden');
-                let wakeSuccess = false;
+                let awake = false;
                 try {
-                    const wakeRes = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(20000) });
-                    if (wakeRes.ok) wakeSuccess = true;
+                    const check = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(3000) });
+                    if (check.ok) awake = true;
                 } catch (e) {}
-                if (!wakeSuccess) {
+                if (!awake) {
                     document.getElementById('progressContainer').classList.add('hidden');
                     btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
                     btn.disabled = false;
