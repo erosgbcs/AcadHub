@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
-        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -78,13 +77,10 @@
                 }, 4500);
             }
         })();
-        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
     </script>
 
     <!-- Firebase SDK & Config -->
-        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script>
         const firebaseConfig = {
@@ -97,7 +93,6 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
     </script>
 
     <!-- Main Content -->
@@ -348,19 +343,16 @@
             btn.disabled=true;btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
             document.getElementById('progressContainer').classList.remove('hidden');
             let wakeSuccess = false;
-            for (let attempt = 0; attempt < 3; attempt++) {
-                try {
-                    const wakeRes = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(10000) });
-                    if (wakeRes.ok) { wakeSuccess = true; break; }
-                } catch (e) {
-                    if (attempt < 2) await new Promise(r => setTimeout(r, 3000));
-                }
-            }
+            try {
+                const wakeRes = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(20000) });
+                if (wakeRes.ok) wakeSuccess = true;
+            } catch (e) {}
+            
             if (!wakeSuccess) {
                 document.getElementById('progressContainer').classList.add('hidden');
-                alert('The server is waking up from sleep (free plan). Please wait 30 seconds, then try again.');
-                btn.disabled = false;
                 btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+                btn.disabled = false;
+                alert('The server is waking up from sleep (free plan). Please wait 30 seconds, then try again.');
                 return;
             }
             btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
@@ -450,6 +442,9 @@
             saveBtn.disabled = false;
             saveBtn.innerHTML = 'Save';
         }
+
+        // Accuracy guide toggle
+        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
 
         // Evaluation modal
         let selectedRating = 0;
@@ -646,7 +641,6 @@
             testCurrentIndex = 0;
             testCorrectCount = 0;
         }
-        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
     </script>
 </body>
 </html>
