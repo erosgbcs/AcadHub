@@ -15,13 +15,16 @@
         .btn-primary { background: linear-gradient(135deg, #4c6ef5, #22b8cf); }
         .reveal-item { opacity: 0; transform: translateY(10px); animation: reveal 0.3s ease forwards; }
         @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+
         .loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: var(--bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 1000; transition: opacity 0.5s ease, transform 0.5s ease;
         }
         .loading-overlay.fade-out { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .loading-overlay.hidden { display: none; }
+
         @keyframes pulse-glow {
             0%, 100% { box-shadow: 0 0 20px rgba(76, 110, 245, 0.3); }
             50% { box-shadow: 0 0 40px rgba(76, 110, 245, 0.7); }
@@ -37,7 +40,7 @@
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col">
-    <!-- Initial Loading Screen -->
+    <!-- Initial Loading Screen (7 seconds) -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center animate-fade-in-up">
             <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center logo-pulse">
@@ -45,6 +48,15 @@
             </div>
             <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1>
             <p class="text-sm text-slate-400 mt-2">Smart Academic Workspace</p>
+            <!-- Developer credits on loading screen -->
+            <div class="mt-6 pt-6 border-t border-white/10">
+                <p class="text-xs text-slate-500">Developed by</p>
+                <div class="flex justify-center gap-3 mt-2 text-xs text-slate-400">
+                    <span><i class="fa-brands fa-github mr-1"></i>erosgbcs</span>
+                    <span><i class="fa-solid fa-envelope mr-1"></i>gabrielagsamosam@gmail.com</span>
+                    <span><i class="fa-brands fa-facebook mr-1"></i>Gabriel Agsamosam</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -187,20 +199,20 @@
 
     <!-- Footer with Credits -->
     <footer class="mt-8 text-center text-xs opacity-50 py-4">
-        Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-blue-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com
+        Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-blue-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam
     </footer>
 
     <script>
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
 
-        // ---- Initial loading overlay ----
+        // ---- Initial loading overlay (7 seconds) ----
         const loadingOverlay = document.getElementById('loadingOverlay');
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 loadingOverlay.classList.add('fade-out');
                 setTimeout(() => loadingOverlay.classList.add('hidden'), 500);
-            }, 2500);
+            }, 7000);  // 7 seconds
             updateProviderUI();
             renderSavedList();
         });
@@ -378,7 +390,7 @@
                 data: lastGeneratedData
             };
             let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
-            saved.unshift(entry);  // newest first
+            saved.unshift(entry);
             localStorage.setItem('acadhub_saved', JSON.stringify(saved));
             alert('Saved to Library!');
             renderSavedList();
@@ -418,7 +430,6 @@
             if (!entry) return;
             lastGeneratedData = entry.data;
             document.getElementById('saveToLibraryBtn').classList.remove('hidden');
-            // Switch to reviewer tab
             document.getElementById('tabReviewer').click();
             renderResultsOneByOne(entry.data);
         }
