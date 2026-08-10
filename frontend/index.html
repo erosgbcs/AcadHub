@@ -38,18 +38,6 @@
     </style>
 </head>
 <body class="flex flex-col p-2 sm:p-4">
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
-            authDomain: "acadhub-visitors-69180.firebaseapp.com",
-            projectId: "acadhub-visitors-69180",
-            storageBucket: "acadhub-visitors-69180.firebasestorage.app",
-            messagingSenderId: "292893836149",
-            appId: "1:292893836149:web:8345f25b7c68974eaec93c"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-    </script>
     <!-- Loading Screen -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center animate-fade-in-up px-4">
@@ -68,6 +56,35 @@
             </div>
         </div>
     </div>
+
+    <!-- Guaranteed fade-out after 4.5s -->
+    <script>
+        (function() {
+            var overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                setTimeout(function() {
+                    overlay.classList.add('fade-out');
+                    setTimeout(function() { overlay.classList.add('hidden'); }, 500);
+                }, 4500);
+            }
+        })();
+    </script>
+
+    <!-- Firebase SDK & Config -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
+            authDomain: "acadhub-visitors-69180.firebaseapp.com",
+            projectId: "acadhub-visitors-69180",
+            storageBucket: "acadhub-visitors-69180.firebasestorage.app",
+            messagingSenderId: "292893836149",
+            appId: "1:292893836149:web:8345f25b7c68974eaec93c"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
 
     <!-- Main Content -->
     <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6">
@@ -189,28 +206,67 @@
 
     <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
 
+    <!-- Profile Modal -->
+    <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile</h3>
+                <button onclick="toggleProfileModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-xs opacity-70 mb-4">Enter your name to help us improve. Only the developer can see it.</p>
+            <div class="space-y-3">
+                <input type="text" id="visitorFirstName" placeholder="First Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="text" id="visitorLastName" placeholder="Last Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500">
+                    <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly. <em>Data is handled in accordance with privacy best practices.</em></span>
+                </label>
+                <button onclick="saveVisitorName()" class="btn-primary w-full text-sm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evaluation Modal -->
+    <div id="evalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-80 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-star text-amber-400 mr-2"></i>Rate Your Experience</h3>
+                <button onclick="toggleEvalModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-xs opacity-70 mb-4">How would you rate AcadHub? Your feedback helps us improve.</p>
+            <div class="flex justify-center gap-1 mb-4" id="starContainer">
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="1"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="2"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="3"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="4"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="5"></i>
+            </div>
+            <textarea id="evalSuggestions" rows="3" placeholder="Any suggestions for new features? (optional)" class="w-full p-3 bg-white/10 border border-white/10 rounded-xl text-sm resize-none mb-4"></textarea>
+            <button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
+        </div>
+    </div>
+
     <script>
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        
+
+        // Theme toggle
         function toggleTheme(){const html=document.documentElement;const icon=document.getElementById('themeIcon');if(html.classList.contains('dark')){html.classList.remove('dark');html.classList.add('light');icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';localStorage.setItem('theme','light');}else{html.classList.remove('light');html.classList.add('dark');icon.classList.remove('fa-moon');icon.classList.add('fa-sun');icon.style.color='#facc15';localStorage.setItem('theme','dark');}}
         (function(){if(localStorage.getItem('theme')==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');const icon=document.getElementById('themeIcon');if(icon){icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';}}})();
+
+        // Tabs
         function switchTab(tab){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('viewTest').classList.add('hidden');document.getElementById('tabReviewer').classList.remove('tab-active');document.getElementById('tabReviewer').classList.add('tab-inactive');document.getElementById('tabLibrary').classList.remove('tab-active');document.getElementById('tabLibrary').classList.add('tab-inactive');document.getElementById('tabTest').classList.remove('tab-active');document.getElementById('tabTest').classList.add('tab-inactive');if(tab==='reviewer'){document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('tabReviewer').classList.remove('tab-inactive');document.getElementById('tabReviewer').classList.add('tab-active');}else if(tab==='library'){document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabLibrary').classList.remove('tab-inactive');document.getElementById('tabLibrary').classList.add('tab-active');renderSavedList();}else if(tab==='test'){document.getElementById('viewTest').classList.remove('hidden');document.getElementById('tabTest').classList.remove('tab-inactive');document.getElementById('tabTest').classList.add('tab-active');}}
         document.getElementById('tabReviewer').addEventListener('click',()=>switchTab('reviewer'));
         document.getElementById('tabLibrary').addEventListener('click',()=>switchTab('library'));
-                <button onclick="toggleProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
-                    <i class="fa-solid fa-user text-xs"></i>
-                </button>
-                <button onclick="toggleEvalModal()" id="evalButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
-                    <i class="fa-solid fa-star text-xs text-amber-400"></i>
-                </button>
         document.getElementById('tabTest').addEventListener('click',()=>switchTab('test'));
+
+        // Provider UI
         function updateProviderUI(){const provider=document.getElementById('aiProvider').value;const box=document.getElementById('apiKeyContainer');const input=document.getElementById('apiKey');if(provider==='local'){box.style.display='none';input.required=false;}else{box.style.display='block';input.required=true;}}
         function toggleApiKeyVisibility(){const input=document.getElementById('apiKey');const icon=document.getElementById('toggleEyeIcon');if(input.type==='password'){input.type='text';icon.classList.remove('fa-eye');icon.classList.add('fa-eye-slash');}else{input.type='password';icon.classList.remove('fa-eye-slash');icon.classList.add('fa-eye');}}
         function updateFileName(input){const nameDisplay=document.getElementById('fileNameDisplay');if(input.files&&input.files[0]){nameDisplay.innerHTML=`<span class="text-indigo-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;nameDisplay.parentElement.classList.add('border-indigo-500/50','bg-indigo-500/5');}else{nameDisplay.textContent='Drop file or click to browse';nameDisplay.parentElement.classList.remove('border-indigo-500/50','bg-indigo-500/5');}}
         function updateTestFileName(input){const nameDisplay=document.getElementById('testFileNameDisplay');if(input.files&&input.files[0]){nameDisplay.innerHTML=`<span class="text-indigo-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;nameDisplay.parentElement.classList.add('border-indigo-500/50','bg-indigo-500/5');}else{nameDisplay.textContent='Drop file or click to browse';nameDisplay.parentElement.classList.remove('border-indigo-500/50','bg-indigo-500/5');}}
 
+        // Handle Generate
         async function handleGenerate(){
             const btn=document.getElementById('submitBtn');const btnContent=document.getElementById('btnContent');
             const provider=document.getElementById('aiProvider').value;const apiKey=document.getElementById('apiKey').value;
@@ -261,22 +317,104 @@
         const quizContainer=document.getElementById('quizContainer');for(let i=0;i<(data.quiz||[]).length;i++){const q=data.quiz[i];const div=document.createElement('div');div.className='reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';let optionsHTML='';if(q.options&&q.options.length){optionsHTML=q.options.map((opt,idx)=>`<button onclick="checkAnswer(this, '${opt===q.answer}')" class="quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-indigo-500/10 transition"><span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}</button>`).join('');}else{optionsHTML=`<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;}div.innerHTML=`<p class="text-sm font-semibold mb-2">${i+1}. ${q.question}</p>${optionsHTML}`;quizContainer.appendChild(div);await new Promise(resolve=>setTimeout(resolve,200));}}
         function checkAnswer(btn,isCorrect){const parent=btn.parentElement;Array.from(parent.children).forEach(child=>{child.classList.remove('bg-emerald-500/20','border-emerald-500','text-emerald-300','bg-rose-500/20','border-rose-500','text-rose-300');});if(isCorrect==='true')btn.classList.add('bg-emerald-500/20','border-emerald-500','text-emerald-300');else btn.classList.add('bg-rose-500/20','border-rose-500','text-rose-300');}
 
+        // Save/Load/Delete
         document.getElementById('saveToLibraryBtn').addEventListener('click',()=>{if(!lastGeneratedData)return;const entry={id:Date.now(),date:new Date().toLocaleString(),notes:document.getElementById('studyNotes').value.slice(0,100)+'...',data:lastGeneratedData};let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved.unshift(entry);localStorage.setItem('acadhub_saved',JSON.stringify(saved));alert('Saved to Library!');renderSavedList();});
         function renderSavedList(){const list=document.getElementById('savedList');const empty=document.getElementById('emptyLibrary');let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');if(saved.length===0){empty.classList.remove('hidden');list.innerHTML='';return;}empty.classList.add('hidden');list.innerHTML=saved.map(entry=>`<div class="saved-card flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><div class="flex-1"><p class="text-sm font-semibold">${entry.date}</p><p class="text-xs opacity-50 truncate">${entry.notes}</p></div><div class="flex gap-2"><button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs hover:bg-indigo-500/30 transition"><i class="fa-solid fa-eye mr-1"></i>Load</button><button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition"><i class="fa-solid fa-trash"></i></button></div></div>`).join('');}
         function loadSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');const entry=saved.find(e=>e.id===id);if(!entry)return;lastGeneratedData=entry.data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');switchTab('reviewer');renderResultsOneByOne(entry.data);}
         function deleteSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved=saved.filter(e=>e.id!==id);localStorage.setItem('acadhub_saved',JSON.stringify(saved));renderSavedList();}
 
-        // ------------------ GCASH REVEAL ------------------
-        
+        // GCash reveal
+        function revealGCash() {
+            document.getElementById("gcashHidden").classList.add("hidden");
+            document.getElementById("gcashFull").classList.remove("hidden");
+        }
 
-        // ------------------ TEST MY LIMITS ------------------
+        // Profile modal
+        function toggleProfileModal() {
+            document.getElementById("profileModal").classList.toggle("hidden");
+        }
+        function validateProfile() {
+            const firstName = document.getElementById("visitorFirstName").value.trim();
+            const lastName = document.getElementById("visitorLastName").value.trim();
+            const agreed = document.getElementById("agreeTerms").checked;
+            if (!firstName) { alert("Please enter your first name."); return false; }
+            if (!lastName) { alert("Please enter your last name."); return false; }
+            if (!agreed) { alert("You must agree that your data is confidential and will be handled securely."); return false; }
+            return true;
+        }
+        async function saveVisitorName() {
+            if (!validateProfile()) return;
+            const firstName = document.getElementById("visitorFirstName").value.trim();
+            const lastName = document.getElementById("visitorLastName").value.trim();
+            try {
+                await db.collection("visitors").add({
+                    firstName: firstName,
+                    lastName: lastName,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("Name saved! Thank you.");
+                toggleProfileModal();
+                localStorage.setItem("profile_saved", "true");
+                document.getElementById("profileButton").style.display = "none";
+            } catch (err) {
+                alert("Error saving name. Please try again.");
+            }
+        }
+        (function() {
+            if (localStorage.getItem("profile_saved") === "true") {
+                const btn = document.getElementById("profileButton");
+                if (btn) btn.style.display = "none";
+            }
+        })();
+
+        // Evaluation modal
+        let selectedRating = 0;
+        document.querySelectorAll(".star").forEach(star => {
+            star.addEventListener("click", function() {
+                selectedRating = parseInt(this.dataset.value);
+                document.querySelectorAll(".star").forEach((s, index) => {
+                    if (index < selectedRating) {
+                        s.classList.remove("fa-regular");
+                        s.classList.add("fa-solid", "text-amber-400");
+                    } else {
+                        s.classList.remove("fa-solid", "text-amber-400");
+                        s.classList.add("fa-regular");
+                    }
+                });
+            });
+        });
+        function toggleEvalModal() {
+            document.getElementById("evalModal").classList.toggle("hidden");
+        }
+        async function submitEval() {
+            if (selectedRating === 0) { alert("Please select a star rating."); return; }
+            const suggestions = document.getElementById("evalSuggestions").value.trim();
+            try {
+                await db.collection("feedback").add({
+                    rating: selectedRating,
+                    suggestions: suggestions,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("Thank you for your feedback!");
+                toggleEvalModal();
+                selectedRating = 0;
+                document.querySelectorAll(".star").forEach(s => {
+                    s.classList.remove("fa-solid", "text-amber-400");
+                    s.classList.add("fa-regular");
+                });
+                document.getElementById("evalSuggestions").value = "";
+            } catch (err) {
+                alert("Error submitting feedback. Please try again.");
+            }
+        }
+
+        // Test My Limits
         let testDifficulty = 'medium';
         let testQuestions = [];
         let testCurrentIndex = 0;
         let testCorrectCount = 0;
         let testTimerInterval = null;
         let testTimeLeft = 0;
-
         function setDifficulty(level) {
             testDifficulty = level;
             ['easy', 'medium', 'hard'].forEach(d => {
@@ -290,28 +428,20 @@
                 }
             });
         }
-
         async function startTest() {
             const notes = document.getElementById('testNotes').value.trim();
-            if (!notes) {
-                alert('Please enter some notes to generate questions.');
-                return;
-            }
-
+            if (!notes) { alert('Please enter some notes to generate questions.'); return; }
             const difficultyMap = {
                 easy: { truefalse: 3, identification: 3, multiplechoice: 2, total: 8, timePerQuestion: 0 },
                 medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15, timePerQuestion: 20 },
                 hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2, which: 2, total: 26, timePerQuestion: 15 }
             };
-
             const quizTypes = {};
             for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
                 if (key !== 'total' && key !== 'timePerQuestion') quizTypes[key] = value;
             }
-
             document.getElementById('startTestBtn').disabled = true;
             document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
-
             const formData = new FormData();
             formData.append('notes', notes);
             formData.append('num_flashcards', 0);
@@ -319,26 +449,19 @@
             formData.append('use_internet', document.getElementById('useTestInternet').checked);
             const testFileInput = document.getElementById('testFileInput');
             if (testFileInput.files[0]) formData.append('file', testFileInput.files[0]);
-
             try {
-                const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, { method: 'POST', body: formData });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.detail || 'Generation failed');
-
                 testQuestions = data.quiz || [];
                 testCurrentIndex = 0;
                 testCorrectCount = 0;
-
                 if (testQuestions.length === 0) {
                     alert('No questions could be generated. Please provide more detailed notes.');
                     document.getElementById('startTestBtn').disabled = false;
                     document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
                     return;
                 }
-
                 document.getElementById('testQuizContainer').classList.remove('hidden');
                 document.getElementById('testResultsContainer').classList.add('hidden');
                 document.getElementById('startTestBtn').classList.add('hidden');
@@ -349,20 +472,13 @@
                 document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
             }
         }
-
         function showTestQuestion(index) {
-            if (index >= testQuestions.length) {
-                finishTest();
-                return;
-            }
-
+            if (index >= testQuestions.length) { finishTest(); return; }
             const q = testQuestions[index];
             document.getElementById('questionCounter').textContent = `Question ${index + 1} / ${testQuestions.length}`;
             document.getElementById('testQuestionText').textContent = q.question;
-
             const optionsContainer = document.getElementById('testOptionsContainer');
             optionsContainer.innerHTML = '';
-
             if (q.options && q.options.length) {
                 q.options.forEach((opt, idx) => {
                     const btn = document.createElement('button');
@@ -375,7 +491,6 @@
                 optionsContainer.innerHTML = `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;
                 document.getElementById('nextTestBtn').classList.remove('hidden');
             }
-
             const timePerQuestion = { easy: 0, medium: 20, hard: 15 }[testDifficulty];
             if (timePerQuestion > 0) {
                 testTimeLeft = timePerQuestion;
@@ -394,10 +509,8 @@
             } else {
                 document.getElementById('timerDisplay').classList.add('hidden');
             }
-
             document.getElementById('nextTestBtn').classList.add('hidden');
         }
-
         function handleTestAnswer(btn, isCorrect, correctAnswer) {
             const parent = btn.parentElement;
             Array.from(parent.children).forEach(child => {
@@ -406,24 +519,16 @@
                     child.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
                 }
             });
-
             if (isCorrect) {
                 btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
                 testCorrectCount++;
             } else {
                 btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
             }
-
             clearInterval(testTimerInterval);
             document.getElementById('nextTestBtn').classList.remove('hidden');
         }
-
-        function nextTestQuestion() {
-            clearInterval(testTimerInterval);
-            testCurrentIndex++;
-            showTestQuestion(testCurrentIndex);
-        }
-
+        function nextTestQuestion() { clearInterval(testTimerInterval); testCurrentIndex++; showTestQuestion(testCurrentIndex); }
         function finishTest() {
             clearInterval(testTimerInterval);
             document.getElementById('testQuizContainer').classList.add('hidden');
@@ -433,7 +538,6 @@
             const percentage = Math.round((testCorrectCount / testQuestions.length) * 100);
             document.getElementById('testPercentage').textContent = `${percentage}%`;
         }
-
         function resetTest() {
             document.getElementById('testQuizContainer').classList.add('hidden');
             document.getElementById('testResultsContainer').classList.add('hidden');
@@ -445,59 +549,5 @@
             testCorrectCount = 0;
         }
     </script>
-
-    <!-- Profile Modal -->
-    <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile</h3>
-                <button onclick="toggleProfileModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
-            </div>
-            <p class="text-xs opacity-70 mb-4">Enter your name to help us improve. Only the developer can see it.</p>
-            <div class="space-y-3">
-                <input type="text" id="visitorFirstName" placeholder="First Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                <input type="text" id="visitorLastName" placeholder="Last Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                <label class="flex items-start gap-2 cursor-pointer">
-                    <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500">
-                    <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly. <em>Data is handled in accordance with privacy best practices.</em></span>
-                </label>
-                <button onclick="saveVisitorName()" class="btn-primary w-full text-sm">Save</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Evaluation Modal -->
-    <div id="evalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div class="glass-card w-80 p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold"><i class="fa-solid fa-star text-amber-400 mr-2"></i>Rate Your Experience</h3>
-                <button onclick="toggleEvalModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
-            </div>
-            <p class="text-xs opacity-70 mb-4">How would you rate AcadHub? Your feedback helps us improve.</p>
-            <div class="flex justify-center gap-1 mb-4" id="starContainer">
-                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="1"></i>
-                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="2"></i>
-                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="3"></i>
-                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="4"></i>
-                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="5"></i>
-            </div>
-            <textarea id="evalSuggestions" rows="3" placeholder="Any suggestions for new features? (optional)" class="w-full p-3 bg-white/10 border border-white/10 rounded-xl text-sm resize-none mb-4"></textarea>
-            <button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
-        </div>
-    </div>
-
-<script>
-    // Guaranteed fade-out after 4.5 seconds
-    (function() {
-        var overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            setTimeout(function() {
-                overlay.classList.add('fade-out');
-                setTimeout(function() { overlay.classList.add('hidden'); }, 500);
-            }, 4500);
-        }
-    })();
-</script>
-
 </body>
 </html>
