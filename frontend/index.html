@@ -37,6 +37,7 @@
         footer { margin-top: auto; }
     </style>
     <link rel="manifest" href="/AcadHub/manifest.json">
+    <link rel="manifest" href="/AcadHub/manifest.json">
 </head>
 <body class="flex flex-col p-2 sm:p-4">
     <!-- Loading Screen (standalone timer, no dependencies) -->
@@ -313,6 +314,10 @@
         // Register service worker for PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/AcadHub/sw.js');
+        }
+        if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+            navigator.serviceWorker.register('/AcadHub/sw.js')
+                .catch(() => {});
         }
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
