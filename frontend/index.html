@@ -136,7 +136,7 @@
             }
             if (!wakeSuccess) {
                 document.getElementById('progressContainer').classList.add('hidden');
-                alert('Cannot reach the server after several attempts. Please try again in a minute.');
+                alert('Backend unreachable: ' + (err.message || 'Unknown error'));
                 btn.disabled = false;
                 btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
                 return;
