@@ -116,21 +116,19 @@ async def gen_local(
     try: qt = json.loads(quiz_types)
     except: qt = {"identification":5}
     quiz = []
-    used_sents = set()
-    remaining = sents.copy()
-    random.shuffle(remaining)
-    def get_unused():
-        while remaining:
-            s = remaining.pop(0)
-            if s not in used_sents:
-                used_sents.add(s)
-                return s
-        return None
 
+    # ---- True/False (can reuse sentences but we limit to avoid repetition) ----
     tf_count = qt.get("truefalse",0)
+    used_tf_sents = set()
     for i in range(tf_count):
-        sent = get_unused()
-        if not sent: break
+        # pick a sentence, allow reuse after we exhaust unique ones
+        if len(used_tf_sents) >= len(sents):
+            # all sentences used, pick a random one (may repeat)
+            sent = random.choice(sents)
+        else:
+            available = [s for s in sents if s not in used_tf_sents]
+            sent = random.choice(available)
+            used_tf_sents.add(sent)
         phrase_in = next((p for p in phrases if p.lower() in sent.lower()), None)
         if phrase_in and len(phrases) > 1 and i < tf_count // 2:
             other = [p for p in phrases if p.lower() != phrase_in.lower()]
@@ -150,41 +148,46 @@ async def gen_local(
                      "options":["True","False"], "answer":correct,
                      "explanation":f"The statement is {correct.lower()}."})
 
-    if qt.get("identification",0)>0:
-        with_phrase = [s for s in remaining if any(p.lower() in s.lower() for p in phrases)]
-        without_phrase = [s for s in remaining if not any(p.lower() in s.lower() for p in phrases)]
-        random.shuffle(with_phrase)
-        random.shuffle(without_phrase)
-        ordered_sents = with_phrase + without_phrase
-        for sent in ordered_sents:
-            if len(quiz) - tf_count >= qt["identification"]: break
-            if sent in used_sents: continue
-            used_sents.add(sent)
-            phrase_in = next((p for p in phrases if p.lower() in sent.lower()), None)
-            if phrase_in:
-                blanked = sent.replace(phrase_in, "________")
-                correct = phrase_in
+    # ---- Identification: fill‑in‑the‑blank, allow reusing sentences with different blanks ----
+    id_count = qt.get("identification",0)
+    used_id_pairs = set()  # (sentence, phrase)
+    for _ in range(id_count):
+        # pick a sentence (allow reuse)
+        sent = random.choice(sents)
+        # find a key phrase in the sentence that we haven't used with this sentence yet
+        contained = [(p, len(p)) for p in phrases if p.lower() in sent.lower()]
+        if not contained:
+            # fallback to any long word
+            words = [w for w in WORD_PATTERN.findall(sent) if w.lower() not in STOP_WORDS and len(w)>4]
+            if not words: continue
+            correct = random.choice(words)
+        else:
+            # prefer a phrase not yet used for this sentence
+            unused = [p for p, _ in contained if (sent, p) not in used_id_pairs]
+            if unused:
+                correct = random.choice(unused)
             else:
-                words = [w for w in WORD_PATTERN.findall(sent) if w.lower() not in STOP_WORDS and len(w)>4]
-                if not words: continue
-                correct = random.choice(words)
-                blanked = re.sub(r'\b'+re.escape(correct)+r'\b', '________', sent)
-            pool = [p for p in phrases if p.lower() != correct.lower()]
-            if len(pool) >= 3:
-                distractors = random.sample(pool, 3)
-            else:
-                distractors = pool + ["None of the above"] * (3 - len(pool))
-            options = [correct] + distractors
-            random.shuffle(options)
-            quiz.append({"id": len(quiz)+1, "type":"identification",
-                         "question": f'Fill in the blank: "{blanked}"',
-                         "options":options, "answer":correct,
-                         "explanation":f"The missing term is '{correct}'."})
+                correct = random.choice([p for p, _ in contained])
+        used_id_pairs.add((sent, correct))
+        blanked = re.sub(re.escape(correct), '________', sent, flags=re.IGNORECASE)
+        pool = [p for p in phrases if p.lower() != correct.lower()]
+        if len(pool) >= 3:
+            distractors = random.sample(pool, 3)
+        else:
+            distractors = pool + ["None of the above"] * (3 - len(pool))
+        options = [correct] + distractors
+        random.shuffle(options)
+        quiz.append({"id": len(quiz)+1, "type":"identification",
+                     "question": f'Fill in the blank: "{blanked}"',
+                     "options":options, "answer":correct,
+                     "explanation":f"The missing term is '{correct}'."})
 
-    if qt.get("enumeration",0)>0:
+    # ---- Enumeration: unchanged, but we can generate more by reusing concepts ----
+    enum_count = qt.get("enumeration",0)
+    if enum_count > 0:
         enum_concepts = [p for p in phrases if len(p.split()) >= 2]
-        for _ in range(qt["enumeration"]):
-            if not enum_concepts: break
+        if not enum_concepts: enum_concepts = phrases
+        for _ in range(enum_count):
             concept = random.choice(enum_concepts)
             related = [s for s in sents if concept.lower() in s.lower()]
             if not related: continue
@@ -199,28 +202,36 @@ async def gen_local(
                          "answer":answer,
                          "explanation":f"Points about {concept}."})
 
-    if qt.get("multiplechoice",0)>0:
-        for _ in range(qt["multiplechoice"]):
-            sent = get_unused()
-            if not sent: break
-            contained = [(p, len(p)) for p in phrases if p.lower() in sent.lower()]
-            if not contained: continue
-            correct = max(contained, key=lambda x: x[1])[0]
-            pool = [p for p in phrases if p.lower() != correct.lower()]
-            if len(pool) >= 3:
-                distractors = random.sample(pool, 3)
-            else:
-                distractors = pool + ["None of the above"] * (3 - len(pool))
-            options = [correct] + distractors
+    # ---- Multiple Choice: definition‑based questions ----
+    mc_count = qt.get("multiplechoice",0)
+    if mc_count > 0:
+        # Build a pool of (term, definition) from flashcards (or from phrases)
+        term_defs = []
+        for phrase in phrases:
+            def_sent = find_definition_sentence(text, phrase)
+            term_defs.append((phrase, def_sent))
+        if not term_defs:
+            # fallback: use sentences as definitions
+            for sent in sents[:10]:
+                term_defs.append(("concept", sent))
+        for _ in range(mc_count):
+            if not term_defs: break
+            correct_term, correct_def = random.choice(term_defs)
+            # Distractors: other definitions
+            other_defs = [d for t, d in term_defs if d != correct_def][:3]
+            while len(other_defs) < 3:
+                other_defs.append("None of the above")
+            options = [correct_def] + other_defs
             random.shuffle(options)
-            question = f"Which term is most directly related to this sentence? \"{sent[:120]}...\""
+            question = f"What is {correct_term}?"
             quiz.append({"id": len(quiz)+1, "type":"multiplechoice",
-                         "question": question, "options":options,
-                         "answer":correct,
-                         "explanation":f"The sentence discusses '{correct}'."})
+                         "question": question,
+                         "options": options,
+                         "answer": correct_def,
+                         "explanation": f"The definition of {correct_term}."})
 
     elapsed = round(time.time()-start,2)
-    return JSONResponse(content={"summary":summary,"flashcards":flashcards,"quiz":quiz,"metadata":{"method":"perfect","length":len(text),"time":elapsed}})
+    return JSONResponse(content={"summary":summary,"flashcards":flashcards,"quiz":quiz,"metadata":{"method":"unlimited_v2","length":len(text),"time":elapsed}})
 
 def call_gemini(prompt, key):
     import urllib.request, urllib.error
