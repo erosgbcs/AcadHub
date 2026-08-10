@@ -4,17 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
-    <script src="https://cdn.tailwindcss.com">
-        else {
-                    saveBtn.disabled = true;
-                }
-            }
-            firstName.addEventListener('input', checkFields);
-            lastName.addEventListener('input', checkFields);
-            agree.addEventListener('change', checkFields);
-        })();
-
-    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -48,7 +38,7 @@
     </style>
 </head>
 <body class="flex flex-col p-2 sm:p-4">
-    <!-- Loading Screen -->
+    <!-- Loading Screen (standalone timer, no dependencies) -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center animate-fade-in-up px-4">
             <div class="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center logo-pulse">
@@ -67,52 +57,31 @@
         </div>
     </div>
 
-    <!-- Guaranteed fade-out after 4.5s -->
+    <!-- Guaranteed fade-out after 4.5s (even if other scripts fail) -->
     <script>
         (function() {
             var overlay = document.getElementById('loadingOverlay');
             if (overlay) {
                 setTimeout(function() {
                     overlay.classList.add('fade-out');
-                    setTimeout(function() { overlay.classList.add('hidden'); toggleProfileModal(true); }, 500);
+                    setTimeout(function() {
+                        overlay.classList.add('hidden');
+                        // Show the profile modal automatically after loading
+                        setTimeout(function() {
+                            var modal = document.getElementById('profileModal');
+                            if (modal && localStorage.getItem('profile_saved') !== 'true') {
+                                modal.classList.remove('hidden');
+                            }
+                        }, 100);
+                    }, 500);
                 }, 4500);
             }
         })();
-    
-        else {
-                    saveBtn.disabled = true;
-                }
-            }
-            firstName.addEventListener('input', checkFields);
-            lastName.addEventListener('input', checkFields);
-            agree.addEventListener('change', checkFields);
-        })();
-
     </script>
 
     <!-- Firebase SDK & Config -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
-        else {
-                    saveBtn.disabled = true;
-                }
-            }
-            firstName.addEventListener('input', checkFields);
-            lastName.addEventListener('input', checkFields);
-            agree.addEventListener('change', checkFields);
-        })();
-
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
-        else {
-                    saveBtn.disabled = true;
-                }
-            }
-            firstName.addEventListener('input', checkFields);
-            lastName.addEventListener('input', checkFields);
-            agree.addEventListener('change', checkFields);
-        })();
-
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
@@ -124,16 +93,6 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-    
-        else {
-                    saveBtn.disabled = true;
-                }
-            }
-            firstName.addEventListener('input', checkFields);
-            lastName.addEventListener('input', checkFields);
-            agree.addEventListener('change', checkFields);
-        })();
-
     </script>
 
     <!-- Main Content -->
@@ -147,7 +106,7 @@
             <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                 <button onclick="toggleTheme()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400 text-sm sm:text-base"></i></button>
                 <button onclick="switchTab('library')" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button>
-                <button onclick="toggleProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                <button onclick="showProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
                     <i class="fa-solid fa-user text-xs"></i>
                 </button>
                 <button onclick="toggleEvalModal()" id="evalButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
@@ -256,20 +215,20 @@
 
     <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
 
-    <!-- Profile Modal -->
+    <!-- Profile Modal (cannot be closed until saved) -->
     <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
         <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile</h3>
-                
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile (required)</h3>
+                <!-- No close button -->
             </div>
-            <p class="text-xs opacity-70 mb-4">Enter your name to help us improve. Only the developer can see it.</p>
+            <p class="text-xs opacity-70 mb-4">Please enter your name to continue. Only the developer can see it.</p>
             <div class="space-y-3">
                 <input type="text" id="visitorFirstName" placeholder="First Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
                 <input type="text" id="visitorLastName" placeholder="Last Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
                 <label class="flex items-start gap-2 cursor-pointer">
                     <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500">
-                    <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly. <em>Data is handled in accordance with privacy best practices.</em></span>
+                    <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly.</span>
                 </label>
                 <button id="saveProfileBtn" onclick="saveVisitorName()" class="btn-primary w-full text-sm" disabled>Save</button>
             </div>
@@ -379,32 +338,31 @@
             document.getElementById("gcashFull").classList.remove("hidden");
         }
 
-        // Profile modal
-        function toggleProfileModal(forceShow = false) {
-            const modal = document.getElementById("profileModal");
-            if (forceShow) {
-                modal.classList.remove("hidden");
-                return;
-            }
-            // Prevent manual closing if profile not saved yet
-            if (localStorage.getItem("profile_saved") !== "true") {
-                return;
-            }
-            modal.classList.toggle("hidden");
+        // Profile modal (mandatory)
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
         }
-        function validateProfile() {
-            const firstName = document.getElementById("visitorFirstName").value.trim();
-            const lastName = document.getElementById("visitorLastName").value.trim();
-            const agreed = document.getElementById("agreeTerms").checked;
-            if (!firstName) { alert("Please enter your first name."); return false; }
-            if (!lastName) { alert("Please enter your last name."); return false; }
-            if (!agreed) { alert("You must agree that your data is confidential and will be handled securely."); return false; }
-            return true;
-        }
+        // Enable Save button when all fields are filled
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
         async function saveVisitorName() {
-            if (!validateProfile()) return;
             const firstName = document.getElementById("visitorFirstName").value.trim();
             const lastName = document.getElementById("visitorLastName").value.trim();
+            if (!firstName || !lastName) { alert("Please enter both names."); return; }
             try {
                 await db.collection("visitors").add({
                     firstName: firstName,
@@ -412,19 +370,13 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 alert("Name saved! Thank you.");
-                toggleProfileModal();
+                document.getElementById("profileModal").classList.add("hidden");
                 localStorage.setItem("profile_saved", "true");
                 document.getElementById("profileButton").style.display = "none";
             } catch (err) {
                 alert("Error saving name. Please try again.");
             }
         }
-        (function() {
-            if (localStorage.getItem("profile_saved") === "true") {
-                const btn = document.getElementById("profileButton");
-                if (btn) btn.style.display = "none";
-            }
-        })();
 
         // Evaluation modal
         let selectedRating = 0;
@@ -607,25 +559,6 @@
             testCurrentIndex = 0;
             testCorrectCount = 0;
         }
-    
-        // Enable Save button only when all fields are filled and agreed
-        (function() {
-            const firstName = document.getElementById('visitorFirstName');
-            const lastName = document.getElementById('visitorLastName');
-            const agree = document.getElementById('agreeTerms');
-            const saveBtn = document.getElementById('saveProfileBtn');
-            function checkFields() {
-                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
-                    saveBtn.disabled = false;
-                } else {
-                    saveBtn.disabled = true;
-                }
-            }
-            firstName.addEventListener('input', checkFields);
-            lastName.addEventListener('input', checkFields);
-            agree.addEventListener('change', checkFields);
-        })();
-
     </script>
 </body>
 </html>
