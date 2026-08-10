@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root { --bg: #0a0f1e; --card: rgba(30,41,59,0.7); --text: #e2e8f0; --border: rgba(148,163,184,0.1); }
-        .light { --bg: #f8fafc; --card: rgba(255,255,255,0.85); --text: #1e293b; --border: rgba(0,0,0,0.08); }
+        .light { --bg: #ffffff; --card: rgba(255,255,255,0.95); --text: #0f172a; --border: rgba(0,0,0,0.12); }
         body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.3s, color 0.3s; }
         .glass-card { background: var(--card); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1.5rem; }
         .btn-primary { background: linear-gradient(135deg, #4c6ef5, #22b8cf); }
@@ -87,7 +87,7 @@
         let lastGeneratedData = null;
         const loadingOverlay = document.getElementById('loadingOverlay');
         window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => { loadingOverlay.classList.add('fade-out'); setTimeout(() => loadingOverlay.classList.add('hidden'), 500); }, 7000);
+            setTimeout(() => { loadingOverlay.classList.add('fade-out'); setTimeout(() => loadingOverlay.classList.add('hidden'), 500); }, 4500);
             updateProviderUI(); renderSavedList();
         });
         function toggleTheme(){const html=document.documentElement;const icon=document.getElementById('themeIcon');if(html.classList.contains('dark')){html.classList.remove('dark');html.classList.add('light');icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';localStorage.setItem('theme','light');}else{html.classList.remove('light');html.classList.add('dark');icon.classList.remove('fa-moon');icon.classList.add('fa-sun');icon.style.color='#facc15';localStorage.setItem('theme','dark');}}
@@ -137,3 +137,32 @@
     </script>
 </body>
 </html>
+<style>
+/* Light mode readability improvements */
+.light .glass-card {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+.light .btn-primary {
+    color: white;
+}
+.light .text-slate-400, .light .text-slate-500, .light .text-slate-300 {
+    color: #334155 !important;
+}
+.light .opacity-50 {
+    opacity: 0.8;
+}
+.light .opacity-70 {
+    opacity: 0.9;
+}
+.light .bg-white\/5, .light .bg-white\/10 {
+    background: rgba(0,0,0,0.03) !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+.light .loading-overlay {
+    background: #ffffff;
+}
+.light .loading-overlay .text-slate-400,
+.light .loading-overlay .text-slate-500 {
+    color: #475569 !important;
+}
+</style>
