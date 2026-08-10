@@ -9,14 +9,11 @@ app = FastAPI(title="AcademicHub API Engine")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/")
-def root():
-    return {"status":"online","system":"AcademicHub Core API"}
+def root(): return {"status":"online","system":"AcademicHub Core API"}
 
 @app.get("/api/health")
-def health():
-    return {"service":"AcademicHub Engine","status":"healthy"}
+def health(): return {"service":"AcademicHub Engine","status":"healthy"}
 
-# Pre-compiled patterns
 SENTENCE_PATTERN = re.compile(r'(?<!\d)[.!?](?!\d)')
 WORD_PATTERN = re.compile(r'[a-zA-Z]+')
 CAPITALIZED_PHRASE = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b')
@@ -32,8 +29,7 @@ def extract_docx_text(file_bytes):
                 paragraphs = []
                 for p in tree.iterfind('.//w:p', ns):
                     texts = [t.text for t in p.iterfind('.//w:t', ns) if t.text]
-                    if texts:
-                        paragraphs.append(''.join(texts))
+                    if texts: paragraphs.append(''.join(texts))
                 return '\n'.join(paragraphs)
     except: raise HTTPException(400,"DOCX read error")
 
@@ -59,7 +55,6 @@ def extract_key_phrases(text, top_n=15):
             phrases.append(phrase)
     tech_terms = TECH_TERM.findall(text)
     phrases.extend(tech_terms)
-    # bigrams with capitals
     words = WORD_PATTERN.findall(text)
     for i in range(len(words)-1):
         if words[i][0].isupper() and words[i+1][0].isupper():
@@ -67,22 +62,26 @@ def extract_key_phrases(text, top_n=15):
             if len(bigram.split()) == 2 and bigram.lower() not in STOP_WORDS:
                 phrases.append(bigram)
     phrase_counts = Counter(phrases)
-    weighted = [(p, c * len(p.split())) for p, c in phrase_counts.items() if len(p) > 2]
+    weighted = [(p, c * (len(p.split()) ** 2)) for p, c in phrase_counts.items() if len(p) > 2]
     weighted.sort(key=lambda x: x[1], reverse=True)
     final = []
     for phrase, _ in weighted:
+        # Skip if it's a messy bigram like "Valley Hearthstone" or "Helgason Joachim"
+        parts = phrase.split()
+        if len(parts) == 2:
+            # If both words look like proper nouns and the phrase only appears once, skip
+            if phrase_counts.get(phrase, 0) < 2 and parts[0][0].isupper() and parts[1][0].isupper():
+                continue
         if not any(phrase != other and phrase in other for other in final):
             final.append(phrase)
-        if len(final) >= top_n:
-            break
-    # fallback to longer single words if needed
+        if len(final) >= top_n: break
     if len(final) < top_n:
         singles = [w for w in words if w not in STOP_WORDS and len(w)>5 and w[0].isupper()]
-        for w in Counter(singles).most_common():
-            if w[0] not in final:
-                final.append(w[0])
-            if len(final) >= top_n:
-                break
+        for w, c in Counter(singles).most_common():
+            if w not in final and not any(w in p for p in final):
+                final.append(w)
+            if len(final) >= top_n: break
+    final = [p for p in final if not any(p != other and p in other for other in final)]
     return final
 
 def find_definition_sentence(text, phrase):
@@ -97,7 +96,7 @@ async def gen_local(
     notes: str = Form(""),
     file: UploadFile = File(None),
     num_flashcards: int = Form(12),
-    num_quiz: int = Form(10)
+    quiz_types: str = Form('{"identification":5}')
 ):
     start = time.time()
     text = notes.strip() if notes else ""
@@ -107,53 +106,133 @@ async def gen_local(
     if not text.strip():
         raise HTTPException(400, "Provide notes or a file.")
     sents = smart_sentences(text)
-    phrases = extract_key_phrases(text, top_n=max(num_flashcards, num_quiz))
+    phrases = extract_key_phrases(text, top_n=max(num_flashcards, 25))
     summary = sents[:5] if len(sents) >= 5 else sents
-    # Flashcards exactly as requested
+
     flashcards = []
-    for i, phrase in enumerate(phrases[:num_flashcards]):
-        definition = find_definition_sentence(text, phrase)
-        flashcards.append({
-            "id": i+1,
-            "term": phrase.strip(),
-            "definition": definition
-        })
-    # Quiz exactly as requested
+    used_defs = set()
+    multi = [p for p in phrases if len(p.split()) >= 2]
+    single = [p for p in phrases if len(p.split()) == 1]
+    for phrase in multi + single:
+        if len(flashcards) >= num_flashcards: break
+        def_sent = find_definition_sentence(text, phrase)
+        if def_sent in used_defs: continue
+        flashcards.append({"id": len(flashcards)+1, "term": phrase.strip(), "definition": def_sent})
+        used_defs.add(def_sent)
+
+    try: qt = json.loads(quiz_types)
+    except: qt = {"identification":5}
     quiz = []
     used_sents = set()
-    for sent in sents:
-        if len(quiz) >= num_quiz: break
-        blanked, correct = None, None
-        for phrase in phrases:
-            if phrase.lower() in sent.lower() and sent not in used_sents:
-                blanked = re.sub(re.escape(phrase), '________', sent, flags=re.IGNORECASE)
-                correct = phrase
-                break
-        if not blanked:
-            words = [w for w in WORD_PATTERN.findall(sent) if w.lower() not in STOP_WORDS and len(w)>4]
-            if not words: continue
-            correct = random.choice(words)
-            blanked = re.sub(r'\b' + re.escape(correct) + r'\b', '________', sent)
-        pool = [p for p in phrases if p.lower() != correct.lower()]
-        distractors = random.sample(pool, min(3, len(pool))) if pool else []
-        while len(distractors) < 3: distractors.append('None of the above')
-        options = [correct] + distractors
-        random.shuffle(options)
-        quiz.append({
-            "id": len(quiz)+1,
-            "question": f"Fill in the blank: \"{blanked}\"",
-            "options": options,
-            "answer": correct,
-            "explanation": f"The correct phrase is '{correct}'."
-        })
-        used_sents.add(sent)
-    elapsed = round(time.time() - start, 2)
-    return JSONResponse(content={
-        "summary": summary,
-        "flashcards": flashcards,
-        "quiz": quiz,
-        "metadata": {"method":"accuracy_v3","text_length":len(text),"time":elapsed}
-    })
+    remaining = sents.copy()
+    random.shuffle(remaining)
+    def get_unused():
+        while remaining:
+            s = remaining.pop(0)
+            if s not in used_sents:
+                used_sents.add(s)
+                return s
+        return None
+
+    # ----- True/False: only force false if a key phrase exists -----
+    tf_count = qt.get("truefalse",0)
+    for i in range(tf_count):
+        sent = get_unused()
+        if not sent: break
+        phrase_in = next((p for p in phrases if p.lower() in sent.lower()), None)
+        if phrase_in and len(phrases) > 1 and i < tf_count // 2:
+            # force false
+            other = [p for p in phrases if p.lower() != phrase_in.lower()]
+            if other:
+                false_phrase = random.choice(other)
+                false_sent = re.sub(re.escape(phrase_in), false_phrase, sent, flags=re.IGNORECASE)
+                q_text = false_sent[:200]
+                correct = "False"
+            else:
+                q_text = sent[:200]
+                correct = "True"
+        else:
+            q_text = sent[:200]
+            correct = "True"
+        quiz.append({"id": len(quiz)+1, "type":"truefalse",
+                     "question": f'True or False: "{q_text}"',
+                     "options":["True","False"], "answer":correct,
+                     "explanation":f"The statement is {correct.lower()}."})
+
+    # ----- Identification -----
+    if qt.get("identification",0)>0:
+        with_phrase = [s for s in remaining if any(p.lower() in s.lower() for p in phrases)]
+        without_phrase = [s for s in remaining if not any(p.lower() in s.lower() for p in phrases)]
+        random.shuffle(with_phrase)
+        random.shuffle(without_phrase)
+        ordered_sents = with_phrase + without_phrase
+        for sent in ordered_sents:
+            if len(quiz) - tf_count >= qt["identification"]: break
+            if sent in used_sents: continue
+            used_sents.add(sent)
+            phrase_in = next((p for p in phrases if p.lower() in sent.lower()), None)
+            if phrase_in:
+                blanked = sent.replace(phrase_in, "________")
+                correct = phrase_in
+            else:
+                words = [w for w in WORD_PATTERN.findall(sent) if w.lower() not in STOP_WORDS and len(w)>4]
+                if not words: continue
+                correct = random.choice(words)
+                blanked = re.sub(r'\b'+re.escape(correct)+r'\b', '________', sent)
+            pool = [p for p in phrases if p.lower() != correct.lower()]
+            if len(pool) >= 3:
+                distractors = random.sample(pool, 3)
+            else:
+                distractors = pool + ["None of the above"] * (3 - len(pool))
+            options = [correct] + distractors
+            random.shuffle(options)
+            quiz.append({"id": len(quiz)+1, "type":"identification",
+                         "question": f'Fill in the blank: "{blanked}"',
+                         "options":options, "answer":correct,
+                         "explanation":f"The missing term is '{correct}'."})
+
+    # ----- Enumeration (multi‑word concepts only) -----
+    if qt.get("enumeration",0)>0:
+        enum_concepts = [p for p in phrases if len(p.split()) >= 2]
+        for _ in range(qt["enumeration"]):
+            if not enum_concepts: break
+            concept = random.choice(enum_concepts)
+            related = [s for s in sents if concept.lower() in s.lower()]
+            if not related: continue
+            points = [s[:100] for s in related[:3]]
+            answer = "; ".join(points)
+            if len(points) < 3:
+                question = f"List the key point(s) about {concept} (only {len(points)} found)."
+            else:
+                question = f"List three key points about {concept}."
+            quiz.append({"id": len(quiz)+1, "type":"enumeration",
+                         "question": question, "options":[],
+                         "answer":answer,
+                         "explanation":f"Points about {concept}."})
+
+    # ----- Multiple Choice -----
+    if qt.get("multiplechoice",0)>0:
+        for _ in range(qt["multiplechoice"]):
+            sent = get_unused()
+            if not sent: break
+            contained = [(p, len(p)) for p in phrases if p.lower() in sent.lower()]
+            if not contained: continue
+            correct = max(contained, key=lambda x: x[1])[0]
+            pool = [p for p in phrases if p.lower() != correct.lower()]
+            if len(pool) >= 3:
+                distractors = random.sample(pool, 3)
+            else:
+                distractors = pool + ["None of the above"] * (3 - len(pool))
+            options = [correct] + distractors
+            random.shuffle(options)
+            question = f"Which term is most directly related to this sentence? \"{sent[:120]}...\""
+            quiz.append({"id": len(quiz)+1, "type":"multiplechoice",
+                         "question": question, "options":options,
+                         "answer":correct,
+                         "explanation":f"The sentence discusses '{correct}'."})
+
+    elapsed = round(time.time()-start,2)
+    return JSONResponse(content={"summary":summary,"flashcards":flashcards,"quiz":quiz,"metadata":{"method":"perfect","length":len(text),"time":elapsed}})
 
 # AI endpoints unchanged
 def call_gemini(prompt, key):

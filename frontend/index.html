@@ -8,48 +8,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #0a0f1e;
-            --card: rgba(30,41,59,0.7);
-            --text: #e2e8f0;
-            --border: rgba(148,163,184,0.1);
-        }
-        .light {
-            --bg: #f8fafc;
-            --card: rgba(255,255,255,0.85);
-            --text: #1e293b;
-            --border: rgba(0,0,0,0.08);
-        }
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            transition: background 0.3s, color 0.3s;
-        }
-        .glass-card {
-            background: var(--card);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: 1.5rem;
-            padding: 1.5rem;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #4c6ef5, #22b8cf);
-        }
-        /* Reveal animation */
-        .reveal-item {
-            opacity: 0;
-            transform: translateY(10px);
-            animation: reveal 0.3s ease forwards;
-        }
-        @keyframes reveal {
-            to { opacity: 1; transform: translateY(0); }
-        }
+        :root { --bg: #0a0f1e; --card: rgba(30,41,59,0.7); --text: #e2e8f0; --border: rgba(148,163,184,0.1); }
+        .light { --bg: #f8fafc; --card: rgba(255,255,255,0.85); --text: #1e293b; --border: rgba(0,0,0,0.08); }
+        body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.3s, color 0.3s; }
+        .glass-card { background: var(--card); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1.5rem; }
+        .btn-primary { background: linear-gradient(135deg, #4c6ef5, #22b8cf); }
+        .reveal-item { opacity: 0; transform: translateY(10px); animation: reveal 0.3s ease forwards; }
+        @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="min-h-screen p-4">
     <div class="max-w-2xl mx-auto space-y-6">
-        <!-- Header with Theme Toggle -->
         <div class="glass-card flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xl"><i class="fa-solid fa-graduation-cap"></i></div>
@@ -62,14 +31,10 @@
                 <div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
             </div>
         </div>
-
-        <!-- Tabs -->
         <div class="flex p-1.5 glass-card rounded-2xl">
             <button class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button>
             <button class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Scheduler</button>
         </div>
-
-        <!-- Reviewer Tab -->
         <div class="space-y-6">
             <div class="glass-card">
                 <h2 class="text-lg font-bold mb-4">Generate Study Materials</h2>
@@ -92,7 +57,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="mb-4">
                         <label class="block text-xs font-semibold mb-1">Upload Document</label>
                         <label for="fileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-blue-500/50 transition bg-white/5">
@@ -102,37 +66,48 @@
                             <input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" />
                         </label>
                     </div>
-
                     <div class="mb-4">
                         <label class="block text-xs font-semibold mb-1">Notes</label>
                         <textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="w-full p-4 bg-white/10 border border-white/10 rounded-xl text-sm resize-none"></textarea>
                     </div>
-
-                    <!-- Custom counts -->
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <label class="block text-xs font-semibold mb-1">🃏 Flashcards</label>
-                            <input type="number" id="numFlashcards" value="10" min="1" max="20" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold mb-1">❓ Quiz Questions</label>
-                            <input type="number" id="numQuiz" value="8" min="1" max="15" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold mb-1">🃏 Number of Flashcards</label>
+                        <input type="number" id="numFlashcards" value="10" min="1" max="20" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold mb-2">❓ Quiz Types & Questions per Type</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="useTrueFalse" checked class="accent-blue-500">
+                                <label for="useTrueFalse" class="text-xs">True/False</label>
+                                <input type="number" id="numTrueFalse" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="useIdentification" checked class="accent-blue-500">
+                                <label for="useIdentification" class="text-xs">Identification</label>
+                                <input type="number" id="numIdentification" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="useEnumeration" checked class="accent-blue-500">
+                                <label for="useEnumeration" class="text-xs">Enumeration</label>
+                                <input type="number" id="numEnumeration" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="useMultipleChoice" checked class="accent-blue-500">
+                                <label for="useMultipleChoice" class="text-xs">Multiple Choice</label>
+                                <input type="number" id="numMultipleChoice" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
+                            </div>
                         </div>
                     </div>
-
                     <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg">
                         <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
                     </button>
                 </form>
-
-                <!-- Progress Spinner -->
                 <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-white/10 text-center">
                     <i class="fa-solid fa-spinner animate-spin text-blue-400 text-2xl"></i>
                     <p class="text-sm mt-2 opacity-70">Processing...</p>
                 </div>
             </div>
-
-            <!-- Results (revealed one by one) -->
             <div id="resultsContainer" class="hidden space-y-6">
                 <div class="glass-card border-l-4 border-l-blue-500">
                     <h3 class="text-sm font-bold uppercase text-blue-400 mb-3">📌 Key Concepts</h3>
@@ -149,79 +124,43 @@
             </div>
         </div>
     </div>
-
     <script>
         const BACKEND_URL = "http://127.0.0.1:8000";
-
-        // ---- Theme Toggle ----
         function toggleTheme() {
             const html = document.documentElement;
             const icon = document.getElementById('themeIcon');
             if (html.classList.contains('dark')) {
-                html.classList.remove('dark');
-                html.classList.add('light');
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
+                html.classList.remove('dark'); html.classList.add('light');
+                icon.classList.remove('fa-sun'); icon.classList.add('fa-moon');
                 icon.style.color = '#6366f1';
                 localStorage.setItem('theme', 'light');
             } else {
-                html.classList.remove('light');
-                html.classList.add('dark');
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
+                html.classList.remove('light'); html.classList.add('dark');
+                icon.classList.remove('fa-moon'); icon.classList.add('fa-sun');
                 icon.style.color = '#facc15';
                 localStorage.setItem('theme', 'dark');
             }
         }
-
-        // Load saved theme
         (function() {
             if (localStorage.getItem('theme') === 'light') {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
+                document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light');
                 const icon = document.getElementById('themeIcon');
-                if (icon) {
-                    icon.classList.remove('fa-sun');
-                    icon.classList.add('fa-moon');
-                    icon.style.color = '#6366f1';
-                }
+                if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); icon.style.color = '#6366f1'; }
             }
         })();
-
         function updateProviderUI() {
             const provider = document.getElementById('aiProvider').value;
             const box = document.getElementById('apiKeyContainer');
             const input = document.getElementById('apiKey');
-            if (provider === 'local') {
-                box.style.display = 'none';
-                input.required = false;
-            } else {
-                box.style.display = 'block';
-                input.required = true;
-                if (provider === 'gemini') {
-                    document.getElementById('apiKeyLabel').textContent = '🔑 Gemini API Key';
-                    input.placeholder = 'AIzaSy...';
-                } else if (provider === 'deepseek') {
-                    document.getElementById('apiKeyLabel').textContent = '🔑 DeepSeek API Key';
-                    input.placeholder = 'sk-...';
-                }
-            }
+            if (provider === 'local') { box.style.display = 'none'; input.required = false; }
+            else { box.style.display = 'block'; input.required = true; }
         }
-
         function toggleApiKeyVisibility() {
             const input = document.getElementById('apiKey');
             const icon = document.getElementById('toggleEyeIcon');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
+            if (input.type === 'password') { input.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+            else { input.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
         }
-
         function updateFileName(input) {
             const nameDisplay = document.getElementById('fileNameDisplay');
             if (input.files && input.files[0]) {
@@ -232,7 +171,6 @@
                 nameDisplay.parentElement.classList.remove('border-blue-500/50', 'bg-blue-500/5');
             }
         }
-
         async function handleGenerate() {
             const btn = document.getElementById('submitBtn');
             const btnContent = document.getElementById('btnContent');
@@ -241,30 +179,24 @@
             const notes = document.getElementById('studyNotes').value;
             const fileInput = document.getElementById('fileInput');
             const numFlashcards = document.getElementById('numFlashcards').value || 10;
-            const numQuiz = document.getElementById('numQuiz').value || 8;
-
-            if (provider !== 'local' && !apiKey.trim()) {
-                alert('Please enter your API key');
-                return;
-            }
-
+            const quizTypes = {};
+            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById('numTrueFalse').value) || 0;
+            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document.getElementById('numIdentification').value) || 0;
+            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById('numEnumeration').value) || 0;
+            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document.getElementById('numMultipleChoice').value) || 0;
+            if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
             btn.disabled = true;
             btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
             document.getElementById('progressContainer').classList.remove('hidden');
             document.getElementById('resultsContainer').classList.add('hidden');
-
             const formData = new FormData();
             if (provider !== 'local') formData.append('api_key', apiKey);
             formData.append('provider', provider);
             formData.append('notes', notes);
             formData.append('num_flashcards', numFlashcards);
-            formData.append('num_quiz', numQuiz);
+            formData.append('quiz_types', JSON.stringify(quizTypes));
             if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
-
-            const endpoint = provider === 'local' 
-                ? `${BACKEND_URL}/api/generate-reviewer-local`
-                : `${BACKEND_URL}/api/generate-reviewer`;
-
+            const endpoint = provider === 'local' ? `${BACKEND_URL}/api/generate-reviewer-local` : `${BACKEND_URL}/api/generate-reviewer`;
             try {
                 const response = await fetch(endpoint, { method: 'POST', body: formData });
                 const data = await response.json();
@@ -279,68 +211,42 @@
                 btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
             }
         }
-
-        // Reveal items one by one
         async function renderResultsOneByOne(data) {
             const container = document.getElementById('resultsContainer');
             container.classList.remove('hidden');
             container.scrollIntoView({ behavior: 'smooth' });
-
-            // Clear previous
             document.getElementById('summaryList').innerHTML = '';
             document.getElementById('flashcardGrid').innerHTML = '';
             document.getElementById('quizContainer').innerHTML = '';
-
-            // Reveal summary immediately (they are few)
             const summaryItems = (data.summary || []).map(s => `<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i>${s}</li>`);
             document.getElementById('summaryList').innerHTML = summaryItems.join('');
-
-            // Reveal flashcards one by one
             const flashcardContainer = document.getElementById('flashcardGrid');
             for (let i = 0; i < (data.flashcards || []).length; i++) {
                 const card = data.flashcards[i];
-                const cardHTML = `<div class="reveal-item bg-white/5 border border-white/10 p-4 rounded-xl">
-                    <p class="text-sm font-bold">${card.term}</p>
-                    <p class="text-xs opacity-70 mt-1">${card.definition}</p>
-                </div>`;
+                const cardHTML = `<div class="reveal-item bg-white/5 border border-white/10 p-4 rounded-xl"><p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p></div>`;
                 flashcardContainer.insertAdjacentHTML('beforeend', cardHTML);
-                // Wait a tiny bit for the animation
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-
-            // Reveal quiz questions one by one
             const quizContainer = document.getElementById('quizContainer');
             for (let i = 0; i < (data.quiz || []).length; i++) {
                 const q = data.quiz[i];
                 const quizHTML = `<div class="reveal-item bg-white/5 border border-white/10 p-4 rounded-xl">
                     <p class="text-sm font-semibold mb-2">${i+1}. ${q.question}</p>
-                    ${q.options.map((opt, idx) => `
-                        <button onclick="checkAnswer(this, '${opt === q.answer}')" class="w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-blue-500/10 transition">
-                            <span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}
-                        </button>
-                    `).join('')}
+                    ${(q.options && q.options.length) ? q.options.map((opt, idx) => `<button onclick="checkAnswer(this, '${opt === q.answer}')" class="w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-blue-500/10 transition"><span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}</button>`).join('') : `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`}
                 </div>`;
                 quizContainer.insertAdjacentHTML('beforeend', quizHTML);
                 await new Promise(resolve => setTimeout(resolve, 150));
             }
         }
-
         function checkAnswer(btn, isCorrect) {
             const parent = btn.parentElement;
             Array.from(parent.children).forEach(child => {
                 child.classList.remove('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300', 'bg-rose-500/20', 'border-rose-500', 'text-rose-300');
             });
-            if (isCorrect === 'true') {
-                btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
-            } else {
-                btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
-            }
+            if (isCorrect === 'true') btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+            else btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
         }
-
-        // Initialize
-        window.addEventListener('DOMContentLoaded', () => {
-            updateProviderUI();
-        });
+        window.addEventListener('DOMContentLoaded', () => { updateProviderUI(); });
     </script>
 </body>
 </html>
