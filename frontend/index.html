@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcadHub Suite | Smart Academic Workspace</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f3ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#0b0f19',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #080c14;
+            color: #f3f4f6;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .glass-card {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-bg {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0,0,0,0) 70%);
+            filter: blur(50px);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden flex flex-col justify-between pb-10">
+
+    <!-- Ambient Glow Backgrounds -->
+    <div class="glow-bg -top-10 -left-10"></div>
+    <div class="glow-bg top-1/2 -right-10"></div>
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 glass-card border-b border-white/10 px-4 py-3 mb-6">
+        <div class="max-w-xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-graduation-cap text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-white via-gray-200 to-indigo-300 bg-clip-text text-transparent">AcadHub Suite</h1>
+                    <p class="text-xs text-gray-400">Smart Academic Workspace</p>
+                </div>
+            </div>
+            
+            <div id="backendStatus" class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>FASTAPI healthy</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 w-full flex-grow">
+        
+        <!-- Tab Navigation -->
+        <div class="flex p-1 bg-gray-900/80 backdrop-blur-md rounded-2xl border border-white/5 mb-6">
+            <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
+                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>AI Reviewer Suite
+            </button>
+            <button id="tabScheduler" onclick="switchTab('scheduler')" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all duration-200">
+                <i class="fa-solid fa-calendar-days mr-2"></i>Dev Scheduler
+            </button>
+        </div>
+
+        <!-- AI Reviewer View -->
+        <div id="viewReviewer" class="space-y-6">
+            <div class="glass-card rounded-3xl p-5 shadow-2xl relative overflow-hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-bolt text-indigo-400"></i> Generate Review Material
+                    </h2>
+                </div>
+
+                <form id="reviewerForm" class="space-y-4" onsubmit="handleGenerate(event)">
+                    
+                    <!-- API Key Input -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-300 mb-1.5">Gemini API Key</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
+                                <i class="fa-solid fa-key text-xs"></i>
+                            </span>
+                            <input type="password" id="apiKey" required placeholder="AIzaSy..." class="w-full pl-9 pr-3 py-2.5 bg-gray-900/90 border border-white/10 rounded-xl text-xs text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Upload File Dropzone -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-300 mb-1.5">Upload Document (.pdf, .docx, .txt)</label>
+                        <label for="fileInput" class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-white/10 hover:border-indigo-500/50 rounded-2xl cursor-pointer bg-gray-900/40 hover:bg-gray-900/70 transition-all">
+                            <div class="flex flex-col items-center justify-center py-3 text-center">
+                                <i class="fa-solid fa-cloud-arrow-up text-xl text-indigo-400 mb-1"></i>
+                                <p class="text-xs text-gray-300 font-medium" id="fileNameDisplay">Tap to choose document</p>
+                                <p class="text-[10px] text-gray-500 mt-0.5">PDF, DOCX, TXT up to 15 pages</p>
+                            </div>
+                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" />
+                        </label>
+                    </div>
+
+                    <!-- Notes Input -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-300 mb-1.5">Or Paste Additional Study Notes / Code</label>
+                        <textarea id="studyNotes" rows="3" placeholder="Paste lecture notes, definitions, or code documentation..." class="w-full p-3 bg-gray-900/90 border border-white/10 rounded-xl text-xs text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all resize-none"></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitBtn" class="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span id="btnText">Build Complete Reviewer</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Generated Results Container -->
+            <div id="resultsContainer" class="hidden space-y-5">
+                <!-- Summary Section -->
+                <div class="glass-card rounded-2xl p-5 border-l-4 border-l-indigo-500">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check"></i> Key Concepts
+                    </h3>
+                    <ul id="summaryList" class="space-y-2 text-xs text-gray-300"></ul>
+                </div>
+
+                <!-- Flashcards Section -->
+                <div class="glass-card rounded-2xl p-5 border-l-4 border-l-violet-500">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-violet-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group"></i> Flashcards
+                    </h3>
+                    <div id="flashcardGrid" class="grid grid-cols-1 gap-3"></div>
+                </div>
+
+                <!-- Quiz Section -->
+                <div class="glass-card rounded-2xl p-5 border-l-4 border-l-emerald-500">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-question"></i> Practice Quiz
+                    </h3>
+                    <div id="quizContainer" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dev Scheduler View (Placeholder) -->
+        <div id="viewScheduler" class="hidden glass-card rounded-3xl p-6 text-center text-gray-400">
+            <i class="fa-solid fa-calendar-check text-3xl text-indigo-400 mb-2"></i>
+            <h3 class="text-sm font-semibold text-white">Dev Scheduler</h3>
+            <p class="text-xs text-gray-500 mt-1">Schedule academic defense prep and dev sprints.</p>
+        </div>
+
+    </main>
+
+    <script>
+        const BACKEND_URL = "http://127.0.0.1:8000";
+
+        function switchTab(tab) {
+            const isReviewer = tab === 'reviewer';
+            document.getElementById('viewReviewer').classList.toggle('hidden', !isReviewer);
+            document.getElementById('viewScheduler').classList.toggle('hidden', isReviewer);
+            
+            document.getElementById('tabReviewer').className = isReviewer 
+                ? "flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                : "flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all duration-200";
+            
+            document.getElementById('tabScheduler').className = !isReviewer 
+                ? "flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                : "flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all duration-200";
+        }
+
+        function updateFileName(input) {
+            const nameDisplay = document.getElementById('fileNameDisplay');
+            if (input.files && input.files[0]) {
+                nameDisplay.textContent = input.files[0].name;
+                nameDisplay.classList.add('text-indigo-400');
+            } else {
+                nameDisplay.textContent = 'Tap to choose document';
+                nameDisplay.classList.remove('text-indigo-400');
+            }
+        }
+
+        async function handleGenerate(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const apiKey = document.getElementById('apiKey').value;
+            const fileInput = document.getElementById('fileInput');
+            const notes = document.getElementById('studyNotes').value;
+
+            btn.disabled = true;
+            btnText.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Analyzing Document...`;
+
+            const formData = new FormData();
+            formData.append('api_key', apiKey);
+            formData.append('notes', notes);
+            if (fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/generate-reviewer`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Generation failed');
+
+                renderResults(data);
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            } finally {
+                btn.disabled = false;
+                btnText.innerHTML = `Build Complete Reviewer`;
+            }
+        }
+
+        function renderResults(data) {
+            const container = document.getElementById('resultsContainer');
+            container.classList.remove('hidden');
+
+            // Render Summaries
+            const summaryList = document.getElementById('summaryList');
+            summaryList.innerHTML = (data.summary || []).map(s => `<li class="flex items-start gap-2"><i class="fa-solid fa-check text-indigo-400 mt-0.5 text-[10px]"></i><span>${s}</span></li>`).join('');
+
+            // Render Flashcards
+            const flashcardGrid = document.getElementById('flashcardGrid');
+            flashcardGrid.innerHTML = (data.flashcards || []).map(card => `
+                <div class="bg-gray-900/60 border border-white/5 p-3.5 rounded-xl">
+                    <p class="text-xs font-bold text-white mb-1"><i class="fa-solid fa-tag text-violet-400 mr-1.5"></i>${card.term}</p>
+                    <p class="text-xs text-gray-400">${card.definition}</p>
+                </div>
+            `).join('');
+
+            // Render Quiz
+            const quizContainer = document.getElementById('quizContainer');
+            quizContainer.innerHTML = (data.quiz || []).map((q, idx) => `
+                <div class="bg-gray-900/60 border border-white/5 p-4 rounded-xl space-y-2">
+                    <p class="text-xs font-semibold text-gray-200">${idx + 1}. ${q.question}</p>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        ${q.options.map(opt => `
+                            <button onclick="checkAnswer(this, '${opt === q.answer}', '${q.explanation.replace(/'/g, "\\'")}')" class="text-left w-full p-2 rounded-lg bg-gray-800/50 hover:bg-gray-800 text-xs text-gray-300 border border-white/5 transition-all">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function checkAnswer(btn, isCorrect, explanation) {
+            const parent = btn.parentElement;
+            Array.from(parent.children).forEach(child => {
+                child.classList.remove('bg-emerald-500/20', 'border-emerald-500', 'bg-rose-500/20', 'border-rose-500');
+            });
+            if (isCorrect === 'true') {
+                btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+            } else {
+                btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
+            }
+        }
+    </script>
+</body>
+</html>
