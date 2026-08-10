@@ -80,6 +80,12 @@
             <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                 <button onclick="toggleTheme()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400 text-sm sm:text-base"></i></button>
                 <button onclick="switchTab('library')" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button>
+                <button onclick="toggleProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                    <i class="fa-solid fa-user text-xs"></i>
+                </button>
+                <button onclick="toggleEvalModal()" id="evalButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                    <i class="fa-solid fa-star text-xs text-amber-400"></i>
+                </button>
                 <div id="backendStatus" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
             </div>
         </div>
@@ -196,6 +202,12 @@
         function switchTab(tab){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('viewTest').classList.add('hidden');document.getElementById('tabReviewer').classList.remove('tab-active');document.getElementById('tabReviewer').classList.add('tab-inactive');document.getElementById('tabLibrary').classList.remove('tab-active');document.getElementById('tabLibrary').classList.add('tab-inactive');document.getElementById('tabTest').classList.remove('tab-active');document.getElementById('tabTest').classList.add('tab-inactive');if(tab==='reviewer'){document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('tabReviewer').classList.remove('tab-inactive');document.getElementById('tabReviewer').classList.add('tab-active');}else if(tab==='library'){document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabLibrary').classList.remove('tab-inactive');document.getElementById('tabLibrary').classList.add('tab-active');renderSavedList();}else if(tab==='test'){document.getElementById('viewTest').classList.remove('hidden');document.getElementById('tabTest').classList.remove('tab-inactive');document.getElementById('tabTest').classList.add('tab-active');}}
         document.getElementById('tabReviewer').addEventListener('click',()=>switchTab('reviewer'));
         document.getElementById('tabLibrary').addEventListener('click',()=>switchTab('library'));
+                <button onclick="toggleProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                    <i class="fa-solid fa-user text-xs"></i>
+                </button>
+                <button onclick="toggleEvalModal()" id="evalButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                    <i class="fa-solid fa-star text-xs text-amber-400"></i>
+                </button>
         document.getElementById('tabTest').addEventListener('click',()=>switchTab('test'));
         function updateProviderUI(){const provider=document.getElementById('aiProvider').value;const box=document.getElementById('apiKeyContainer');const input=document.getElementById('apiKey');if(provider==='local'){box.style.display='none';input.required=false;}else{box.style.display='block';input.required=true;}}
         function toggleApiKeyVisibility(){const input=document.getElementById('apiKey');const icon=document.getElementById('toggleEyeIcon');if(input.type==='password'){input.type='text';icon.classList.remove('fa-eye');icon.classList.add('fa-eye-slash');}else{input.type='password';icon.classList.remove('fa-eye-slash');icon.classList.add('fa-eye');}}
@@ -439,5 +451,45 @@
             testCorrectCount = 0;
         }
     </script>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile</h3>
+                <button onclick="toggleProfileModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-xs opacity-70 mb-4">Enter your name to help us improve. Only the developer can see it.</p>
+            <div class="space-y-3">
+                <input type="text" id="visitorFirstName" placeholder="First Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="text" id="visitorLastName" placeholder="Last Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500">
+                    <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly. <em>Data is handled in accordance with privacy best practices.</em></span>
+                </label>
+                <button onclick="saveVisitorName()" class="btn-primary w-full text-sm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evaluation Modal -->
+    <div id="evalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-80 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-star text-amber-400 mr-2"></i>Rate Your Experience</h3>
+                <button onclick="toggleEvalModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-xs opacity-70 mb-4">How would you rate AcadHub? Your feedback helps us improve.</p>
+            <div class="flex justify-center gap-1 mb-4" id="starContainer">
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="1"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="2"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="3"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="4"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="5"></i>
+            </div>
+            <textarea id="evalSuggestions" rows="3" placeholder="Any suggestions for new features? (optional)" class="w-full p-3 bg-white/10 border border-white/10 rounded-xl text-sm resize-none mb-4"></textarea>
+            <button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
+        </div>
+    </div>
 </body>
 </html>
