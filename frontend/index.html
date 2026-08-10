@@ -4,7 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        // Enable Save button only when all fields are filled and agreed
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
+
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -64,15 +83,72 @@
             if (overlay) {
                 setTimeout(function() {
                     overlay.classList.add('fade-out');
-                    setTimeout(function() { overlay.classList.add('hidden'); }, 500);
+                    setTimeout(function() { overlay.classList.add('hidden'); toggleProfileModal(); }, 500);
                 }, 4500);
             }
         })();
+    
+        // Enable Save button only when all fields are filled and agreed
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
+
     </script>
 
     <!-- Firebase SDK & Config -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+        // Enable Save button only when all fields are filled and agreed
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
+
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
+        // Enable Save button only when all fields are filled and agreed
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
+
+    </script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
@@ -84,6 +160,25 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+    
+        // Enable Save button only when all fields are filled and agreed
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
+
     </script>
 
     <!-- Main Content -->
@@ -211,7 +306,7 @@
         <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile</h3>
-                <button onclick="toggleProfileModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+                
             </div>
             <p class="text-xs opacity-70 mb-4">Enter your name to help us improve. Only the developer can see it.</p>
             <div class="space-y-3">
@@ -221,7 +316,7 @@
                     <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500">
                     <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly. <em>Data is handled in accordance with privacy best practices.</em></span>
                 </label>
-                <button onclick="saveVisitorName()" class="btn-primary w-full text-sm">Save</button>
+                <button id="saveProfileBtn" onclick="saveVisitorName()" class="btn-primary w-full text-sm" disabled>Save</button>
             </div>
         </div>
     </div>
@@ -331,6 +426,10 @@
 
         // Profile modal
         function toggleProfileModal() {
+            // Prevent closing if profile not saved yet (mandatory)
+            if (localStorage.getItem("profile_saved") !== "true") {
+                return; // Do nothing – user must fill form
+            }
             document.getElementById("profileModal").classList.toggle("hidden");
         }
         function validateProfile() {
@@ -548,6 +647,25 @@
             testCurrentIndex = 0;
             testCorrectCount = 0;
         }
+    
+        // Enable Save button only when all fields are filled and agreed
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
+
     </script>
 </body>
 </html>
