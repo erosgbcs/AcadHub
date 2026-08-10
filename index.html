@@ -1,465 +1,889 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0a0f1e; --card: rgba(30,41,59,0.7); --text: #e2e8f0; --border: rgba(148,163,184,0.1); }
-        .light { --bg: #f8fafc; --card: rgba(255,255,255,0.85); --text: #1e293b; --border: rgba(0,0,0,0.08); }
-        body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.3s, color 0.3s; }
-        .glass-card { background: var(--card); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1.5rem; }
-        .btn-primary { background: linear-gradient(135deg, #4c6ef5, #22b8cf); }
+        :root { --bg: #0b0f19; --card: rgba(18,25,40,0.75); --text: #e8edf5; --border: rgba(255,255,255,0.08); --accent: #6366f1; --accent2: #22d3ee; }
+        .light { --bg: #f4f6fb; --card: rgba(255,255,255,0.92); --text: #1e293b; --border: rgba(0,0,0,0.08); --accent: #4f46e5; --accent2: #06b6d4; }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; transition: background 0.3s, color 0.3s; margin: 0; min-height: 100vh; }
+        .glass-card { background: var(--card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,0.2); transition: all 0.3s ease; }
+        .glass-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; border: none; font-weight: 600; transition: all 0.3s ease; border-radius: 0.75rem; padding: 0.875rem 1.5rem; cursor: pointer; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 25px rgba(99,102,241,0.3); }
+        .btn-primary:active { transform: scale(0.98); }
         .reveal-item { opacity: 0; transform: translateY(10px); animation: reveal 0.3s ease forwards; }
         @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
-
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 1000; transition: opacity 0.5s ease, transform 0.5s ease;
-        }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.5s ease, transform 0.5s ease; }
         .loading-overlay.fade-out { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .loading-overlay.hidden { display: none; }
-
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(76, 110, 245, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(76, 110, 245, 0.7); }
-        }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(34,211,238,0.7); } }
         .logo-pulse { animation: pulse-glow 2s infinite; border-radius: 50%; }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease forwards; }
-        .saved-card { transition: all 0.2s; }
-        .saved-card:hover { background: rgba(255,255,255,0.08); }
+        .tab-active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
+        .tab-inactive { background: transparent; color: var(--text); opacity: 0.6; }
+        .tab-inactive:hover { opacity: 0.9; }
+        input, select, textarea { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.875rem; outline: none; transition: border 0.2s; width: 100%; }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+        .quiz-option { transition: all 0.2s; cursor: pointer; }
+        .quiz-option:hover { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); transform: translateX(4px); }
+        .saved-card:hover { background: rgba(255,255,255,0.05); }
+        footer { margin-top: auto; }
+    
+        /* Flashcard flip */
+        .flashcard {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+        .flashcard-front, .flashcard-back {
+            backface-visibility: hidden;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+        }
+        .flashcard-front {
+            background: rgba(255,255,255,0.05);
+        }
+        .flashcard-back {
+            background: rgba(99,102,241,0.1);
+            transform: rotateY(180deg);
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
 
-        /* Loading screen icons */
-        .loading-icon {
-            transition: transform 0.3s;
-            display: inline-block;
-        }
-        .loading-icon:hover {
-            transform: scale(1.2);
-            color: #fff;
-        }
     </style>
+    <link rel="manifest" href="/AcadHub/manifest.json">
+    <link rel="manifest" href="/AcadHub/manifest.json">
 </head>
-<body class="min-h-screen p-4 flex flex-col">
-    <!-- Initial Loading Screen (7 seconds) -->
+<body class="flex flex-col p-2 sm:p-4">
+    <!-- Loading Screen (standalone timer, no dependencies) -->
     <div id="loadingOverlay" class="loading-overlay">
-        <div class="text-center animate-fade-in-up">
-            <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center logo-pulse">
-                <i class="fa-solid fa-graduation-cap text-white text-4xl"></i>
+        <div class="text-center animate-fade-in-up px-4">
+            <div class="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center logo-pulse">
+                <i class="fa-solid fa-graduation-cap text-white text-2xl sm:text-4xl"></i>
             </div>
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1>
-            <p class="text-sm text-slate-400 mt-2">Smart Academic Workspace</p>
-
-            <!-- Developer credits with prominent logos -->
-            <div class="mt-8 pt-8 border-t border-white/10">
-                <p class="text-xs text-slate-500 mb-4">Developed by</p>
-                <div class="flex flex-col gap-3 text-sm text-slate-300">
-                    <div class="flex items-center justify-center gap-3">
-                        <i class="fa-brands fa-github text-xl loading-icon" style="color: #f0f6fc;"></i>
-                        <span>erosgbcs</span>
-                    </div>
-                    <div class="flex items-center justify-center gap-3">
-                        <i class="fa-solid fa-envelope text-xl loading-icon" style="color: #ea4335;"></i>
-                        <span>gabrielagsamosam@gmail.com</span>
-                    </div>
-                    <div class="flex items-center justify-center gap-3">
-                        <i class="fa-brands fa-facebook text-xl loading-icon" style="color: #1877f2;"></i>
-                        <span>Gabriel Agsamosam</span>
-                    </div>
+            <h1 class="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1>
+            <p class="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">Smart Academic Workspace</p>
+            <div class="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-white/10">
+                <p class="text-xs text-gray-500 mb-3 sm:mb-4">Developed by</p>
+                <div class="flex flex-col gap-2 sm:gap-3 text-sm text-gray-300">
+                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-brands fa-github text-lg sm:text-xl" style="color:#f0f6fc;"></i><span>erosgbcs</span></div>
+                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-solid fa-envelope text-lg sm:text-xl" style="color:#ea4335;"></i><span>gabrielagsamosam@gmail.com</span></div>
+                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-brands fa-facebook text-lg sm:text-xl" style="color:#1877f2;"></i><span>Gabriel Agsamosam</span></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="max-w-2xl mx-auto space-y-6 flex-1">
-        <!-- Header with Theme Toggle -->
-        <div class="glass-card flex items-center justify-between">
+    <!-- Guaranteed fade-out after 4.5s (even if other scripts fail) -->
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/AcadHub/sw.js");
+        }
+        (function() {
+            var overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                setTimeout(function() {
+                    overlay.classList.add('fade-out');
+                    setTimeout(function() {
+                        overlay.classList.add('hidden');
+                        // Show the profile modal automatically after loading
+                        setTimeout(function() {
+                            var modal = document.getElementById('profileModal');
+                            if (modal && localStorage.getItem('profile_saved') !== 'true') {
+                                modal.classList.remove('hidden');
+                            }
+                        }, 100);
+                    }, 500);
+                }, 4500);
+            }
+        })();
+    
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
+
+    <!-- Firebase SDK & Config -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/AcadHub/sw.js");
+        }
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
+            authDomain: "acadhub-visitors-69180.firebaseapp.com",
+            projectId: "acadhub-visitors-69180",
+            storageBucket: "acadhub-visitors-69180.firebasestorage.app",
+            messagingSenderId: "292893836149",
+            appId: "1:292893836149:web:8345f25b7c68974eaec93c"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    
+        // Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+
+    </script>
+
+    <!-- Main Content -->
+    <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6">
+        <!-- Header -->
+        <div class="glass-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xl"><i class="fa-solid fa-graduation-cap"></i></div>
-                <div><h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1><p class="text-xs opacity-70">Study Suite</p></div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-lg sm:text-xl"><i class="fa-solid fa-graduation-cap"></i></div>
+                <div><h1 class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1><p class="text-xs text-gray-400">Study Suite</p></div>
             </div>
-            <div class="flex items-center gap-3">
-                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
-                    <i id="themeIcon" class="fa-solid fa-sun text-yellow-400"></i>
+            <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+                <button onclick="toggleTheme()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400 text-sm sm:text-base"></i></button>
+
+<label class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition cursor-pointer" title="Change accent colour">
+    <input type="color" id="accentPicker" value="#6366f1" class="absolute opacity-0 w-8 h-8 cursor-pointer">
+    <i class="fa-solid fa-palette text-xs"></i>
+</label>
+
+                <button onclick="switchTab('library')" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button>
+                <button onclick="showProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+                    <i class="fa-solid fa-user text-xs"></i>
                 </button>
-                <button onclick="toggleLibrary()" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition">
-                    <i class="fa-solid fa-bookmark mr-1"></i> Library
+                <button onclick="toggleEvalModal()" id="evalButton" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition">
+                    <i class="fa-solid fa-star text-xs text-amber-400 mr-1"></i> Evaluate to improve
                 </button>
-                <div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
+                <div id="backendStatus" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
             </div>
         </div>
 
         <!-- Tabs -->
-        <div class="flex p-1.5 glass-card rounded-2xl">
-            <button id="tabReviewer" class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button>
-            <button id="tabLibrary" class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Saved Library</button>
+        <div class="flex p-1.5 glass-card rounded-2xl gap-1">
+            <button id="tabReviewer" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active">AI Reviewer</button>
+            <button id="tabLibrary" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Saved Library</button>
+            <button id="tabTest" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Test My Limits</button>
         </div>
 
-        <!-- Reviewer Tab -->
-        <div id="viewReviewer" class="space-y-6">
+        <!-- AI Reviewer Tab -->
+        <div id="viewReviewer" class="space-y-4 sm:space-y-6">
             <div class="glass-card">
-                <h2 class="text-lg font-bold mb-4">Generate Study Materials</h2>
-                <form onsubmit="return false;">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                        <div>
-                            <label class="block text-xs font-semibold mb-1">AI Engine</label>
-                            <select id="aiProvider" onchange="updateProviderUI()" class="w-full py-3 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                                <option value="local" selected>🧠 Local NLP (No Key)</option>
-                                <option value="gemini">Google Gemini AI</option>
-                                <option value="deepseek">DeepSeek AI</option>
-                            </select>
+                <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Generate Study Materials</h2>
+                <form onsubmit="return false;" class="space-y-3 sm:space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div><label class="block text-xs font-semibold mb-1">AI Engine</label><select id="aiProvider" onchange="updateProviderUI()" class="w-full text-sm"><option value="local" selected>🧠 Local NLP (No Key)</option><option value="gemini">Google Gemini AI</option><option value="deepseek">DeepSeek AI</option></select>
+                            <!-- Accuracy info toggle -->
+                            <button type="button" onclick="toggleAccuracyInfo()" class="text-xs text-indigo-400 hover:underline mt-1">
+                                <i class="fa-solid fa-circle-info mr-1"></i> See accuracy guide
+                            </button>
                         </div>
-                        <div id="apiKeyContainer" class="sm:col-span-2" style="display:none;">
-                            <label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label>
-                            <div class="relative">
-                                <input type="password" id="apiKey" placeholder="Paste API key..." class="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                                <span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span>
-                                <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button>
-                            </div>
-                        </div>
+                        <div id="accuracyInfo" class="hidden col-span-full mt-2 text-xs bg-white/5 border border-white/10 rounded-xl p-3 overflow-x-auto">
+    <table class="w-full text-left">
+        <thead>
+            <tr class="border-b border-white/10">
+                <th class="py-2 pr-2 font-semibold">Question type</th>
+                <th class="py-2 px-2 font-semibold">🧠 Local NLP</th>
+                <th class="py-2 pl-2 font-semibold">🤖 Gemini / DeepSeek</th>
+            </tr>
+        </thead>
+        <tbody class="opacity-80">
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">True/False</td>
+                <td class="py-2 px-2">90% accurate (sometimes all true)</td>
+                <td class="py-2 pl-2">100% accurate, proper mix</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">Identification</td>
+                <td class="py-2 px-2">95% (blanks key phrases)</td>
+                <td class="py-2 pl-2">100% (blanks the exact right word)</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">Multiple Choice</td>
+                <td class="py-2 px-2">80% (some odd distractors)</td>
+                <td class="py-2 pl-2">100% (natural, challenging options)</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">What / Who / Where</td>
+                <td class="py-2 px-2">85% (works, but can target non‑person names)</td>
+                <td class="py-2 pl-2">100%</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">Enumeration</td>
+                <td class="py-2 px-2">80% (only 1 point if text has only one)</td>
+                <td class="py-2 pl-2">100% (can synthesize multiple points)</td>
+            </tr>
+        </tbody>
+    </table>
+    <p class="mt-2 opacity-50">All question types are generated accordingly. Accuracy may vary with text complexity.</p>
+</div>
+                        <div id="apiKeyContainer" class="sm:col-span-2" style="display:none;"><label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label><div class="relative"><input type="password" id="apiKey" placeholder="Paste API key..." class="text-sm"><span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span><button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button></div></div>
                     </div>
-
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold mb-1">Upload Document</label>
-                        <label for="fileInput" class="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-blue-500/50 transition bg-white/5">
-                            <div class="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-2xl text-blue-400"></i></div>
-                            <p class="text-sm" id="fileNameDisplay">Drop file or click to browse</p>
-                            <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
-                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" />
-                        </label>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold mb-1">Notes</label>
-                        <textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="w-full p-4 bg-white/10 border border-white/10 rounded-xl text-sm resize-none"></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold mb-1">🃏 Number of Flashcards</label>
-                        <input type="number" id="numFlashcards" value="10" min="1" max="20" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold mb-2">❓ Quiz Types & Questions per Type</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="useTrueFalse" checked class="accent-blue-500">
-                                <label for="useTrueFalse" class="text-xs">True/False</label>
-                                <input type="number" id="numTrueFalse" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="useIdentification" checked class="accent-blue-500">
-                                <label for="useIdentification" class="text-xs">Identification</label>
-                                <input type="number" id="numIdentification" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="useEnumeration" checked class="accent-blue-500">
-                                <label for="useEnumeration" class="text-xs">Enumeration</label>
-                                <input type="number" id="numEnumeration" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="useMultipleChoice" checked class="accent-blue-500">
-                                <label for="useMultipleChoice" class="text-xs">Multiple Choice</label>
-                                <input type="number" id="numMultipleChoice" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs">
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg">
-                        <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
-                    </button>
+                    <div><label class="block text-xs font-semibold mb-1">Upload Document</label><label for="fileInput" class="flex flex-col items-center justify-center w-full p-6 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5"><div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-400"></i></div><p class="text-xs sm:text-sm" id="fileNameDisplay">Drop file or click to browse</p><p class="text-xs opacity-50">PDF, DOCX, TXT</p><input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" /></label></div>
+                    <div><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="text-sm"></textarea></div>
+                    <div><label class="block text-xs font-semibold mb-1">🃏 Number of Flashcards</label><input type="number" id="numFlashcards" value="10" min="1" max="20" class="text-sm"></div>
+                    <div><label class="block text-xs font-semibold mb-2">❓ Quiz Types & Questions per Type</label><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useTrueFalse" checked class="accent-indigo-500"><label for="useTrueFalse" class="text-xs">True/False</label><input type="number" id="numTrueFalse" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useIdentification" checked class="accent-indigo-500"><label for="useIdentification" class="text-xs">Identification</label><input type="number" id="numIdentification" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useEnumeration" checked class="accent-indigo-500"><label for="useEnumeration" class="text-xs">Enumeration</label><input type="number" id="numEnumeration" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useMultipleChoice" checked class="accent-indigo-500"><label for="useMultipleChoice" class="text-xs">Multiple Choice</label><input type="number" id="numMultipleChoice" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhat" class="accent-indigo-500"><label for="useWhat" class="text-xs">What</label><input type="number" id="numWhat" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWho" class="accent-indigo-500"><label for="useWho" class="text-xs">Who</label><input type="number" id="numWho" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhere" class="accent-indigo-500"><label for="useWhere" class="text-xs">Where</label><input type="number" id="numWhere" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhen" class="accent-indigo-500"><label for="useWhen" class="text-xs">When</label><input type="number" id="numWhen" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhy" class="accent-indigo-500"><label for="useWhy" class="text-xs">Why</label><input type="number" id="numWhy" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhich" class="accent-indigo-500"><label for="useWhich" class="text-xs">Which</label><input type="number" id="numWhich" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useHow" class="accent-indigo-500"><label for="useHow" class="text-xs">How</label><input type="number" id="numHow" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                        <div class="flex items-center gap-2"><input type="checkbox" id="useWhose" class="accent-indigo-500"><label for="useWhose" class="text-xs">Whose</label><input type="number" id="numWhose" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs"></div>
+                    </div></div>
+                    <div class="flex items-center gap-2"><input type="checkbox" id="useInternet" class="accent-indigo-500"><label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label></div>
+                    <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base"><span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span></button>
                 </form>
-
-                <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-white/10 text-center">
-                    <i class="fa-solid fa-spinner animate-spin text-blue-400 text-2xl"></i>
-                    <p class="text-sm mt-2 opacity-70">Processing...</p>
-                </div>
+                <div id="progressContainer" class="hidden mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/10 text-center"><i class="fa-solid fa-spinner animate-spin text-indigo-400 text-xl sm:text-2xl"></i><p class="text-sm mt-2 opacity-70">Processing...</p></div>
             </div>
 
-            <!-- Results + Save Button -->
-            <div id="resultsContainer" class="hidden space-y-6">
-                <div class="flex justify-end gap-2">
-                    <button id="saveToLibraryBtn" class="hidden px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition">
-                        <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
-                    </button>
+            <div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
+                <div class="flex justify-end"><button id="saveToLibraryBtn" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition"><i class="fa-solid fa-bookmark mr-2"></i>Save to Library</button></div>
+                <div class="glass-card border-l-4 border-l-indigo-500"><h3 class="text-sm font-bold uppercase text-indigo-400 mb-3">📌 Key Concepts</h3><ul id="summaryList" class="space-y-2 text-sm"></ul></div>
+                <div class="glass-card border-l-4 border-l-cyan-500"><h3 class="text-sm font-bold uppercase text-cyan-400 mb-3">🃏 Flashcards</h3><div id="flashcardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div></div>
+                <div class="glass-card border-l-4 border-l-teal-500"><h3 class="text-sm font-bold uppercase text-teal-400 mb-3">❓ Practice Quiz</h3><div id="quizContainer" class="space-y-3"></div></div>
+            </div>
+        </div>
+
+        <!-- Library Tab -->
+        <div id="viewLibrary" class="hidden space-y-4"><div class="glass-card"><h2 class="text-lg sm:text-xl font-bold mb-4">📚 Saved Reviewers</h2><div id="savedList" class="space-y-2"></div><p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p></div></div>
+
+        <!-- Test My Limits Tab -->
+        <div id="viewTest" class="hidden space-y-4 sm:space-y-6">
+            <div class="glass-card">
+                <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">⚡ Test My Limits</h2>
+                <p class="text-xs opacity-70 mb-3 sm:mb-4">Answer questions based on your notes. Choose difficulty and see how well you know the material.</p>
+                <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                    <button onclick="setDifficulty('easy')" id="diffEasy" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟢 Easy</button>
+                    <button onclick="setDifficulty('medium')" id="diffMedium" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟡 Medium</button>
+                    <button onclick="setDifficulty('hard')" id="diffHard" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🔴 Hard</button>
                 </div>
-                <div class="glass-card border-l-4 border-l-blue-500">
-                    <h3 class="text-sm font-bold uppercase text-blue-400 mb-3">📌 Key Concepts</h3>
-                    <ul id="summaryList" class="space-y-2 text-sm"></ul>
+                <div class="mb-3 sm:mb-4"><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="testNotes" rows="4" placeholder="Paste your study notes here..." class="text-sm"></textarea></div>
+                <div class="mb-3 sm:mb-4"><label class="block text-xs font-semibold mb-1">Upload Document (optional)</label><label for="testFileInput" class="flex flex-col items-center justify-center w-full p-4 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5"><div class="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-lg sm:text-2xl text-indigo-400"></i></div><p class="text-xs sm:text-sm" id="testFileNameDisplay">Drop file or click to browse</p><p class="text-xs opacity-50">PDF, DOCX, TXT</p><input id="testFileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateTestFileName(this)" /></label></div>
+                <div class="flex items-center gap-2 mb-3 sm:mb-4"><input type="checkbox" id="useTestInternet" class="accent-indigo-500"><label for="useTestInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label></div>
+                <button id="startTestBtn" onclick="startTest()" class="btn-primary w-full text-sm sm:text-base"><i class="fa-solid fa-play mr-2"></i>Start Test</button>
+                <div id="testQuizContainer" class="hidden mt-4 sm:mt-6 space-y-3 sm:space-y-4">
+                    <div class="flex items-center justify-between"><span class="text-sm font-semibold" id="questionCounter">Question 1 / 10</span><span class="text-sm font-mono text-amber-400 hidden" id="timerDisplay">⏱ 30s</span></div>
+                    <div id="testQuestionCard" class="bg-white/5 border border-white/10 p-4 sm:p-6 rounded-xl"><p class="text-base sm:text-lg font-semibold mb-3 sm:mb-4" id="testQuestionText"></p><div id="testOptionsContainer" class="space-y-2 sm:space-y-3"></div></div>
+                    <div class="flex justify-end"><button id="nextTestBtn" class="hidden px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition" onclick="nextTestQuestion()">Next <i class="fa-solid fa-arrow-right ml-2"></i></button></div>
                 </div>
-                <div class="glass-card border-l-4 border-l-cyan-500">
-                    <h3 class="text-sm font-bold uppercase text-cyan-400 mb-3">🃏 Flashcards</h3>
-                    <div id="flashcardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-                </div>
-                <div class="glass-card border-l-4 border-l-teal-500">
-                    <h3 class="text-sm font-bold uppercase text-teal-400 mb-3">❓ Practice Quiz</h3>
-                    <div id="quizContainer" class="space-y-3"></div>
+                <div id="testResultsContainer" class="hidden mt-4 sm:mt-6 text-center">
+                    <i class="fa-solid fa-trophy text-3xl sm:text-4xl text-amber-400 mb-2 sm:mb-3"></i>
+                    <h3 class="text-lg sm:text-xl font-bold mb-2">Your Score</h3>
+                    <p class="text-2xl sm:text-3xl font-bold"><span id="testCorrectCount">0</span>/<span id="testTotalCount">0"></span></p>
+                    <p class="text-sm opacity-70" id="testPercentage"></p>
+                    <button onclick="resetTest()" class="mt-3 sm:mt-4 px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition"><i class="fa-solid fa-rotate-right mr-2"></i>Try Again</button>
                 </div>
             </div>
         </div>
 
-        <!-- Library Tab (hidden by default) -->
-        <div id="viewLibrary" class="hidden space-y-4">
-            <div class="glass-card">
-                <h2 class="text-lg font-bold mb-4">📚 Saved Reviewers</h2>
-                <div id="savedList" class="space-y-2"></div>
-                <p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet. Generate one and click "Save to Library".</p>
+        <!-- Donation Card -->
+        <div class="glass-card mt-6 text-center">
+            <p class="text-xs opacity-70 mb-2"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> Support this project</p>
+            <p class="text-sm font-semibold">Donate via GCash</p>
+            <div id="gcashHidden" class="my-2">
+                <p class="text-lg font-mono font-bold tracking-wider">0993****971</p>
+                <button onclick="revealGCash()" class="mt-2 px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs rounded-lg transition">
+                    <i class="fa-solid fa-eye mr-1"></i> Show full number
+                </button>
+            </div>
+            <div id="gcashFull" class="hidden my-2">
+                <p class="text-lg font-mono font-bold tracking-wider">09935917971</p>
+                <p class="text-xs opacity-70 mt-1">Gabriel A.</p>
+            </div>
+            <p class="text-xs opacity-50 mt-2">Thank you for your support! ❤️</p>
+        </div>
+    </div>
+
+    <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
+
+    <!-- Profile Modal (cannot be closed until saved) -->
+    <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile (required)</h3>
+                <!-- No close button -->
+            </div>
+            <p class="text-xs opacity-70 mb-4">Please enter your name to continue. Only the developer can see it.</p>
+            <div class="space-y-3">
+                <input type="text" id="visitorFirstName" placeholder="First Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="text" id="visitorLastName" placeholder="Last Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500">
+                    <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly.</span>
+                </label>
+                <button id="saveProfileBtn" onclick="saveVisitorName()" class="btn-primary w-full text-sm" disabled>Save</button>
             </div>
         </div>
     </div>
 
-    <!-- Footer with Credits -->
-    <footer class="mt-8 text-center text-xs opacity-50 py-4">
-        Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-blue-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam
-    </footer>
+    <!-- Evaluation Modal -->
+    <div id="evalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-80 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-star text-amber-400 mr-2"></i>Rate Your Experience</h3>
+                <button onclick="toggleEvalModal()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-xs opacity-70 mb-4">How would you rate AcadHub? Your feedback helps us improve.</p>
+            <div class="flex justify-center gap-1 mb-4" id="starContainer">
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="1"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="2"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="3"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="4"></i>
+                <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="5"></i>
+            </div>
+            <textarea id="evalSuggestions" rows="3" placeholder="Any suggestions for new features? (optional)" class="w-full p-3 bg-white/10 border border-white/10 rounded-xl text-sm resize-none mb-4"></textarea>
+            <p id="evalProfileName" class="text-xs opacity-50 text-center mb-2"></p><button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
+        </div>
+    </div>
 
     <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/AcadHub/sw.js");
+        }
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/AcadHub/sw.js');
+        }
+        if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+            navigator.serviceWorker.register('/AcadHub/sw.js')
+                .catch(() => {});
+        }
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
 
-        // ---- Initial loading overlay (7 seconds) ----
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                loadingOverlay.classList.add('fade-out');
-                setTimeout(() => loadingOverlay.classList.add('hidden'), 500);
-            }, 7000);  // 7 seconds
-            updateProviderUI();
-            renderSavedList();
-        });
+        // Theme toggle
+        function toggleTheme(){const html=document.documentElement;const icon=document.getElementById('themeIcon');if(html.classList.contains('dark')){html.classList.remove('dark');html.classList.add('light');icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';localStorage.setItem('theme','light');}else{html.classList.remove('light');html.classList.add('dark');icon.classList.remove('fa-moon');icon.classList.add('fa-sun');icon.style.color='#facc15';localStorage.setItem('theme','dark');}}
+        (function(){if(localStorage.getItem('theme')==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');const icon=document.getElementById('themeIcon');if(icon){icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';}}})();
 
-        // ---- Theme Toggle ----
-        function toggleTheme() {
-            const html = document.documentElement;
-            const icon = document.getElementById('themeIcon');
-            if (html.classList.contains('dark')) {
-                html.classList.remove('dark'); html.classList.add('light');
-                icon.classList.remove('fa-sun'); icon.classList.add('fa-moon');
-                icon.style.color = '#6366f1';
-                localStorage.setItem('theme', 'light');
-            } else {
-                html.classList.remove('light'); html.classList.add('dark');
-                icon.classList.remove('fa-moon'); icon.classList.add('fa-sun');
-                icon.style.color = '#facc15';
-                localStorage.setItem('theme', 'dark');
+        // Tabs
+        function switchTab(tab){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('viewTest').classList.add('hidden');document.getElementById('tabReviewer').classList.remove('tab-active');document.getElementById('tabReviewer').classList.add('tab-inactive');document.getElementById('tabLibrary').classList.remove('tab-active');document.getElementById('tabLibrary').classList.add('tab-inactive');document.getElementById('tabTest').classList.remove('tab-active');document.getElementById('tabTest').classList.add('tab-inactive');if(tab==='reviewer'){document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('tabReviewer').classList.remove('tab-inactive');document.getElementById('tabReviewer').classList.add('tab-active');}else if(tab==='library'){document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabLibrary').classList.remove('tab-inactive');document.getElementById('tabLibrary').classList.add('tab-active');renderSavedList();}else if(tab==='test'){document.getElementById('viewTest').classList.remove('hidden');document.getElementById('tabTest').classList.remove('tab-inactive');document.getElementById('tabTest').classList.add('tab-active');}}
+        document.getElementById('tabReviewer').addEventListener('click',()=>switchTab('reviewer'));
+        document.getElementById('tabLibrary').addEventListener('click',()=>switchTab('library'));
+        document.getElementById('tabTest').addEventListener('click',()=>switchTab('test'));
+
+        // Provider UI
+        function updateProviderUI(){const provider=document.getElementById('aiProvider').value;const box=document.getElementById('apiKeyContainer');const input=document.getElementById('apiKey');if(provider==='local'){box.style.display='none';input.required=false;}else{box.style.display='block';input.required=true;}}
+        function toggleApiKeyVisibility(){const input=document.getElementById('apiKey');const icon=document.getElementById('toggleEyeIcon');if(input.type==='password'){input.type='text';icon.classList.remove('fa-eye');icon.classList.add('fa-eye-slash');}else{input.type='password';icon.classList.remove('fa-eye-slash');icon.classList.add('fa-eye');}}
+        function updateFileName(input){const nameDisplay=document.getElementById('fileNameDisplay');if(input.files&&input.files[0]){nameDisplay.innerHTML=`<span class="text-indigo-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;nameDisplay.parentElement.classList.add('border-indigo-500/50','bg-indigo-500/5');}else{nameDisplay.textContent='Drop file or click to browse';nameDisplay.parentElement.classList.remove('border-indigo-500/50','bg-indigo-500/5');}}
+        function updateTestFileName(input){const nameDisplay=document.getElementById('testFileNameDisplay');if(input.files&&input.files[0]){nameDisplay.innerHTML=`<span class="text-indigo-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;nameDisplay.parentElement.classList.add('border-indigo-500/50','bg-indigo-500/5');}else{nameDisplay.textContent='Drop file or click to browse';nameDisplay.parentElement.classList.remove('border-indigo-500/50','bg-indigo-500/5');}}
+
+        // Handle Generate
+        async function handleGenerate(){
+            const btn=document.getElementById('submitBtn');const btnContent=document.getElementById('btnContent');
+            const provider=document.getElementById('aiProvider').value;const apiKey=document.getElementById('apiKey').value;
+            const notes=document.getElementById('studyNotes').value;const fileInput=document.getElementById('fileInput');
+            const numFlashcards=document.getElementById('numFlashcards').value||10;
+            const quizTypes={};
+            if(document.getElementById('useTrueFalse').checked)quizTypes.truefalse=parseInt(document.getElementById('numTrueFalse').value)||0;
+            if(document.getElementById('useIdentification').checked)quizTypes.identification=parseInt(document.getElementById('numIdentification').value)||0;
+            if(document.getElementById('useEnumeration').checked)quizTypes.enumeration=parseInt(document.getElementById('numEnumeration').value)||0;
+            if(document.getElementById('useMultipleChoice').checked)quizTypes.multiplechoice=parseInt(document.getElementById('numMultipleChoice').value)||0;
+            if(document.getElementById('useWhat').checked)quizTypes.what=parseInt(document.getElementById('numWhat').value)||0;
+            if(document.getElementById('useWho').checked)quizTypes.who=parseInt(document.getElementById('numWho').value)||0;
+            if(document.getElementById('useWhere').checked)quizTypes.where=parseInt(document.getElementById('numWhere').value)||0;
+            if(document.getElementById('useWhen').checked)quizTypes.when=parseInt(document.getElementById('numWhen').value)||0;
+            if(document.getElementById('useWhy').checked)quizTypes.why=parseInt(document.getElementById('numWhy').value)||0;
+            if(document.getElementById('useWhich').checked)quizTypes.which=parseInt(document.getElementById('numWhich').value)||0;
+            if(document.getElementById('useHow').checked)quizTypes.how=parseInt(document.getElementById('numHow').value)||0;
+            if(document.getElementById('useWhose').checked)quizTypes.whose=parseInt(document.getElementById('numWhose').value)||0;
+            const useInternet = document.getElementById('useInternet').checked;
+            if(provider!=='local'&&!apiKey.trim()){alert('Please enter your API key');return;}
+            // Use client-side NLP for Local NLP (offline)
+            if(provider==='local'){
+                btn.disabled=true;
+                btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+                document.getElementById('progressContainer').classList.remove('hidden');
+                // simulate a tiny delay for UX
+                setTimeout(() => {
+                    const result = clientSideNLP(notes, numFlashcards, quizTypes);
+                    lastGeneratedData = result;
+                    document.getElementById('progressContainer').classList.add('hidden');
+                    document.getElementById('saveToLibraryBtn').classList.remove('hidden');
+                    renderResultsOneByOne(result);
+                    btn.disabled = false;
+                    btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+                }, 300);
+                return;
+            }
+            btn.disabled=true;btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
+            document.getElementById('progressContainer').classList.remove('hidden');
+            let wakeSuccess = false;
+            try {
+                const wakeRes = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(20000) });
+                if (wakeRes.ok) wakeSuccess = true;
+            } catch (e) {}
+            
+            if (!wakeSuccess) {
+                document.getElementById('progressContainer').classList.add('hidden');
+                btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+                btn.disabled = false;
+                alert('The server is waking up from sleep (free plan). Please wait 30 seconds, then try again.');
+                return;
+            }
+            btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
+            const formData=new FormData();if(provider!=='local')formData.append('api_key',apiKey);formData.append('provider',provider);formData.append('notes',notes);formData.append('num_flashcards',numFlashcards);formData.append('quiz_types',JSON.stringify(quizTypes));formData.append('use_internet',useInternet);if(fileInput.files[0])formData.append('file',fileInput.files[0]);
+            const endpoint=provider==='local'?`${BACKEND_URL}/api/generate-reviewer-local`:`${BACKEND_URL}/api/generate-reviewer`;
+            try{const response=await fetch(endpoint,{method:'POST',body:formData});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Generation failed');document.getElementById('progressContainer').classList.add('hidden');lastGeneratedData=data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');renderResultsOneByOne(data);}catch(err){document.getElementById('progressContainer').classList.add('hidden');alert('Error: '+err.message);}finally{btn.disabled=false;btnContent.innerHTML='<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';}
+        }
+
+        async function renderResultsOneByOne(data){const container=document.getElementById('resultsContainer');container.classList.remove('hidden');container.scrollIntoView({behavior:'smooth'});document.getElementById('summaryList').innerHTML='';document.getElementById('flashcardGrid').innerHTML='';document.getElementById('quizContainer').innerHTML='';
+        const summaryItems=(data.summary||[]).map(s=>`<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-indigo-400 mt-0.5"></i>${s}</li>`);document.getElementById('summaryList').innerHTML=summaryItems.join('');
+        const flashcardContainer=document.getElementById('flashcardGrid');for(let i=0;i<(data.flashcards||[]).length;i++){const card=data.flashcards[i];const div=document.createElement('div');div.className='reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';div.innerHTML=`<p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p>`;flashcardContainer.appendChild(div);await new Promise(resolve=>setTimeout(resolve,150));}
+        const quizContainer=document.getElementById('quizContainer');for(let i=0;i<(data.quiz||[]).length;i++){const q=data.quiz[i];const div=document.createElement('div');div.className='reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';let optionsHTML='';if(q.options&&q.options.length){optionsHTML=q.options.map((opt,idx)=>`<button onclick="checkAnswer(this, '${opt===q.answer}')" class="quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-indigo-500/10 transition"><span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}</button>`).join('');}else{optionsHTML=`<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;}div.innerHTML=`<p class="text-sm font-semibold mb-2">${i+1}. ${q.question}</p>${optionsHTML}`;quizContainer.appendChild(div);await new Promise(resolve=>setTimeout(resolve,200));}}
+        function checkAnswer(btn,isCorrect){const parent=btn.parentElement;Array.from(parent.children).forEach(child=>{child.classList.remove('bg-emerald-500/20','border-emerald-500','text-emerald-300','bg-rose-500/20','border-rose-500','text-rose-300');});if(isCorrect==='true')btn.classList.add('bg-emerald-500/20','border-emerald-500','text-emerald-300');else btn.classList.add('bg-rose-500/20','border-rose-500','text-rose-300');}
+
+        // Save/Load/Delete
+        document.getElementById('saveToLibraryBtn').addEventListener('click',()=>{if(!lastGeneratedData)return;const entry={id:Date.now(),date:new Date().toLocaleString(),notes:document.getElementById('studyNotes').value.slice(0,100)+'...',data:lastGeneratedData};let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved.unshift(entry);localStorage.setItem('acadhub_saved',JSON.stringify(saved));alert('Saved to Library!');renderSavedList();});
+        function renderSavedList(){const list=document.getElementById('savedList');const empty=document.getElementById('emptyLibrary');let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');if(saved.length===0){empty.classList.remove('hidden');list.innerHTML='';return;}empty.classList.add('hidden');list.innerHTML=saved.map(entry=>`<div class="saved-card flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><div class="flex-1"><p class="text-sm font-semibold">${entry.date}</p><p class="text-xs opacity-50 truncate">${entry.notes}</p></div><div class="flex gap-2"><button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs hover:bg-indigo-500/30 transition"><i class="fa-solid fa-eye mr-1"></i>Load</button><button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition"><i class="fa-solid fa-trash"></i></button></div></div>`).join('');}
+        function loadSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');const entry=saved.find(e=>e.id===id);if(!entry)return;lastGeneratedData=entry.data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');switchTab('reviewer');renderResultsOneByOne(entry.data);}
+        function deleteSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved=saved.filter(e=>e.id!==id);localStorage.setItem('acadhub_saved',JSON.stringify(saved));renderSavedList();}
+
+        // GCash reveal
+        function revealGCash() {
+            document.getElementById("gcashHidden").classList.add("hidden");
+            document.getElementById("gcashFull").classList.remove("hidden");
+        }
+
+        // Profile modal (mandatory)
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+        }
+        // Enable Save button when all fields are filled
+        (function() {
+            const firstName = document.getElementById('visitorFirstName');
+            const lastName = document.getElementById('visitorLastName');
+            const agree = document.getElementById('agreeTerms');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            function checkFields() {
+                if (firstName.value.trim() && lastName.value.trim() && agree.checked) {
+                    saveBtn.disabled = false;
+                } else {
+                    saveBtn.disabled = true;
+                }
+            }
+            firstName.addEventListener('input', checkFields);
+            lastName.addEventListener('input', checkFields);
+            agree.addEventListener('change', checkFields);
+        })();
+        async function saveVisitorName() {
+            const firstName = document.getElementById("visitorFirstName").value.trim();
+            const lastName = document.getElementById("visitorLastName").value.trim();
+            if (!firstName || !lastName) { alert("Please enter both names."); return; }
+            
+            const saveBtn = document.getElementById("saveProfileBtn");
+            if (!saveBtn) {
+                alert("Error: button not found. Please refresh.");
+                return;
+            }
+
+            // Save locally immediately
+            localStorage.setItem("profile_name", firstName + " " + lastName);
+            localStorage.setItem("profile_saved", "true");
+            document.getElementById("profileButton").style.display = "none";
+
+            // Show spinner
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Saving...';
+
+            // Try Firebase with timeout (don't block the UI)
+            if (typeof db !== "undefined" && typeof firebase !== "undefined") {
+                try {
+                    await Promise.race([
+                        db.collection("visitors").add({
+                            firstName: firstName,
+                            lastName: lastName,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000))
+                    ]);
+                } catch (err) {
+                    console.log("Firebase save delayed, using local fallback.");
+                }
+            }
+
+            // Hide modal and reset button
+            document.getElementById("profileModal").classList.add("hidden");
+            alert("Profile saved! You may now use the app.");
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save';
+        }
+
+        // Accuracy guide toggle
+        function toggleAccuracyInfo() { document.getElementById("accuracyInfo").classList.toggle("hidden"); }
+
+        // Evaluation modal
+        let selectedRating = 0;
+        document.querySelectorAll(".star").forEach(star => {
+            star.addEventListener("click", function() {
+                selectedRating = parseInt(this.dataset.value);
+                document.querySelectorAll(".star").forEach((s, index) => {
+                    if (index < selectedRating) {
+                        s.classList.remove("fa-regular");
+                        s.classList.add("fa-solid", "text-amber-400");
+                    } else {
+                        s.classList.remove("fa-solid", "text-amber-400");
+                        s.classList.add("fa-regular");
+                    }
+                });
+            });
+        });
+        function toggleEvalModal() {
+            const modal = document.getElementById("evalModal");
+            modal.classList.toggle("hidden");
+            if (!modal.classList.contains("hidden")) {
+                const name = localStorage.getItem("profile_name") || "Anonymous";
+                document.getElementById("evalProfileName").textContent = "Submitting as: " + name;
             }
         }
+        async function submitEval() {
+            if (selectedRating === 0) { alert("Please select a star rating."); return; }
+            const suggestions = document.getElementById("evalSuggestions").value.trim();
+            const profileName = localStorage.getItem("profile_name") || "Anonymous";
+            const evalBtn = document.querySelector("#evalModal .btn-primary");
+            const originalHTML = evalBtn.innerHTML;
+            evalBtn.disabled = true;
+            evalBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Submitting...';
+            try {
+                await db.collection("feedback").add({
+                    name: profileName,
+                    rating: selectedRating,
+                    suggestions: suggestions,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("Thank you for your feedback!");
+                toggleEvalModal();
+                selectedRating = 0;
+                document.querySelectorAll(".star").forEach(s => {
+                    s.classList.remove("fa-solid", "text-amber-400");
+                    s.classList.add("fa-regular");
+                });
+                document.getElementById("evalSuggestions").value = "";
+            } catch (err) {
+                alert("Error submitting feedback. Please try again.");
+            } finally {
+                evalBtn.disabled = false;
+                evalBtn.innerHTML = originalHTML;
+            }
+        }
+
+        // Test My Limits
+        let testDifficulty = 'medium';
+        let testQuestions = [];
+        let testCurrentIndex = 0;
+        let testCorrectCount = 0;
+        let testTimerInterval = null;
+        let testTimeLeft = 0;
+        function setDifficulty(level) {
+            testDifficulty = level;
+            ['easy', 'medium', 'hard'].forEach(d => {
+                const btn = document.getElementById('diff' + d.charAt(0).toUpperCase() + d.slice(1));
+                if (d === level) {
+                    btn.classList.add('bg-indigo-600', 'text-white');
+                    btn.classList.remove('bg-white/10');
+                } else {
+                    btn.classList.remove('bg-indigo-600', 'text-white');
+                    btn.classList.add('bg-white/10');
+                }
+            });
+        }
+        async function startTest() {
+            const notes = document.getElementById('testNotes').value.trim();
+            if (!notes) { alert('Please enter some notes to generate questions.'); return; }
+            const difficultyMap = {
+                easy: { truefalse: 3, identification: 3, multiplechoice: 2, total: 8, timePerQuestion: 0 },
+                medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15, timePerQuestion: 20 },
+                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2, which: 2, total: 26, timePerQuestion: 15 }
+            };
+            const quizTypes = {};
+            for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
+                if (key !== 'total' && key !== 'timePerQuestion') quizTypes[key] = value;
+            }
+            document.getElementById('startTestBtn').disabled = true;
+            document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+            const formData = new FormData();
+            formData.append('notes', notes);
+            formData.append('num_flashcards', 0);
+            formData.append('quiz_types', JSON.stringify(quizTypes));
+            formData.append('use_internet', document.getElementById('useTestInternet').checked);
+            const testFileInput = document.getElementById('testFileInput');
+            if (testFileInput.files[0]) formData.append('file', testFileInput.files[0]);
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Generation failed');
+                testQuestions = data.quiz || [];
+                testCurrentIndex = 0;
+                testCorrectCount = 0;
+                if (testQuestions.length === 0) {
+                    alert('No questions could be generated. Please provide more detailed notes.');
+                    document.getElementById('startTestBtn').disabled = false;
+                    document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+                    return;
+                }
+                document.getElementById('testQuizContainer').classList.remove('hidden');
+                document.getElementById('testResultsContainer').classList.add('hidden');
+                document.getElementById('startTestBtn').classList.add('hidden');
+                showTestQuestion(0);
+            } catch (err) {
+                alert('Error: ' + err.message);
+                document.getElementById('startTestBtn').disabled = false;
+                document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+            }
+        }
+        function showTestQuestion(index) {
+            if (index >= testQuestions.length) { finishTest(); return; }
+            const q = testQuestions[index];
+            document.getElementById('questionCounter').textContent = `Question ${index + 1} / ${testQuestions.length}`;
+            document.getElementById('testQuestionText').textContent = q.question;
+            const optionsContainer = document.getElementById('testOptionsContainer');
+            optionsContainer.innerHTML = '';
+            if (q.options && q.options.length) {
+                q.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 hover:bg-indigo-500/10 transition';
+                    btn.innerHTML = `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
+                    btn.addEventListener('click', () => handleTestAnswer(btn, opt === q.answer, q.answer));
+                    optionsContainer.appendChild(btn);
+                });
+            } else {
+                optionsContainer.innerHTML = `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;
+                document.getElementById('nextTestBtn').classList.remove('hidden');
+            }
+            const timePerQuestion = { easy: 0, medium: 20, hard: 15 }[testDifficulty];
+            if (timePerQuestion > 0) {
+                testTimeLeft = timePerQuestion;
+                document.getElementById('timerDisplay').classList.remove('hidden');
+                document.getElementById('timerDisplay').textContent = `⏱ ${testTimeLeft}s`;
+                clearInterval(testTimerInterval);
+                testTimerInterval = setInterval(() => {
+                    testTimeLeft--;
+                    document.getElementById('timerDisplay').textContent = `⏱ ${testTimeLeft}s`;
+                    if (testTimeLeft <= 0) {
+                        clearInterval(testTimerInterval);
+                        testCurrentIndex++;
+                        showTestQuestion(testCurrentIndex);
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('timerDisplay').classList.add('hidden');
+            }
+            document.getElementById('nextTestBtn').classList.add('hidden');
+        }
+        function handleTestAnswer(btn, isCorrect, correctAnswer) {
+            const parent = btn.parentElement;
+            Array.from(parent.children).forEach(child => {
+                child.style.pointerEvents = 'none';
+                if (child.textContent.includes(correctAnswer)) {
+                    child.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+                }
+            });
+            if (isCorrect) {
+                btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+                testCorrectCount++;
+            } else {
+                btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
+            }
+            clearInterval(testTimerInterval);
+            document.getElementById('nextTestBtn').classList.remove('hidden');
+        }
+        function nextTestQuestion() { clearInterval(testTimerInterval); testCurrentIndex++; showTestQuestion(testCurrentIndex); }
+        function finishTest() {
+            clearInterval(testTimerInterval);
+            document.getElementById('testQuizContainer').classList.add('hidden');
+            document.getElementById('testResultsContainer').classList.remove('hidden');
+            document.getElementById('testCorrectCount').textContent = testCorrectCount;
+            document.getElementById('testTotalCount').textContent = testQuestions.length;
+            const percentage = Math.round((testCorrectCount / testQuestions.length) * 100);
+            document.getElementById('testPercentage').textContent = `${percentage}%`;
+        }
+        function resetTest() {
+            document.getElementById('testQuizContainer').classList.add('hidden');
+            document.getElementById('testResultsContainer').classList.add('hidden');
+            document.getElementById('startTestBtn').classList.remove('hidden');
+            document.getElementById('startTestBtn').disabled = false;
+            document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+            testQuestions = [];
+            testCurrentIndex = 0;
+            testCorrectCount = 0;
+        }
+    
+        // Custom accent colour
         (function() {
-            if (localStorage.getItem('theme') === 'light') {
-                document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light');
-                const icon = document.getElementById('themeIcon');
-                if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); icon.style.color = '#6366f1'; }
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
             }
         })();
 
-        // ---- Tabs (Reviewer / Library) ----
-        function toggleLibrary() {
-            document.getElementById('viewReviewer').classList.add('hidden');
-            document.getElementById('viewLibrary').classList.remove('hidden');
-            document.getElementById('tabReviewer').classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
-            document.getElementById('tabReviewer').classList.add('opacity-60');
-            document.getElementById('tabLibrary').classList.add('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
-            document.getElementById('tabLibrary').classList.remove('opacity-60');
-            renderSavedList();
-        }
-        document.getElementById('tabReviewer').addEventListener('click', () => {
-            document.getElementById('viewReviewer').classList.remove('hidden');
-            document.getElementById('viewLibrary').classList.add('hidden');
-            document.getElementById('tabReviewer').classList.add('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
-            document.getElementById('tabReviewer').classList.remove('opacity-60');
-            document.getElementById('tabLibrary').classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-cyan-500', 'text-white');
-            document.getElementById('tabLibrary').classList.add('opacity-60');
-        });
-        document.getElementById('tabLibrary').addEventListener('click', toggleLibrary);
-
-        // ---- Provider UI ----
-        function updateProviderUI() {
-            const provider = document.getElementById('aiProvider').value;
-            const box = document.getElementById('apiKeyContainer');
-            const input = document.getElementById('apiKey');
-            if (provider === 'local') { box.style.display = 'none'; input.required = false; }
-            else { box.style.display = 'block'; input.required = true; }
-        }
-        function toggleApiKeyVisibility() {
-            const input = document.getElementById('apiKey');
-            const icon = document.getElementById('toggleEyeIcon');
-            if (input.type === 'password') { input.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
-            else { input.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
-        }
-        function updateFileName(input) {
-            const nameDisplay = document.getElementById('fileNameDisplay');
-            if (input.files && input.files[0]) {
-                nameDisplay.innerHTML = `<span class="text-blue-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;
-                nameDisplay.parentElement.classList.add('border-blue-500/50', 'bg-blue-500/5');
-            } else {
-                nameDisplay.textContent = 'Drop file or click to browse';
-                nameDisplay.parentElement.classList.remove('border-blue-500/50', 'bg-blue-500/5');
-            }
-        }
-
-        // ---- Generate ----
-        async function handleGenerate() {
-            const btn = document.getElementById('submitBtn');
-            const btnContent = document.getElementById('btnContent');
-            const provider = document.getElementById('aiProvider').value;
-            const apiKey = document.getElementById('apiKey').value;
-            const notes = document.getElementById('studyNotes').value;
-            const fileInput = document.getElementById('fileInput');
-            const numFlashcards = document.getElementById('numFlashcards').value || 10;
-            const quizTypes = {};
-            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById('numTrueFalse').value) || 0;
-            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document.getElementById('numIdentification').value) || 0;
-            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById('numEnumeration').value) || 0;
-            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document.getElementById('numMultipleChoice').value) || 0;
-            if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
-
-            btn.disabled = true;
-            btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
-            document.getElementById('progressContainer').classList.remove('hidden');
-
-            const formData = new FormData();
-            if (provider !== 'local') formData.append('api_key', apiKey);
-            formData.append('provider', provider);
-            formData.append('notes', notes);
-            formData.append('num_flashcards', numFlashcards);
-            formData.append('quiz_types', JSON.stringify(quizTypes));
-            if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
-
-            const endpoint = provider === 'local' ? `${BACKEND_URL}/api/generate-reviewer-local` : `${BACKEND_URL}/api/generate-reviewer`;
-
-            try {
-                const response = await fetch(endpoint, { method: 'POST', body: formData });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.detail || 'Generation failed');
-                document.getElementById('progressContainer').classList.add('hidden');
-                lastGeneratedData = data;
-                document.getElementById('saveToLibraryBtn').classList.remove('hidden');
-                renderResultsOneByOne(data);
-            } catch (err) {
-                document.getElementById('progressContainer').classList.add('hidden');
-                alert('Error: ' + err.message);
-            } finally {
-                btn.disabled = false;
-                btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
-            }
-        }
-
-        async function renderResultsOneByOne(data) {
-            const container = document.getElementById('resultsContainer');
-            container.classList.remove('hidden');
-            container.scrollIntoView({ behavior: 'smooth' });
-            document.getElementById('summaryList').innerHTML = '';
-            document.getElementById('flashcardGrid').innerHTML = '';
-            document.getElementById('quizContainer').innerHTML = '';
-
-            const summaryItems = (data.summary || []).map(s => `<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i>${s}</li>`);
-            document.getElementById('summaryList').innerHTML = summaryItems.join('');
-
-            const flashcardContainer = document.getElementById('flashcardGrid');
-            for (let i = 0; i < (data.flashcards || []).length; i++) {
-                const card = data.flashcards[i];
-                const div = document.createElement('div');
-                div.className = 'reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';
-                div.innerHTML = `<p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p>`;
-                flashcardContainer.appendChild(div);
-                await new Promise(resolve => setTimeout(resolve, 150));
-            }
-
-            const quizContainer = document.getElementById('quizContainer');
-            for (let i = 0; i < (data.quiz || []).length; i++) {
-                const q = data.quiz[i];
-                const div = document.createElement('div');
-                div.className = 'reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';
-                let optionsHTML = '';
-                if (q.options && q.options.length) {
-                    optionsHTML = q.options.map((opt, idx) => `<button onclick="checkAnswer(this, '${opt === q.answer}')" class="w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-blue-500/10 transition"><span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65+idx)}</span>${opt}</button>`).join('');
-                } else {
-                    optionsHTML = `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;
-                }
-                div.innerHTML = `<p class="text-sm font-semibold mb-2">${i+1}. ${q.question}</p>${optionsHTML}`;
-                quizContainer.appendChild(div);
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
-        }
-
-        function checkAnswer(btn, isCorrect) {
-            const parent = btn.parentElement;
-            Array.from(parent.children).forEach(child => {
-                child.classList.remove('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300', 'bg-rose-500/20', 'border-rose-500', 'text-rose-300');
-            });
-            if (isCorrect === 'true') btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
-            else btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
-        }
-
-        // ---- Save to Library (localStorage) ----
-        document.getElementById('saveToLibraryBtn').addEventListener('click', () => {
-            if (!lastGeneratedData) return;
-            const entry = {
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                notes: document.getElementById('studyNotes').value.slice(0, 100) + '...',
-                data: lastGeneratedData
-            };
-            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
-            saved.unshift(entry);
-            localStorage.setItem('acadhub_saved', JSON.stringify(saved));
-            alert('Saved to Library!');
-            renderSavedList();
-        });
-
-        function renderSavedList() {
-            const list = document.getElementById('savedList');
-            const empty = document.getElementById('emptyLibrary');
-            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
-            if (saved.length === 0) {
-                empty.classList.remove('hidden');
-                list.innerHTML = '';
-                return;
-            }
-            empty.classList.add('hidden');
-            list.innerHTML = saved.map(entry => `
-                <div class="saved-card flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                    <div class="flex-1">
-                        <p class="text-sm font-semibold">${entry.date}</p>
-                        <p class="text-xs opacity-50 truncate">${entry.notes}</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 text-xs hover:bg-blue-500/30 transition">
-                            <i class="fa-solid fa-eye mr-1"></i>Load
-                        </button>
-                        <button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function loadSaved(id) {
-            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
-            const entry = saved.find(e => e.id === id);
-            if (!entry) return;
-            lastGeneratedData = entry.data;
-            document.getElementById('saveToLibraryBtn').classList.remove('hidden');
-            document.getElementById('tabReviewer').click();
-            renderResultsOneByOne(entry.data);
-        }
-
-        function deleteSaved(id) {
-            let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
-            saved = saved.filter(e => e.id !== id);
-            localStorage.setItem('acadhub_saved', JSON.stringify(saved));
-            renderSavedList();
-        }
     </script>
 </body>
 </html>
