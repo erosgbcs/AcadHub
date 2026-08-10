@@ -668,7 +668,7 @@
             }
         }
 
-        function updateProviderUI() { const p = document.getElementById("aiProvider").value; const box = document.getElementById("apiKeyContainer"); if (p === "local") { box.style.display = "none"; document.getElementById("apiKey").required = false; } else { box.style.display = "block"; document.getElementById("apiKey").required = true; if (p === "gemini") { document.getElementById("apiKeyLabel").innerHTML = "<i class="fa-solid fa-key mr-1.5 text-amber-400"></i>Gemini API Key"; document.getElementById("apiKey").placeholder = "AIzaSy..."; } else if (p === "deepseek") { document.getElementById("apiKeyLabel").innerHTML = "<i class="fa-solid fa-key mr-1.5 text-amber-400"></i>DeepSeek API Key"; document.getElementById("apiKey").placeholder = "sk-..."; } } }
+        function updateProviderUI() { if (document.getElementById("aiProvider").value === "local") { document.getElementById("apiKeyContainer").style.display = "none"; document.getElementById("apiKey").required = false; return; } document.getElementById("apiKeyContainer").style.display = "block"; document.getElementById("apiKey").required = true;
             const provider = document.getElementById('aiProvider').value;
             const label = document.getElementById('apiKeyLabel');
             const input = document.getElementById('apiKey');
@@ -741,7 +741,7 @@
                 { pct: 35, msg: '<i class="fa-solid fa-paper-plane text-cyan-400"></i> Processing with ' + provider.toUpperCase() + '...', delay: 2500 },
                 { pct: 60, msg: '<i class="fa-solid fa-brain text-teal-400"></i> Generating smart flashcards...', delay: 4000 },
                 { pct: 80, msg: '<i class="fa-solid fa-list-check text-amber-400"></i> Creating practice quiz...', delay: 5500 },
-                { pct: 95, msg: "<i class="fa-solid fa-code text-blue-400"></i> Finalizing..." , delay: 500 }
+                { pct: 95, msg: '<i class="fa-solid fa-code text-blue-400"></i> Formatting results...', delay: 7000 }
             ];
 
             stages.forEach((stage, index) => {
@@ -779,7 +779,7 @@
             const fileInput = document.getElementById('fileInput');
             const notes = document.getElementById('studyNotes').value;
 
-            if (provider !== "local" && !apiKey.trim()) {
+            if (!apiKey.trim()) {
                 alert('Please enter your API key to continue');
                 return;
             }
@@ -790,7 +790,7 @@
             startProgressAnimation(provider);
 
             const formData = new FormData();
-            if (provider !== 'local') formData.append('api_key', apiKey);
+            formData.append('api_key', apiKey);
             formData.append('provider', provider);
             formData.append('notes', notes);
             if (fileInput.files[0]) {
@@ -798,7 +798,7 @@
             }
 
             try {
-                const response = await fetch(provider === "local" ? `${BACKEND_URL}/api/generate-reviewer-local` : provider === "local" ? `${BACKEND_URL}/api/generate-reviewer-local` : `${BACKEND_URL}/api/generate-reviewer`, {
+                const response = await fetch(provider === "local" ? `${BACKEND_URL}/api/generate-reviewer-local` : `${BACKEND_URL}/api/generate-reviewer`, {
                     method: 'POST',
                     body: formData
                 });
@@ -889,11 +889,10 @@
         }
 
         // Initialize
-        window.addEventListener("DOMContentLoaded", () => { updateProviderUI(); });
+        window.addEventListener('DOMContentLoaded', () => {
             loadTheme();
             updateProviderUI();
         });
     </script>
-<script src="fix.js"></script>
 </body>
 </html>
