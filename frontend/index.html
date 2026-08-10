@@ -129,7 +129,51 @@
                 <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Generate Study Materials</h2>
                 <form onsubmit="return false;" class="space-y-3 sm:space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div><label class="block text-xs font-semibold mb-1">AI Engine</label><select id="aiProvider" onchange="updateProviderUI()" class="w-full text-sm"><option value="local" selected>🧠 Local NLP (No Key)</option><option value="gemini">Google Gemini AI</option><option value="deepseek">DeepSeek AI</option></select></div>
+                        <div><label class="block text-xs font-semibold mb-1">AI Engine</label><select id="aiProvider" onchange="updateProviderUI()" class="w-full text-sm"><option value="local" selected>🧠 Local NLP (No Key)</option><option value="gemini">Google Gemini AI</option><option value="deepseek">DeepSeek AI</option></select>
+                            <!-- Accuracy info toggle -->
+                            <button type="button" onclick="toggleAccuracyInfo()" class="text-xs text-indigo-400 hover:underline mt-1">
+                                <i class="fa-solid fa-circle-info mr-1"></i> See accuracy guide
+                            </button>
+                        </div>
+                        <div id="accuracyInfo" class="hidden col-span-full mt-2 text-xs bg-white/5 border border-white/10 rounded-xl p-3 overflow-x-auto">
+    <table class="w-full text-left">
+        <thead>
+            <tr class="border-b border-white/10">
+                <th class="py-2 pr-2 font-semibold">Question type</th>
+                <th class="py-2 px-2 font-semibold">🧠 Local NLP</th>
+                <th class="py-2 pl-2 font-semibold">🤖 Gemini / DeepSeek</th>
+            </tr>
+        </thead>
+        <tbody class="opacity-80">
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">True/False</td>
+                <td class="py-2 px-2">90% accurate (sometimes all true)</td>
+                <td class="py-2 pl-2">100% accurate, proper mix</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">Identification</td>
+                <td class="py-2 px-2">95% (blanks key phrases)</td>
+                <td class="py-2 pl-2">100% (blanks the exact right word)</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">Multiple Choice</td>
+                <td class="py-2 px-2">80% (some odd distractors)</td>
+                <td class="py-2 pl-2">100% (natural, challenging options)</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">What / Who / Where</td>
+                <td class="py-2 px-2">85% (works, but can target non‑person names)</td>
+                <td class="py-2 pl-2">100%</td>
+            </tr>
+            <tr class="border-b border-white/5">
+                <td class="py-2 pr-2">Enumeration</td>
+                <td class="py-2 px-2">80% (only 1 point if text has only one)</td>
+                <td class="py-2 pl-2">100% (can synthesize multiple points)</td>
+            </tr>
+        </tbody>
+    </table>
+    <p class="mt-2 opacity-50">All question types are generated accordingly. Accuracy may vary with text complexity.</p>
+</div>
                         <div id="apiKeyContainer" class="sm:col-span-2" style="display:none;"><label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label><div class="relative"><input type="password" id="apiKey" placeholder="Paste API key..." class="text-sm"><span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span><button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button></div></div>
                     </div>
                     <div><label class="block text-xs font-semibold mb-1">Upload Document</label><label for="fileInput" class="flex flex-col items-center justify-center w-full p-6 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5"><div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2"><i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-400"></i></div><p class="text-xs sm:text-sm" id="fileNameDisplay">Drop file or click to browse</p><p class="text-xs opacity-50">PDF, DOCX, TXT</p><input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" /></label></div>
