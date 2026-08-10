@@ -50,11 +50,14 @@
     <div class="max-w-2xl mx-auto space-y-6 flex-1">
         <div class="glass-card flex items-center justify-between">
             <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xl"><i class="fa-solid fa-graduation-cap"></i></div><div><h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">AcadHub</h1><p class="text-xs opacity-70">Study Suite</p></div></div>
-            <div class="flex items-center gap-3"><button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400"></i></button><button onclick="toggleLibrary()" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button><div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div></div>
+            <div class="flex items-center gap-3"><button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i id="themeIcon" class="fa-solid fa-sun text-yellow-400"></i></button><button onclick="switchTab('library')" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button><div id="backendStatus" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div></div>
         </div>
 
-        <div class="flex p-1.5 glass-card rounded-2xl"><button id="tabReviewer" class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button><button id="tabLibrary" class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Saved Library</button></div>
+        <div class="flex p-1.5 glass-card rounded-2xl">
+            <button id="tabReviewer" class="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white">AI Reviewer</button>
+            <button id="tabLibrary" class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Saved Library</button>
             <button id="tabTest" class="flex-1 py-3 rounded-xl text-sm font-semibold opacity-60">Test My Limits</button>
+        </div>
 
         <div id="viewReviewer" class="space-y-6"><div class="glass-card"><h2 class="text-lg font-bold mb-4">Generate Study Materials</h2><form onsubmit="return false;">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"><div><label class="block text-xs font-semibold mb-1">AI Engine</label><select id="aiProvider" onchange="updateProviderUI()" class="w-full py-3 px-3 bg-white/10 border border-white/10 rounded-xl text-sm"><option value="local" selected>🧠 Local NLP (No Key)</option><option value="gemini">Google Gemini AI</option><option value="deepseek">DeepSeek AI</option></select></div><div id="apiKeyContainer" class="sm:col-span-2" style="display:none;"><label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label><div class="relative"><input type="password" id="apiKey" placeholder="Paste API key..." class="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/10 rounded-xl text-sm"><span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span><button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50"><i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i></button></div></div></div>
@@ -66,7 +69,6 @@
                 <div class="flex items-center gap-2"><input type="checkbox" id="useIdentification" checked class="accent-blue-500"><label for="useIdentification" class="text-xs">Identification</label><input type="number" id="numIdentification" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
                 <div class="flex items-center gap-2"><input type="checkbox" id="useEnumeration" checked class="accent-blue-500"><label for="useEnumeration" class="text-xs">Enumeration</label><input type="number" id="numEnumeration" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
                 <div class="flex items-center gap-2"><input type="checkbox" id="useMultipleChoice" checked class="accent-blue-500"><label for="useMultipleChoice" class="text-xs">Multiple Choice</label><input type="number" id="numMultipleChoice" value="3" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
-                <!-- NEW WH‑QUESTION TYPES -->
                 <div class="flex items-center gap-2"><input type="checkbox" id="useWhat" class="accent-blue-500"><label for="useWhat" class="text-xs">What</label><input type="number" id="numWhat" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
                 <div class="flex items-center gap-2"><input type="checkbox" id="useWho" class="accent-blue-500"><label for="useWho" class="text-xs">Who</label><input type="number" id="numWho" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
                 <div class="flex items-center gap-2"><input type="checkbox" id="useWhere" class="accent-blue-500"><label for="useWhere" class="text-xs">Where</label><input type="number" id="numWhere" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
@@ -76,18 +78,48 @@
                 <div class="flex items-center gap-2"><input type="checkbox" id="useHow" class="accent-blue-500"><label for="useHow" class="text-xs">How</label><input type="number" id="numHow" value="2" min="0" max="10" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
                 <div class="flex items-center gap-2"><input type="checkbox" id="useWhose" class="accent-blue-500"><label for="useWhose" class="text-xs">Whose</label><input type="number" id="numWhose" value="1" min="0" max="5" class="w-16 py-1 px-2 bg-white/10 border border-white/10 rounded-lg text-xs"></div>
             </div></div>
-<!-- Internet enrichment toggle -->
-<div class="flex items-center gap-2 mb-4">
-    <input type="checkbox" id="useInternet" class="accent-blue-500">
-    <label for="useInternet" class="text-xs">🌐 Enrich with Internet (Wikipedia)</label>
-</div>
+            <!-- Internet enrichment toggle -->
+            <div class="flex items-center gap-2 mb-4">
+                <input type="checkbox" id="useInternet" class="accent-blue-500">
+                <label for="useInternet" class="text-xs">🌐 Enrich with Internet (Wikipedia)</label>
+            </div>
             <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg"><span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span></button>
         </form>
         <div id="progressContainer" class="hidden mt-6 pt-6 border-t border-white/10 text-center"><i class="fa-solid fa-spinner animate-spin text-blue-400 text-2xl"></i><p class="text-sm mt-2 opacity-70">Processing...</p></div></div>
         <div id="resultsContainer" class="hidden space-y-6"><div class="flex justify-end gap-2"><button id="saveToLibraryBtn" class="hidden px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition"><i class="fa-solid fa-bookmark mr-2"></i>Save to Library</button></div><div class="glass-card border-l-4 border-l-blue-500"><h3 class="text-sm font-bold uppercase text-blue-400 mb-3">📌 Key Concepts</h3><ul id="summaryList" class="space-y-2 text-sm"></ul></div><div class="glass-card border-l-4 border-l-cyan-500"><h3 class="text-sm font-bold uppercase text-cyan-400 mb-3">🃏 Flashcards</h3><div id="flashcardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div></div><div class="glass-card border-l-4 border-l-teal-500"><h3 class="text-sm font-bold uppercase text-teal-400 mb-3">❓ Practice Quiz</h3><div id="quizContainer" class="space-y-3"></div></div></div></div>
+
         <div id="viewLibrary" class="hidden space-y-4"><div class="glass-card"><h2 class="text-lg font-bold mb-4">📚 Saved Reviewers</h2><div id="savedList" class="space-y-2"></div><p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet. Generate one and click "Save to Library".</p></div></div>
+
+        <!-- Test My Limits Tab -->
+        <div id="viewTest" class="hidden space-y-6">
+            <div class="glass-card">
+                <h2 class="text-lg font-bold mb-4">⚡ Test My Limits</h2>
+                <p class="text-xs opacity-70 mb-4">Answer questions based on your notes. Choose difficulty and see how well you know the material.</p>
+                <div class="grid grid-cols-3 gap-3 mb-6">
+                    <button onclick="setDifficulty('easy')" id="diffEasy" class="py-3 px-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟢 Easy</button>
+                    <button onclick="setDifficulty('medium')" id="diffMedium" class="py-3 px-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟡 Medium</button>
+                    <button onclick="setDifficulty('hard')" id="diffHard" class="py-3 px-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🔴 Hard</button>
+                </div>
+                <div class="mb-4"><label class="block text-xs font-semibold mb-1">Notes</label><textarea id="testNotes" rows="4" placeholder="Paste your study notes here..." class="w-full p-4 bg-white/10 border border-white/10 rounded-xl text-sm resize-none"></textarea></div>
+                <button id="startTestBtn" onclick="startTest()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg"><i class="fa-solid fa-play mr-2"></i>Start Test</button>
+                <div id="testQuizContainer" class="hidden mt-6 space-y-4">
+                    <div class="flex items-center justify-between"><span class="text-sm font-semibold" id="questionCounter">Question 1 / 10</span><span class="text-sm font-mono text-amber-400 hidden" id="timerDisplay">⏱ 30s</span></div>
+                    <div id="testQuestionCard" class="bg-white/5 border border-white/10 p-6 rounded-xl"><p class="text-lg font-semibold mb-4" id="testQuestionText"></p><div id="testOptionsContainer" class="space-y-3"></div></div>
+                    <div class="flex justify-between"><button id="nextTestBtn" class="hidden px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition" onclick="nextTestQuestion()">Next Question <i class="fa-solid fa-arrow-right ml-2"></i></button></div>
+                </div>
+                <div id="testResultsContainer" class="hidden mt-6 text-center">
+                    <i class="fa-solid fa-trophy text-4xl text-amber-400 mb-3"></i>
+                    <h3 class="text-xl font-bold mb-2">Your Score</h3>
+                    <p class="text-3xl font-bold mb-1"><span id="testCorrectCount">0</span> / <span id="testTotalCount">0"></span></p>
+                    <p class="text-sm opacity-70" id="testPercentage"></p>
+                    <button onclick="resetTest()" class="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition"><i class="fa-solid fa-rotate-right mr-2"></i>Try Again</button>
+                </div>
+            </div>
+        </div>
     </div>
+
     <footer class="mt-8 text-center text-xs opacity-50 py-4">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-blue-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
+
     <script>
         const BACKEND_URL = "https://acadhub-api.onrender.com";
         let lastGeneratedData = null;
@@ -98,9 +130,10 @@
         });
         function toggleTheme(){const html=document.documentElement;const icon=document.getElementById('themeIcon');if(html.classList.contains('dark')){html.classList.remove('dark');html.classList.add('light');icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';localStorage.setItem('theme','light');}else{html.classList.remove('light');html.classList.add('dark');icon.classList.remove('fa-moon');icon.classList.add('fa-sun');icon.style.color='#facc15';localStorage.setItem('theme','dark');}}
         (function(){if(localStorage.getItem('theme')==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');const icon=document.getElementById('themeIcon');if(icon){icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';}}})();
-        function toggleLibrary(){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabReviewer').classList.remove('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabReviewer').classList.add('opacity-60');document.getElementById('tabLibrary').classList.add('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabLibrary').classList.remove('opacity-60');renderSavedList();}
-        document.getElementById('tabReviewer').addEventListener('click',()=>{document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('tabReviewer').classList.add('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabReviewer').classList.remove('opacity-60');document.getElementById('tabLibrary').classList.remove('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabLibrary').classList.add('opacity-60');});
-        document.getElementById('tabLibrary').addEventListener('click',toggleLibrary);
+        function switchTab(tab){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('viewTest').classList.add('hidden');document.getElementById('tabReviewer').classList.remove('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabReviewer').classList.add('opacity-60');document.getElementById('tabLibrary').classList.remove('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabLibrary').classList.add('opacity-60');document.getElementById('tabTest').classList.remove('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabTest').classList.add('opacity-60');if(tab==='reviewer'){document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('tabReviewer').classList.add('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabReviewer').classList.remove('opacity-60');}else if(tab==='library'){document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabLibrary').classList.add('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabLibrary').classList.remove('opacity-60');renderSavedList();}else if(tab==='test'){document.getElementById('viewTest').classList.remove('hidden');document.getElementById('tabTest').classList.add('bg-gradient-to-r','from-blue-600','to-cyan-500','text-white');document.getElementById('tabTest').classList.remove('opacity-60');}}
+        document.getElementById('tabReviewer').addEventListener('click',()=>switchTab('reviewer'));
+        document.getElementById('tabLibrary').addEventListener('click',()=>switchTab('library'));
+        document.getElementById('tabTest').addEventListener('click',()=>switchTab('test'));
         function updateProviderUI(){const provider=document.getElementById('aiProvider').value;const box=document.getElementById('apiKeyContainer');const input=document.getElementById('apiKey');if(provider==='local'){box.style.display='none';input.required=false;}else{box.style.display='block';input.required=true;}}
         function toggleApiKeyVisibility(){const input=document.getElementById('apiKey');const icon=document.getElementById('toggleEyeIcon');if(input.type==='password'){input.type='text';icon.classList.remove('fa-eye');icon.classList.add('fa-eye-slash');}else{input.type='password';icon.classList.remove('fa-eye-slash');icon.classList.add('fa-eye');}}
         function updateFileName(input){const nameDisplay=document.getElementById('fileNameDisplay');if(input.files&&input.files[0]){nameDisplay.innerHTML=`<span class="text-blue-400 font-semibold">${input.files[0].name}</span> <span class="opacity-50 text-xs">(${(input.files[0].size/1024).toFixed(1)} KB)</span>`;nameDisplay.parentElement.classList.add('border-blue-500/50','bg-blue-500/5');}else{nameDisplay.textContent='Drop file or click to browse';nameDisplay.parentElement.classList.remove('border-blue-500/50','bg-blue-500/5');}}
@@ -122,10 +155,10 @@
             if(document.getElementById('useWhich').checked)quizTypes.which=parseInt(document.getElementById('numWhich').value)||0;
             if(document.getElementById('useHow').checked)quizTypes.how=parseInt(document.getElementById('numHow').value)||0;
             if(document.getElementById('useWhose').checked)quizTypes.whose=parseInt(document.getElementById('numWhose').value)||0;
+            const useInternet = document.getElementById('useInternet').checked;
             if(provider!=='local'&&!apiKey.trim()){alert('Please enter your API key');return;}
             btn.disabled=true;btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Waking up server...';
             document.getElementById('progressContainer').classList.remove('hidden');
-            // Retry waking up the backend up to 3 times
             let wakeSuccess = false;
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
@@ -137,13 +170,13 @@
             }
             if (!wakeSuccess) {
                 document.getElementById('progressContainer').classList.add('hidden');
-                alert('Backend unreachable: ' + (err.message || 'Unknown error'));
+                alert('Cannot reach the server after several attempts. Please try again in a minute.');
                 btn.disabled = false;
                 btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
                 return;
             }
             btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Processing...';
-            const formData=new FormData();if(provider!=='local')formData.append('api_key',apiKey);formData.append('provider',provider);formData.append('notes',notes);formData.append('num_flashcards',numFlashcards);formData.append('quiz_types',JSON.stringify(quizTypes));if(fileInput.files[0])formData.append('file',fileInput.files[0]);
+            const formData=new FormData();if(provider!=='local')formData.append('api_key',apiKey);formData.append('provider',provider);formData.append('notes',notes);formData.append('num_flashcards',numFlashcards);formData.append('quiz_types',JSON.stringify(quizTypes));formData.append('use_internet',useInternet);if(fileInput.files[0])formData.append('file',fileInput.files[0]);
             const endpoint=provider==='local'?`${BACKEND_URL}/api/generate-reviewer-local`:`${BACKEND_URL}/api/generate-reviewer`;
             try{const response=await fetch(endpoint,{method:'POST',body:formData});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Generation failed');document.getElementById('progressContainer').classList.add('hidden');lastGeneratedData=data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');renderResultsOneByOne(data);}catch(err){document.getElementById('progressContainer').classList.add('hidden');alert('Error: '+err.message);}finally{btn.disabled=false;btnContent.innerHTML='<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';}
         }
@@ -154,37 +187,181 @@
         function checkAnswer(btn,isCorrect){const parent=btn.parentElement;Array.from(parent.children).forEach(child=>{child.classList.remove('bg-emerald-500/20','border-emerald-500','text-emerald-300','bg-rose-500/20','border-rose-500','text-rose-300');});if(isCorrect==='true')btn.classList.add('bg-emerald-500/20','border-emerald-500','text-emerald-300');else btn.classList.add('bg-rose-500/20','border-rose-500','text-rose-300');}
         document.getElementById('saveToLibraryBtn').addEventListener('click',()=>{if(!lastGeneratedData)return;const entry={id:Date.now(),date:new Date().toLocaleString(),notes:document.getElementById('studyNotes').value.slice(0,100)+'...',data:lastGeneratedData};let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved.unshift(entry);localStorage.setItem('acadhub_saved',JSON.stringify(saved));alert('Saved to Library!');renderSavedList();});
         function renderSavedList(){const list=document.getElementById('savedList');const empty=document.getElementById('emptyLibrary');let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');if(saved.length===0){empty.classList.remove('hidden');list.innerHTML='';return;}empty.classList.add('hidden');list.innerHTML=saved.map(entry=>`<div class="saved-card flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><div class="flex-1"><p class="text-sm font-semibold">${entry.date}</p><p class="text-xs opacity-50 truncate">${entry.notes}</p></div><div class="flex gap-2"><button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 text-xs hover:bg-blue-500/30 transition"><i class="fa-solid fa-eye mr-1"></i>Load</button><button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition"><i class="fa-solid fa-trash"></i></button></div></div>`).join('');}
-        function loadSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');const entry=saved.find(e=>e.id===id);if(!entry)return;lastGeneratedData=entry.data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');document.getElementById('tabReviewer').click();renderResultsOneByOne(entry.data);}
+        function loadSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');const entry=saved.find(e=>e.id===id);if(!entry)return;lastGeneratedData=entry.data;document.getElementById('saveToLibraryBtn').classList.remove('hidden');switchTab('reviewer');renderResultsOneByOne(entry.data);}
         function deleteSaved(id){let saved=JSON.parse(localStorage.getItem('acadhub_saved')||'[]');saved=saved.filter(e=>e.id!==id);localStorage.setItem('acadhub_saved',JSON.stringify(saved));renderSavedList();}
+
+        // ------------------ TEST MY LIMITS ------------------
+        let testDifficulty = 'medium';
+        let testQuestions = [];
+        let testCurrentIndex = 0;
+        let testCorrectCount = 0;
+        let testTimerInterval = null;
+        let testTimeLeft = 0;
+
+        function setDifficulty(level) {
+            testDifficulty = level;
+            ['easy', 'medium', 'hard'].forEach(d => {
+                const btn = document.getElementById('diff' + d.charAt(0).toUpperCase() + d.slice(1));
+                if (d === level) {
+                    btn.classList.add('bg-blue-600', 'text-white');
+                    btn.classList.remove('bg-white/10');
+                } else {
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('bg-white/10');
+                }
+            });
+        }
+
+        async function startTest() {
+            const notes = document.getElementById('testNotes').value.trim();
+            if (!notes) {
+                alert('Please enter some notes to generate questions.');
+                return;
+            }
+
+            const difficultyMap = {
+                easy: { truefalse: 3, identification: 3, multiplechoice: 2, total: 8, timePerQuestion: 0 },
+                medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15, timePerQuestion: 20 },
+                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2, which: 2, total: 26, timePerQuestion: 15 }
+            };
+
+            const quizTypes = {};
+            for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
+                if (key !== 'total' && key !== 'timePerQuestion') quizTypes[key] = value;
+            }
+
+            document.getElementById('startTestBtn').disabled = true;
+            document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+
+            const formData = new FormData();
+            formData.append('notes', notes);
+            formData.append('num_flashcards', 0);
+            formData.append('quiz_types', JSON.stringify(quizTypes));
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Generation failed');
+
+                testQuestions = data.quiz || [];
+                testCurrentIndex = 0;
+                testCorrectCount = 0;
+
+                if (testQuestions.length === 0) {
+                    alert('No questions could be generated. Please provide more detailed notes.');
+                    document.getElementById('startTestBtn').disabled = false;
+                    document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+                    return;
+                }
+
+                document.getElementById('testQuizContainer').classList.remove('hidden');
+                document.getElementById('testResultsContainer').classList.add('hidden');
+                document.getElementById('startTestBtn').classList.add('hidden');
+                showTestQuestion(0);
+            } catch (err) {
+                alert('Error: ' + err.message);
+                document.getElementById('startTestBtn').disabled = false;
+                document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+            }
+        }
+
+        function showTestQuestion(index) {
+            if (index >= testQuestions.length) {
+                finishTest();
+                return;
+            }
+
+            const q = testQuestions[index];
+            document.getElementById('questionCounter').textContent = `Question ${index + 1} / ${testQuestions.length}`;
+            document.getElementById('testQuestionText').textContent = q.question;
+
+            const optionsContainer = document.getElementById('testOptionsContainer');
+            optionsContainer.innerHTML = '';
+
+            if (q.options && q.options.length) {
+                q.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 hover:bg-blue-500/10 transition';
+                    btn.innerHTML = `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
+                    btn.addEventListener('click', () => handleTestAnswer(btn, opt === q.answer, q.answer));
+                    optionsContainer.appendChild(btn);
+                });
+            } else {
+                optionsContainer.innerHTML = `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;
+                document.getElementById('nextTestBtn').classList.remove('hidden');
+            }
+
+            const timePerQuestion = { easy: 0, medium: 20, hard: 15 }[testDifficulty];
+            if (timePerQuestion > 0) {
+                testTimeLeft = timePerQuestion;
+                document.getElementById('timerDisplay').classList.remove('hidden');
+                document.getElementById('timerDisplay').textContent = `⏱ ${testTimeLeft}s`;
+                clearInterval(testTimerInterval);
+                testTimerInterval = setInterval(() => {
+                    testTimeLeft--;
+                    document.getElementById('timerDisplay').textContent = `⏱ ${testTimeLeft}s`;
+                    if (testTimeLeft <= 0) {
+                        clearInterval(testTimerInterval);
+                        testCurrentIndex++;
+                        showTestQuestion(testCurrentIndex);
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('timerDisplay').classList.add('hidden');
+            }
+
+            document.getElementById('nextTestBtn').classList.add('hidden');
+        }
+
+        function handleTestAnswer(btn, isCorrect, correctAnswer) {
+            const parent = btn.parentElement;
+            Array.from(parent.children).forEach(child => {
+                child.style.pointerEvents = 'none';
+                if (child.textContent.includes(correctAnswer)) {
+                    child.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+                }
+            });
+
+            if (isCorrect) {
+                btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+                testCorrectCount++;
+            } else {
+                btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
+            }
+
+            clearInterval(testTimerInterval);
+            document.getElementById('nextTestBtn').classList.remove('hidden');
+        }
+
+        function nextTestQuestion() {
+            clearInterval(testTimerInterval);
+            testCurrentIndex++;
+            showTestQuestion(testCurrentIndex);
+        }
+
+        function finishTest() {
+            clearInterval(testTimerInterval);
+            document.getElementById('testQuizContainer').classList.add('hidden');
+            document.getElementById('testResultsContainer').classList.remove('hidden');
+            document.getElementById('testCorrectCount').textContent = testCorrectCount;
+            document.getElementById('testTotalCount').textContent = testQuestions.length;
+            const percentage = Math.round((testCorrectCount / testQuestions.length) * 100);
+            document.getElementById('testPercentage').textContent = `${percentage}%`;
+        }
+
+        function resetTest() {
+            document.getElementById('testQuizContainer').classList.add('hidden');
+            document.getElementById('testResultsContainer').classList.add('hidden');
+            document.getElementById('startTestBtn').classList.remove('hidden');
+            document.getElementById('startTestBtn').disabled = false;
+            document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+            testQuestions = [];
+            testCurrentIndex = 0;
+            testCorrectCount = 0;
+        }
     </script>
 </body>
 </html>
-<style>
-/* Light mode readability improvements */
-.light .glass-card {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-}
-.light .btn-primary {
-    color: white;
-}
-.light .text-slate-400, .light .text-slate-500, .light .text-slate-300 {
-    color: #334155 !important;
-}
-.light .opacity-50 {
-    opacity: 0.8;
-}
-.light .opacity-70 {
-    opacity: 0.9;
-}
-.light .bg-white\/5, .light .bg-white\/10 {
-    background: rgba(0,0,0,0.03) !important;
-    border-color: rgba(0,0,0,0.08) !important;
-}
-.light .loading-overlay {
-    background: #ffffff;
-}
-.light .loading-overlay .text-slate-400,
-.light .loading-overlay .text-slate-500 {
-    color: #475569 !important;
-}
-</style>
