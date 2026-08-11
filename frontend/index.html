@@ -553,7 +553,7 @@
                     document.getElementById('progressContainer').classList.add('hidden');
                     btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
                     btn.disabled = false;
-                    alert('Health check failed: ' + (errorMsg || 'unknown error') + '\n\nPlease check if the backend is online and try again.');
+                    alert('⏳ The server is waking up from sleep (free plan). Please wait about 30 seconds, then tap Generate again.');
                     return;
                 }
                 btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
