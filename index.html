@@ -532,6 +532,7 @@
         // ============================================================
 // ========== SINGLE REQUEST SERVER WAKE-UP CHECK ==========
 let wakeUpAttempted = false;
+let retryInProgress = false;
 async function checkBackendOnce() {
   const overlay = document.getElementById('wakeUpOverlay');
   if (!overlay) return;
@@ -551,26 +552,28 @@ async function checkBackendOnce() {
     if (overlay) overlay.style.display = 'flex';
     statusEl.textContent = 'Not ready yet. Tap the button to try again.';
   }
-}
 async function retryWakeUp() {
-  const statusEl = document.getElementById('wakeUpStatus');
-  const btn = document.getElementById('retryWakeBtn');
+  if (retryInProgress) return;
+  retryInProgress = true;
+  const statusEl = document.getElementById("wakeUpStatus");
+  const btn = document.getElementById("retryWakeBtn");
   btn.disabled = true;
-  statusEl.textContent = 'Checking server…';
+  statusEl.textContent = "Checking server…";
   try {
-    const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
-      signal: AbortSignal.timeout(8000)
+    const res = await fetch("https://acadhub-no6m.onrender.com/api/generate-reviewer-local", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: "ping", num_flashcards: 0, quiz_types: "{}" }),
+      signal: AbortSignal.timeout(30000)
     });
     if (res.ok || res.status < 500) {
-      document.getElementById('wakeUpOverlay').style.display = 'none';
+      document.getElementById("wakeUpOverlay").style.display = "none";
       return;
     }
   } catch(e) {}
-  statusEl.textContent = 'Still waking up… Try again in a few seconds.';
+  statusEl.textContent = "Still waking up… Try again in a few seconds.";
   btn.disabled = false;
+  retryInProgress = false;
 }
 window.addEventListener('DOMContentLoaded', () => {
   const overlay = document.getElementById('wakeUpOverlay');
