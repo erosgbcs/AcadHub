@@ -623,16 +623,36 @@ async function retryWakeUp() {
   }
 }
 
-// Start first check on page load
 window.addEventListener('DOMContentLoaded', () => {
-  pingServer();
+    pingServer();
+    
+    // After 30 seconds, if still showing, add a "Skip" option
+    setTimeout(() => {
+        const overlay = document.getElementById('wakeUpOverlay');
+        if (overlay && overlay.style.display !== 'none') {
+            const statusEl = document.getElementById('wakeUpStatus');
+            const btn = document.getElementById('retryWakeBtn');
+            
+            if (statusEl) {
+                statusEl.textContent = '⏳ Server is still waking up. You can try again or continue anyway.';
+                statusEl.style.color = '#fbbf24';
+            }
+            
+            if (btn) {
+                btn.textContent = '⏩ Continue Anyway';
+                btn.style.background = '#8b5cf6';
+                btn.onclick = function() {
+                    overlay.style.display = 'none';
+                    // Stop polling
+                    if (wakeUpPollingInterval) {
+                        clearInterval(wakeUpPollingInterval);
+                        wakeUpPollingInterval = null;
+                    }
+                };
+            }
+        }
+    }, 30000);
 });
-
-      // Safety: hide overlay after 30 seconds no matter what
-setTimeout(() => {
-    const overlay = document.getElementById('wakeUpOverlay');
-    if (overlay) overlay.style.display = 'none';
-}, 30000);
         // ============================================================
         //  FIREBASE CONFIG & INIT
         // ============================================================
