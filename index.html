@@ -525,6 +525,53 @@
 
     <script>
         // ============================================================
+// ========== SINGLE REQUEST SERVER WAKE-UP CHECK ==========
+let wakeUpAttempted = false;
+async function checkBackendOnce() {
+  const overlay = document.getElementById('wakeUpOverlay');
+  if (!overlay) return;
+  if (wakeUpAttempted) return;
+  wakeUpAttempted = true;
+  const statusEl = document.getElementById('wakeUpStatus');
+  try {
+    statusEl.textContent = 'Checking server…';
+    const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (overlay) overlay.style.display = 'none';
+  } catch (e) {
+    if (overlay) overlay.style.display = 'flex';
+    statusEl.textContent = 'Not ready yet. Tap the button to try again.';
+  }
+}
+async function retryWakeUp() {
+  const statusEl = document.getElementById('wakeUpStatus');
+  const btn = document.getElementById('retryWakeBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Checking server…';
+  try {
+    const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok || res.status < 500) {
+      document.getElementById('wakeUpOverlay').style.display = 'none';
+      return;
+    }
+  } catch(e) {}
+  statusEl.textContent = 'Still waking up… Try again in a few seconds.';
+  btn.disabled = false;
+}
+window.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('wakeUpOverlay');
+  if (overlay) overlay.style.display = 'none';
+  checkBackendOnce();
+});
         //  FIREBASE CONFIG & INIT
         // ============================================================
         const firebaseConfig = {
@@ -1465,6 +1512,12 @@
                 <button onclick="document.getElementById('authModal').classList.add('hidden')" id="authCloseBtn"
                 class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
             </div>
+  // Auto-show mandatory name modal on load if not saved
+  (function() {
+    if (localStorage.getItem('profile_saved') !== 'true') {
+      showProfileModal();
+    }
+  })();
             <p class="text-xs opacity-70 mb-4" id="authSubtitle">Login to save your data and access all features.</p>
             <div class="space-y-3">
                 <input type="email" id="authEmail" placeholder="Email" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
@@ -1500,25 +1553,3 @@
         document.getElementById('authModal').addEventListener('click', function(e) {
             if (e.target === this) this.classList.add('hidden');
         });
-  // Auto-show mandatory name modal on load if not saved
-  (function() {
-    if (localStorage.getItem('profile_saved') !== 'true') {
-      showProfileModal();
-    }
-  })();
-  // Auto-show mandatory name modal on load if not saved
-  (function() {
-    if (localStorage.getItem('profile_saved') !== 'true') {
-      showProfileModal();
-    }
-  })();
-    </script>
-  // Auto-show mandatory name modal on load if not saved
-  (function() {
-    if (localStorage.getItem('profile_saved') !== 'true') {
-      showProfileModal();
-    }
-  })();
-
-</body>
-</html>
