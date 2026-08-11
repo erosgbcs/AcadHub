@@ -103,6 +103,7 @@
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
             updateAuthUI();
+            document.getElementById("authSubmitBtn").textContent = isSignUpMode ? "Sign Up" : "Sign In";
         }
 
         function updateAuthUI() {
@@ -384,6 +385,7 @@
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
             updateAuthUI();
+            document.getElementById("authSubmitBtn").textContent = isSignUpMode ? "Sign Up" : "Sign In";
         }
 
         function updateAuthUI() {
@@ -554,6 +556,7 @@
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
             updateAuthUI();
+            document.getElementById("authSubmitBtn").textContent = isSignUpMode ? "Sign Up" : "Sign In";
         }
 
         function updateAuthUI() {
@@ -643,6 +646,7 @@
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
             updateAuthUI();
+            document.getElementById("authSubmitBtn").textContent = isSignUpMode ? "Sign Up" : "Sign In";
         }
 
         function updateAuthUI() {
@@ -810,6 +814,7 @@
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
             updateAuthUI();
+            document.getElementById("authSubmitBtn").textContent = isSignUpMode ? "Sign Up" : "Sign In";
         }
 
         function updateAuthUI() {
@@ -992,6 +997,7 @@
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
             updateAuthUI();
+            document.getElementById("authSubmitBtn").textContent = isSignUpMode ? "Sign Up" : "Sign In";
         }
 
         function updateAuthUI() {
@@ -1234,21 +1240,21 @@
 
     <!-- Auth Modal (Login / Sign Up) -->
     <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i><span id="authTitle">Login</span></h3>
                 <button onclick="closeAuthModal()" id="authCloseBtn" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
             </div>
             <p class="text-xs opacity-70 mb-4" id="authSubtitle">Login to save your data and access all features.</p>
             <div class="space-y-3">
-                <input type="email" id="authEmail" placeholder="Email" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                <input type="password" id="authPassword" placeholder="Password" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="email" id="authEmail" placeholder="Email" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="password" id="authPassword" placeholder="Password" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm">
                 <div id="authNameFields" class="hidden space-y-3">
-                    <input type="text" id="authFirstName" placeholder="First Name" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                    <input type="text" id="authLastName" placeholder="Last Name" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <input type="text" id="authFirstName" placeholder="First Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <input type="text" id="authLastName" placeholder="Last Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm">
                 </div>
                 <div id="authError" class="hidden text-xs text-rose-400"></div>
-                <button onclick="handleAuth()" class="btn-primary w-full text-sm"><span id="authBtnText">Login</span></button>
+                <button onclick="handleAuth()" class="btn-primary w-full text-base py-3"><span id="authBtnText">Login</span></button>
                 <p class="text-xs text-center opacity-50">
                     <span id="authToggleText">Don't have an account?</span>
                     <button onclick="toggleAuthMode()" class="text-indigo-400 hover:underline ml-1" id="authToggleBtn">Sign Up</button>
@@ -1256,20 +1262,20 @@
             </div>
         </div>
     </div>
-        <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile (required)</h3>
                 <!-- No close button -->
             </div>
             <p class="text-xs opacity-70 mb-4">Please enter your name to continue. Only the developer can see it.</p>
             <div class="space-y-3">
-                <input type="text" id="visitorFirstName" placeholder="First Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                <input type="text" id="visitorLastName" placeholder="Last Name *" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="text" id="visitorFirstName" placeholder="First Name *" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="text" id="visitorLastName" placeholder="Last Name *" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm">
                 <label class="flex items-start gap-2 cursor-pointer">
                     <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500">
                     <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly.</span>
                 </label>
-                <button id="saveProfileBtn" onclick="saveVisitorName()" class="btn-primary w-full text-sm" disabled>Save</button>
+                <button id="saveProfileBtn" onclick="saveVisitorName()" class="btn-primary w-full text-base py-3" disabled>Save</button>
             </div>
         </div>
     </div>
@@ -1290,7 +1296,7 @@
                 <i class="fa-regular fa-star text-2xl cursor-pointer hover:text-amber-400 star" data-value="5"></i>
             </div>
             <textarea id="evalSuggestions" rows="3" placeholder="Any suggestions for new features? (optional)" class="w-full p-3 bg-white/10 border border-white/10 rounded-xl text-sm resize-none mb-4"></textarea>
-            <p id="evalProfileName" class="text-xs opacity-50 text-center mb-2"></p><button onclick="submitEval()" class="btn-primary w-full text-sm">Submit</button>
+            <p id="evalProfileName" class="text-xs opacity-50 text-center mb-2"></p><button onclick="submitEval()" class="btn-primary w-full text-base py-3">Submit</button>
         </div>
     </div>
 
@@ -1793,6 +1799,7 @@
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
             updateAuthUI();
+            document.getElementById("authSubmitBtn").textContent = isSignUpMode ? "Sign Up" : "Sign In";
         }
 
         function updateAuthUI() {
