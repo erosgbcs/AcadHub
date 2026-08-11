@@ -536,21 +536,24 @@
             if(document.getElementById('useWhose').checked)quizTypes.whose=parseInt(document.getElementById('numWhose').value)||0;
             const useInternet = document.getElementById('useInternet').checked;
             if(provider!=='local'&&!apiKey.trim()){alert('Please enter your API key');return;}
-            // Local NLP: fast health check (3s) – no offline fallback
+            // Local NLP: fast health check (3s) – with error alert
             if(provider==='local'){
                 btn.disabled=true;
                 btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Checking server...';
                 document.getElementById('progressContainer').classList.remove('hidden');
                 let awake = false;
+                let errorMsg = '';
                 try {
                     const check = await fetch(`${BACKEND_URL}/api/health`, { signal: AbortSignal.timeout(3000) });
-                    if (check.ok) awake = true;
-                } catch (e) {}
+                    if (check.ok) awake = true; else errorMsg = 'Status: ' + check.status;
+                } catch (e) {
+                    errorMsg = e.message;
+                }
                 if (!awake) {
                     document.getElementById('progressContainer').classList.add('hidden');
                     btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
                     btn.disabled = false;
-                    alert('⏳ The server is waking up from sleep (free plan). Please wait about 30 seconds, then tap Generate again.');
+                    alert('Health check failed: ' + (errorMsg || 'unknown error') + '\n\nPlease check if the backend is online and try again.');
                     return;
                 }
                 btnContent.innerHTML='<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
