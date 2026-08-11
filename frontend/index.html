@@ -127,251 +127,7 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             document.getElementById("authError").classList.add("hidden");
         }
 
-        async function handleAuth() {
-            if (!auth) return alert("Auth service unavailable.");
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
-
-        auth && auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + user.email;
-                document.getElementById("authCloseBtn").style.display = "block";
-            } else {
-                document.getElementById("userIcon").classList.remove("fa-user-check");
-                document.getElementById("userIcon").classList.add("fa-user");
-                document.getElementById("profileButton").title = "Login / Sign Up";
-                document.getElementById("authCloseBtn").style.display = "none";
-            }
-        });
-
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        :root { --bg: #0b0f19; --card: rgba(18,25,40,0.75); --text: #e8edf5; --border: rgba(255,255,255,0.08); --accent: #6366f1; --accent2: #22d3ee; }
-        .light { --bg: #f4f6fb; --card: rgba(255,255,255,0.92); --text: #1e293b; --border: rgba(0,0,0,0.08); --accent: #4f46e5; --accent2: #06b6d4; }
-        * { box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; transition: background 0.3s, color 0.3s; margin: 0; min-height: 100vh; }
-        .glass-card { background: var(--card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,0.2); transition: all 0.3s ease; }
-        .glass-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
-        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; border: none; font-weight: 600; transition: all 0.3s ease; border-radius: 0.75rem; padding: 0.875rem 1.5rem; cursor: pointer; }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 25px rgba(99,102,241,0.3); }
-        .btn-primary:active { transform: scale(0.98); }
-        .reveal-item { opacity: 0; transform: translateY(10px); animation: reveal 0.3s ease forwards; }
-        @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.5s ease, transform 0.5s ease; }
-        .loading-overlay.fade-out { opacity: 0; transform: scale(0.95); pointer-events: none; }
-        .loading-overlay.hidden { display: none; }
-        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(34,211,238,0.7); } }
-        .logo-pulse { animation: pulse-glow 2s infinite; border-radius: 50%; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fadeInUp 0.6s ease forwards; }
-        .tab-active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
-        .tab-inactive { background: transparent; color: var(--text); opacity: 0.6; }
-        .tab-inactive:hover { opacity: 0.9; }
-        input, select, textarea { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.875rem; outline: none; transition: border 0.2s; width: 100%; }
-        input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
-        .quiz-option { transition: all 0.2s; cursor: pointer; }
-        .quiz-option:hover { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); transform: translateX(4px); }
-        .saved-card:hover { background: rgba(255,255,255,0.05); }
-        footer { margin-top: auto; }
-    
-        /* Flashcard flip */
-        .flashcard {
-            perspective: 1000px;
-            cursor: pointer;
-        }
-        .flashcard-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
-        }
-        .flashcard.flipped .flashcard-inner {
-            transform: rotateY(180deg);
-        }
-        .flashcard-front, .flashcard-back {
-            backface-visibility: hidden;
-            border-radius: 0.75rem;
-            padding: 1rem;
-            border: 1px solid var(--border);
-        }
-        .flashcard-front {
-            background: rgba(255,255,255,0.05);
-        }
-        .flashcard-back {
-            background: rgba(99,102,241,0.1);
-            transform: rotateY(180deg);
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-
-    </style>
-    <link rel="manifest" href="/AcadHub/manifest.json">
-</head>
-<body class="flex flex-col p-2 sm:p-4">
-    <!-- Loading Screen (standalone timer, no dependencies) -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="text-center animate-fade-in-up px-4">
-            <div class="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center logo-pulse">
-                <i class="fa-solid fa-graduation-cap text-white text-2xl sm:text-4xl"></i>
-            </div>
-            <h1 class="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1>
-            <p class="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">Smart Academic Workspace</p>
-            <div class="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-white/10">
-                <p class="text-xs text-gray-500 mb-3 sm:mb-4">Developed by</p>
-                <div class="flex flex-col gap-2 sm:gap-3 text-sm text-gray-300">
-                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-brands fa-github text-lg sm:text-xl" style="color:#f0f6fc;"></i><span>erosgbcs</span></div>
-                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-solid fa-envelope text-lg sm:text-xl" style="color:#ea4335;"></i><span>gabrielagsamosam@gmail.com</span></div>
-                    <div class="flex items-center justify-center gap-2 sm:gap-3"><i class="fa-brands fa-facebook text-lg sm:text-xl" style="color:#1877f2;"></i><span>Gabriel Agsamosam</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Guaranteed fade-out after 4.5s (even if other scripts fail) -->
-    <script>
         
-        (function() {
-            var overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                setTimeout(function() {
-                    overlay.classList.add('fade-out');
-                    setTimeout(function() {
-                        overlay.classList.add('hidden');
-                        // Show the profile modal automatically after loading
-                        setTimeout(function() {
-                            var modal = document.getElementById('profileModal');
-                            if (modal && localStorage.getItem('profile_saved') !== 'true') {
-                                modal.classList.remove('hidden');
-                            }
-                        }, 100);
-                    }, 500);
-                }, 4500);
-            }
-        })();
-    
-        
-
-    
-        
-
-    
-        
-
-    
-        // ------------------ AUTH ------------------
-        const auth = firebase.auth ? firebase.auth() : null;
-        let isSignUpMode = false;
-
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
-        }
-
-        function closeAuthModal() {
-            if (auth && auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        async function handleAuth() {
-            if (!auth) return alert("Auth service unavailable.");
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
 
         auth && auth.onAuthStateChanged(user => {
             if (user) {
@@ -392,7 +148,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
     <!-- Firebase SDK & Config -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script></script>
         // ------------------ AUTH ------------------
-        const auth = firebase.auth ? firebase.auth() : null;
         let isSignUpMode = false;
 
         function showProfileModal() {
@@ -420,46 +175,7 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             document.getElementById("authError").classList.add("hidden");
         }
 
-        async function handleAuth() {
-            if (!auth) return alert("Auth service unavailable.");
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
+        
 
         auth && auth.onAuthStateChanged(user => {
             if (user) {
@@ -486,7 +202,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
 
     
         // ------------------ AUTH ------------------
-        const auth = firebase.auth ? firebase.auth() : null;
         let isSignUpMode = false;
 
         function showProfileModal() {
@@ -514,46 +229,7 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             document.getElementById("authError").classList.add("hidden");
         }
 
-        async function handleAuth() {
-            if (!auth) return alert("Auth service unavailable.");
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
+        
 
         auth && auth.onAuthStateChanged(user => {
             if (user) {
@@ -574,7 +250,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
 
     
         // ------------------ AUTH ------------------
-        const auth = firebase.auth ? firebase.auth() : null;
         let isSignUpMode = false;
 
         function showProfileModal() {
@@ -602,46 +277,7 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             document.getElementById("authError").classList.add("hidden");
         }
 
-        async function handleAuth() {
-            if (!auth) return alert("Auth service unavailable.");
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
+        
 
         auth && auth.onAuthStateChanged(user => {
             if (user) {
@@ -668,7 +304,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
 
     
         // ------------------ AUTH ------------------
-        const auth = firebase.auth ? firebase.auth() : null;
         let isSignUpMode = false;
 
         function showProfileModal() {
@@ -696,46 +331,7 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             document.getElementById("authError").classList.add("hidden");
         }
 
-        async function handleAuth() {
-            if (!auth) return alert("Auth service unavailable.");
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
+        
 
         auth && auth.onAuthStateChanged(user => {
             if (user) {
@@ -775,7 +371,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
 
     
         // ------------------ AUTH ------------------
-        const auth = firebase.auth ? firebase.auth() : null;
         let isSignUpMode = false;
 
         function showProfileModal() {
@@ -803,46 +398,7 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             document.getElementById("authError").classList.add("hidden");
         }
 
-        async function handleAuth() {
-            if (!auth) return alert("Auth service unavailable.");
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
+        
 
         auth && auth.onAuthStateChanged(user => {
             if (user) {
@@ -1499,7 +1055,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
 
     
         // ------------------ AUTH ------------------
-        const auth = firebase.auth ? firebase.auth() : null;
         let isSignUpMode = false;
 
         function showProfileModal() {
