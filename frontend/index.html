@@ -143,37 +143,52 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             }
         });
 
-    </script>
-
     <!-- Firebase SDK & Config -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script></script>
+    
+        // Planner functions
+        let plannerTasks = JSON.parse(localStorage.getItem('acadhub_planner') || '[]');
+        function savePlanner() { localStorage.setItem('acadhub_planner', JSON.stringify(plannerTasks)); }
+        function renderPlanner() {
+            ['todo','progress','done'].forEach(col => {
+                const el = document.getElementById('planner-' + col);
+                if (!el) return;
+                const items = plannerTasks.filter(i => i.status === col);
+                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragPlannerTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deletePlannerTask('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}</div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
+            });
+        }
+        function addPlannerTask() {
+            const title = document.getElementById('plannerTitle').value.trim();
+            if (!title) { alert('Please enter a title.'); return; }
+            const deadline = document.getElementById('plannerDeadline').value;
+            plannerTasks.push({ id: Date.now().toString(), title, deadline, status: 'todo' });
+            document.getElementById('plannerTitle').value = '';
+            document.getElementById('plannerDeadline').value = '';
+            savePlanner(); renderPlanner();
+        }
+        let draggedPlannerId = null;
+        function dragPlannerTask(e, id) { draggedPlannerId = id; }
+        function dropPlannerTask(e, newStatus) { e.preventDefault(); const item = plannerTasks.find(i => i.id === draggedPlannerId); if (item) { item.status = newStatus; savePlanner(); renderPlanner(); } draggedPlannerId = null; }
+        function deletePlannerTask(id) { plannerTasks = plannerTasks.filter(i => i.id !== id); savePlanner(); renderPlanner(); }
+        function allowDrop(e) { e.preventDefault(); }
+        renderPlanner();
+
+    
+        document.getElementById('tabPlanner').addEventListener('click',()=>switchTab('planner'));
+        document.getElementById('tabScheduler').addEventListener('click',()=>switchTab('scheduler'));
+    
+    </script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+    </script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js">
+    </script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
         // ------------------ AUTH ------------------
         let isSignUpMode = false;
 
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
+
         }
 
-        function closeAuthModal() {
-            if (auth && auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
 
         
 
@@ -190,8 +205,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
                 document.getElementById("authCloseBtn").style.display = "none";
             }
         });
-
-    </script>
         
 
     
@@ -204,30 +217,10 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         // ------------------ AUTH ------------------
         let isSignUpMode = false;
 
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
+
         }
 
-        function closeAuthModal() {
-            if (auth && auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
 
         
 
@@ -244,38 +237,16 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
                 document.getElementById("authCloseBtn").style.display = "none";
             }
         });
-
-    </script>
         
 
     
         // ------------------ AUTH ------------------
         let isSignUpMode = false;
 
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
+
         }
 
-        function closeAuthModal() {
-            if (auth && auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
 
         
 
@@ -292,8 +263,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
                 document.getElementById("authCloseBtn").style.display = "none";
             }
         });
-
-    </script>
         
 
     
@@ -306,30 +275,10 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         // ------------------ AUTH ------------------
         let isSignUpMode = false;
 
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
+
         }
 
-        function closeAuthModal() {
-            if (auth && auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
 
         
 
@@ -346,10 +295,8 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
                 document.getElementById("authCloseBtn").style.display = "none";
             }
         });
-
     </script>
-    <script>
-        
+<script>
         const firebaseConfig = {
             apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
             authDomain: "acadhub-visitors-69180.firebaseapp.com",
@@ -373,30 +320,10 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         // ------------------ AUTH ------------------
         let isSignUpMode = false;
 
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
+
         }
 
-        function closeAuthModal() {
-            if (auth && auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
 
         
 
@@ -413,8 +340,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
                 document.getElementById("authCloseBtn").style.display = "none";
             }
         });
-
-    </script>
 
     <!-- Main Content -->
     <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6">
@@ -448,6 +373,8 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             <button id="tabReviewer" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active">AI Reviewer</button>
             <button id="tabLibrary" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Saved Library</button>
             <button id="tabTest" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Test My Limits</button>
+            <button id="tabPlanner" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Study Planner</button>
+            <button id="tabScheduler" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive">Dev & Thesis Scheduler</button>
         </div>
 
         <!-- AI Reviewer Tab -->
@@ -538,6 +465,59 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         <div id="viewLibrary" class="hidden space-y-4"><div class="glass-card"><h2 class="text-lg sm:text-xl font-bold mb-4">📚 Saved Reviewers</h2><div id="savedList" class="space-y-2"></div><p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p></div></div>
 
         <!-- Test My Limits Tab -->
+        
+        <!-- Study Planner Tab -->
+        
+        <!-- Dev & Thesis Scheduler Tab -->
+        <div id="viewScheduler" class="hidden space-y-4 sm:space-y-6">
+            <div class="glass-card">
+                <h2 class="text-lg sm:text-xl font-bold mb-4">📅 Dev & Thesis Scheduler</h2>
+                <div class="flex flex-col sm:flex-row gap-2 mb-6">
+                    <input type="text" id="schedTitle" placeholder="Task / Milestone title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <input type="date" id="schedDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <select id="schedType" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                        <option value="task">Task</option><option value="milestone">Milestone</option><option value="defense">Thesis Defense</option><option value="exam">Exam</option>
+                    </select>
+                    <button onclick="addSchedItem()" class="btn-primary px-4 py-2 text-sm"><i class="fa-solid fa-plus mr-1"></i> Add</button>
+                </div>
+                <h3 class="text-sm font-semibold mb-3 text-cyan-400">📊 Gantt Chart Roadmap</h3>
+                <div id="ganttChart" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[150px]"><p class="text-xs opacity-50 text-center py-8">Add tasks to see your roadmap timeline</p></div>
+                <h3 class="text-sm font-semibold mb-3 text-rose-400">🎓 Thesis Defense Countdowns</h3>
+                <div id="countdowns" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]"><p class="text-xs opacity-50 text-center py-4">No defense dates set</p></div>
+                <h3 class="text-sm font-semibold mb-3 text-amber-400">📝 Exam Reminder Matrix</h3>
+                <div id="examMatrix" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]"><p class="text-xs opacity-50 text-center py-4">No exams scheduled</p></div>
+                <h3 class="text-sm font-semibold mb-3 text-blue-400">📋 Kanban Task Board</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'todo')"><h4 class="text-xs font-semibold mb-2 text-amber-400">📌 To Do</h4><div id="sched-todo" class="space-y-2 min-h-[80px]"></div></div>
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'progress')"><h4 class="text-xs font-semibold mb-2 text-blue-400">🔄 In Progress</h4><div id="sched-progress" class="space-y-2 min-h-[80px]"></div></div>
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'done')"><h4 class="text-xs font-semibold mb-2 text-emerald-400">✅ Done</h4><div id="sched-done" class="space-y-2 min-h-[80px]"></div></div>
+                </div>
+            </div>
+        </div>
+        <div id="viewPlanner" class="hidden space-y-4 sm:space-y-6">
+            <div class="glass-card">
+                <h2 class="text-lg sm:text-xl font-bold mb-4">📋 Study Planner</h2>
+                <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                    <input type="text" id="plannerTitle" placeholder="Task title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <input type="date" id="plannerDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <button onclick="addPlannerTask()" class="btn-primary px-4 py-2 text-sm"><i class="fa-solid fa-plus mr-1"></i> Add</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'todo')">
+                        <h3 class="text-sm font-semibold mb-3 text-amber-400">📌 To Do</h3>
+                        <div id="planner-todo" class="space-y-2 min-h-[100px]"></div>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'progress')">
+                        <h3 class="text-sm font-semibold mb-3 text-blue-400">🔄 In Progress</h3>
+                        <div id="planner-progress" class="space-y-2 min-h-[100px]"></div>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'done')">
+                        <h3 class="text-sm font-semibold mb-3 text-emerald-400">✅ Done</h3>
+                        <div id="planner-done" class="space-y-2 min-h-[100px]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="viewTest" class="hidden space-y-4 sm:space-y-6">
             <div class="glass-card">
                 <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">⚡ Test My Limits</h2>
@@ -648,8 +628,8 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         </div>
     </div>
 
-    <script>
-        
+    </script>
+<script>
         // Register service worker for PWA
         
         if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
@@ -664,7 +644,7 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         (function(){if(localStorage.getItem('theme')==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');const icon=document.getElementById('themeIcon');if(icon){icon.classList.remove('fa-sun');icon.classList.add('fa-moon');icon.style.color='#6366f1';}}})();
 
         // Tabs
-        function switchTab(tab){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('viewTest').classList.add('hidden');document.getElementById('tabReviewer').classList.remove('tab-active');document.getElementById('tabReviewer').classList.add('tab-inactive');document.getElementById('tabLibrary').classList.remove('tab-active');document.getElementById('tabLibrary').classList.add('tab-inactive');document.getElementById('tabTest').classList.remove('tab-active');document.getElementById('tabTest').classList.add('tab-inactive');if(tab==='reviewer'){document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('tabReviewer').classList.remove('tab-inactive');document.getElementById('tabReviewer').classList.add('tab-active');}else if(tab==='library'){document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabLibrary').classList.remove('tab-inactive');document.getElementById('tabLibrary').classList.add('tab-active');renderSavedList();}else if(tab==='test'){document.getElementById('viewTest').classList.remove('hidden');document.getElementById('tabTest').classList.remove('tab-inactive');document.getElementById('tabTest').classList.add('tab-active');}}
+        function switchTab(tab){document.getElementById('viewReviewer').classList.add('hidden');document.getElementById('viewLibrary').classList.add('hidden');document.getElementById('viewTest').classList.add('hidden');document.getElementById('tabReviewer').classList.remove('tab-active');document.getElementById('tabReviewer').classList.add('tab-inactive');document.getElementById('tabLibrary').classList.remove('tab-active');document.getElementById('tabLibrary').classList.add('tab-inactive');document.getElementById('tabTest').classList.remove('tab-active');document.getElementById('tabTest').classList.add('tab-inactive');if(tab==='reviewer'){document.getElementById('viewReviewer').classList.remove('hidden');document.getElementById('tabReviewer').classList.remove('tab-inactive');document.getElementById('tabReviewer').classList.add('tab-active');}else if(tab==='library'){document.getElementById('viewLibrary').classList.remove('hidden');document.getElementById('tabLibrary').classList.remove('tab-inactive');document.getElementById('tabLibrary').classList.add('tab-active');renderSavedList();}else if(tab==='test'){document.getElementById('viewTest').classList.remove('hidden');document.getElementById('tabTest').classList.remove('tab-inactive');document.getElementById('tabTest').classList.add('tab-active');}else if(tab==='planner'){document.getElementById('viewPlanner').classList.remove('hidden');document.getElementById('tabPlanner').classList.remove('tab-inactive');document.getElementById('tabPlanner').classList.add('tab-active');renderPlanner();}else if(tab==='scheduler'){document.getElementById('viewScheduler').classList.remove('hidden');document.getElementById('tabScheduler').classList.remove('tab-inactive');document.getElementById('tabScheduler').classList.add('tab-active');renderScheduler();}}
         document.getElementById('tabReviewer').addEventListener('click',()=>switchTab('reviewer'));
         document.getElementById('tabLibrary').addEventListener('click',()=>switchTab('library'));
         document.getElementById('tabTest').addEventListener('click',()=>switchTab('test'));
@@ -783,9 +763,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         }
 
         // Profile modal (mandatory)
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-        }
         // Enable Save button when all fields are filled
         (function() {
             const firstName = document.getElementById('visitorFirstName');
@@ -1057,30 +1034,10 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
         // ------------------ AUTH ------------------
         let isSignUpMode = false;
 
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
+
         }
 
-        function closeAuthModal() {
-            if (auth && auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
 
         async function handleAuth() {
             if (!auth) return alert("Auth service unavailable.");
@@ -1136,7 +1093,6 @@ if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
                 document.getElementById("authCloseBtn").style.display = "none";
             }
         });
-
-    </script>
 </body>
 </html>
+</script>
