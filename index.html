@@ -150,6 +150,7 @@
     </style>
 </head>
 <body>
+<!-- Wake-up overlay --><div id="wakeUpOverlay" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:flex;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;"><div><h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Server is waking up ☕</h1><p style="margin-bottom:1.5rem;">The backend is cold‑starting. Please tap below once it's ready.</p><button id="retryWakeBtn" onclick="retryWakeUp()" style="padding:0.8rem 2rem;background:#6366f1;border:none;color:#fff;border-radius:0.75rem;font-weight:600;font-size:1rem;cursor:pointer;">Check Again</button><p id="wakeUpStatus" style="margin-top:1rem;font-size:0.85rem;opacity:0.6;"></p></div></div><!-- End wake-up overlay -->
 
     <!-- ===== MAIN WRAPPER ===== -->
     <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6">
@@ -1505,7 +1506,19 @@
       showProfileModal();
     }
   })();
+  // Auto-show mandatory name modal on load if not saved
+  (function() {
+    if (localStorage.getItem('profile_saved') !== 'true') {
+      showProfileModal();
+    }
+  })();
     </script>
+  // Auto-show mandatory name modal on load if not saved
+  (function() {
+    if (localStorage.getItem('profile_saved') !== 'true') {
+      showProfileModal();
+    }
+  })();
 
 </body>
 </html>
