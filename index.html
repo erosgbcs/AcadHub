@@ -559,61 +559,85 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script>
-        // ============================================================
-        // ========== SINGLE REQUEST SERVER WAKE-UP CHECK ==========
-        // ============================================================
-        let wakeUpAttempted = false;
-        let retryInProgress = false;
+        /// ============================================================
+//  SERVER WAKE‑UP (auto‑retry every 5 seconds)
+// ============================================================
+let wakeUpPollingInterval = null;
 
-        async function checkBackendOnce() {
-            const overlay = document.getElementById('wakeUpOverlay');
-            if (!overlay) return;
-            if (wakeUpAttempted) return;
-            wakeUpAttempted = true;
-            const statusEl = document.getElementById('wakeUpStatus');
-            try {
-                statusEl.textContent = 'Checking server…';
-                const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
-                    signal: AbortSignal.timeout(8000)
-                });
-                if (overlay) overlay.style.display = 'none';
-            } catch (e) {
-                if (overlay) overlay.style.display = 'flex';
-                statusEl.textContent = 'Not ready yet. Tap the button to try again.';
-            }
-        }
+async function pingServer() {
+  const overlay = document.getElementById('wakeUpOverlay');
+  const statusEl = document.getElementById('wakeUpStatus');
+  if (!overlay || !statusEl) return;
 
-        async function retryWakeUp() {
-            if (retryInProgress) return;
-            retryInProgress = true;
-            const statusEl = document.getElementById('wakeUpStatus');
-            const btn = document.getElementById('retryWakeBtn');
-            btn.disabled = true;
-            statusEl.textContent = 'Checking server…';
-            try {
-                const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
-                    signal: AbortSignal.timeout(30000)
-                });
-                if (res.ok || res.status < 500) {
-                    document.getElementById('wakeUpOverlay').style.display = 'none';
-                    return;
-                }
-            } catch (e) {}
-            statusEl.textContent = 'Still waking up… Try again in a few seconds.';
-            btn.disabled = false;
-            retryInProgress = false;
-        }
+  // Show status only on first call, not on every poll to avoid flicker
+  if (!wakeUpPollingInterval) statusEl.textContent = 'Checking server…';
 
-        window.addEventListener('DOMContentLoaded', () => {
-           checkBackendOnce();
-      });
+  try {
+    const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: '', num_flashcards: 0, quiz_types: '{}' }),
+      signal: AbortSignal.timeout(6000)   // slightly shorter timeout for quicker detection
+    });
+    // Any response (even an error like 400) means the server is alive
+    if (res.ok || res.status < 500) {
+      overlay.style.display = 'none';
+      if (wakeUpPollingInterval) {
+        clearInterval(wakeUpPollingInterval);
+        wakeUpPollingInterval = null;
+      }
+      return;
+    }
+  } catch (e) {
+    // Network error or timeout → server still cold
+  }
 
+  statusEl.textContent = 'Not ready yet. Auto‑retrying every 5 seconds…';
+  // Start polling if not already running
+  if (!wakeUpPollingInterval) {
+    wakeUpPollingInterval = setInterval(pingServer, 5000);
+  }
+}
+
+// Manual retry (still works with the button)
+async function retryWakeUp() {
+  // Stop auto‑polling while we do a manual check
+  if (wakeUpPollingInterval) {
+    clearInterval(wakeUpPollingInterval);
+    wakeUpPollingInterval = null;
+  }
+
+  const statusEl = document.getElementById('wakeUpStatus');
+  const btn = document.getElementById('retryWakeBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Checking server…';
+
+  try {
+    const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: '', num_flashcards: 0, quiz_types: '{}' }),
+      signal: AbortSignal.timeout(12000)
+    });
+    if (res.ok || res.status < 500) {
+      document.getElementById('wakeUpOverlay').style.display = 'none';
+      return;
+    }
+  } catch (e) {}
+
+  statusEl.textContent = 'Still waking up… Auto‑retrying again.';
+  btn.disabled = false;
+
+  // Resume polling
+  if (!wakeUpPollingInterval) {
+    wakeUpPollingInterval = setInterval(pingServer, 5000);
+  }
+}
+
+// Start first check on page load
+window.addEventListener('DOMContentLoaded', () => {
+  pingServer();
+});
         // ============================================================
         //  FIREBASE CONFIG & INIT
         // ============================================================
