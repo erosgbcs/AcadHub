@@ -1499,6 +1499,12 @@
         document.getElementById('authModal').addEventListener('click', function(e) {
             if (e.target === this) this.classList.add('hidden');
         });
+  // Auto-show mandatory name modal on load if not saved
+  (function() {
+    if (localStorage.getItem('profile_saved') !== 'true') {
+      showProfileModal();
+    }
+  })();
     </script>
 
 </body>
