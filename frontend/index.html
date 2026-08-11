@@ -5,87 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AcadHub Suite | Smart Academic Workspace</title>
     <script src="https://cdn.tailwindcss.com">
-        // Custom accent colour
-        (function() {
-            const picker = document.getElementById('accentPicker');
-            if (!picker) return;
-            // Load saved colour
-            const saved = localStorage.getItem('accentColor');
-            if (saved) {
-                picker.value = saved;
-                updateAccentColor(saved);
-            }
-            picker.addEventListener('input', function() {
-                const color = this.value;
-                localStorage.setItem('accentColor', color);
-                updateAccentColor(color);
-            });
-            function updateAccentColor(hex) {
-                // Convert hex to RGB for lighter variant
-                const r = parseInt(hex.slice(1,3), 16);
-                const g = parseInt(hex.slice(3,5), 16);
-                const b = parseInt(hex.slice(5,7), 16);
-                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
-                document.documentElement.style.setProperty('--accent', hex);
-                document.documentElement.style.setProperty('--accent2', lighter);
-            }
-        })();
+        
 
     
-        let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-        function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
-        function renderScheduler() {
-            ['todo','progress','done'].forEach(col => {
-                const el = document.getElementById('sched-' + col);
-                if (!el) return;
-                const items = schedItems.filter(i => i.status === col);
-                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deleteSchedItem('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span></div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
-            });
-            const gantt = document.getElementById('ganttChart');
-            if (gantt) {
-                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
-                gantt.innerHTML = milestones.length ? milestones.map(m => `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg"><div class="w-2 h-2 rounded-full ${m.type === 'milestone' ? 'bg-amber-400' : m.type === 'defense' ? 'bg-rose-400' : m.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400'}"></div><span class="text-sm flex-1">${m.title}</span><span class="text-xs opacity-70">${m.deadline}</span></div>`).join('') : '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-            }
-            const countdowns = document.getElementById('countdowns');
-            if (countdowns) {
-                const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
-                countdowns.innerHTML = defenses.length ? defenses.map(d => { const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${d.title}</span><span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
-            }
-            const examMatrix = document.getElementById('examMatrix');
-            if (examMatrix) {
-                const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
-                examMatrix.innerHTML = exams.length ? exams.map(e => { const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${e.title}</span><span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
-            }
-        }
-        function addSchedItem() {
-            const title = document.getElementById('schedTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            schedItems.push({ id: Date.now().toString(), title, deadline: document.getElementById('schedDeadline').value, type: document.getElementById('schedType').value, status: 'todo' });
-            document.getElementById('schedTitle').value = '';
-            document.getElementById('schedDeadline').value = '';
-            saveSched(); renderScheduler();
-        }
-        let draggedSchedId = null;
-        function dragSchedTask(e, id) { draggedSchedId = id; }
-        function dropSchedTask(e, newStatus) { e.preventDefault(); const item = schedItems.find(i => i.id === draggedSchedId); if (item) { item.status = newStatus; saveSched(); renderScheduler(); } draggedSchedId = null; }
-        function deleteSchedItem(id) { schedItems = schedItems.filter(i => i.id !== id); saveSched(); renderScheduler(); }
-        renderScheduler();
-        const origSwitchTab = switchTab;
-        switchTab = function(tab) {
-            document.getElementById('viewScheduler').classList.add('hidden');
-            document.getElementById('tabScheduler').classList.remove('tab-active');
-            document.getElementById('tabScheduler').classList.add('tab-inactive');
-            if (tab === 'scheduler') {
-                document.getElementById('viewScheduler').classList.remove('hidden');
-                document.getElementById('tabScheduler').classList.remove('tab-inactive');
-                document.getElementById('tabScheduler').classList.add('tab-active');
-                renderScheduler();
-            } else { origSwitchTab(tab); }
-        };
-        document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+        
 
     
-        // ------------------ FIREBASE AUTH ------------------
+        
+
+    
+// ------------------ FIREBASE AUTH ------------------
         const auth = firebase.auth();
         let isSignUpMode = false;
 
@@ -175,7 +104,88 @@
                 document.getElementById("authCloseBtn").style.display = "none";
             }
         });
-
+    
+let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
+        function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
+        function renderScheduler() {
+            ['todo','progress','done'].forEach(col => {
+                const el = document.getElementById('sched-' + col);
+                if (!el) return;
+                const items = schedItems.filter(i => i.status === col);
+                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deleteSchedItem('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span></div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
+            });
+            const gantt = document.getElementById('ganttChart');
+            if (gantt) {
+                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
+                gantt.innerHTML = milestones.length ? milestones.map(m => `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg"><div class="w-2 h-2 rounded-full ${m.type === 'milestone' ? 'bg-amber-400' : m.type === 'defense' ? 'bg-rose-400' : m.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400'}"></div><span class="text-sm flex-1">${m.title}</span><span class="text-xs opacity-70">${m.deadline}</span></div>`).join('') : '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
+            }
+            const countdowns = document.getElementById('countdowns');
+            if (countdowns) {
+                const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
+                countdowns.innerHTML = defenses.length ? defenses.map(d => { const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${d.title}</span><span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
+            }
+            const examMatrix = document.getElementById('examMatrix');
+            if (examMatrix) {
+                const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
+                examMatrix.innerHTML = exams.length ? exams.map(e => { const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${e.title}</span><span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
+            }
+        }
+        function addSchedItem() {
+            const title = document.getElementById('schedTitle').value.trim();
+            if (!title) { alert('Please enter a title.'); return; }
+            schedItems.push({ id: Date.now().toString(), title, deadline: document.getElementById('schedDeadline').value, type: document.getElementById('schedType').value, status: 'todo' });
+            document.getElementById('schedTitle').value = '';
+            document.getElementById('schedDeadline').value = '';
+            saveSched(); renderScheduler();
+        }
+        let draggedSchedId = null;
+        function dragSchedTask(e, id) { draggedSchedId = id; }
+        function dropSchedTask(e, newStatus) { e.preventDefault(); const item = schedItems.find(i => i.id === draggedSchedId); if (item) { item.status = newStatus; saveSched(); renderScheduler(); } draggedSchedId = null; }
+        function deleteSchedItem(id) { schedItems = schedItems.filter(i => i.id !== id); saveSched(); renderScheduler(); }
+        renderScheduler();
+        const origSwitchTab = switchTab;
+        switchTab = function(tab) {
+            document.getElementById('viewScheduler').classList.add('hidden');
+            document.getElementById('tabScheduler').classList.remove('tab-active');
+            document.getElementById('tabScheduler').classList.add('tab-inactive');
+            if (tab === 'scheduler') {
+                document.getElementById('viewScheduler').classList.remove('hidden');
+                document.getElementById('tabScheduler').classList.remove('tab-inactive');
+                document.getElementById('tabScheduler').classList.add('tab-active');
+                renderScheduler();
+            } else { origSwitchTab(tab); }
+        };
+        document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+    
+// Custom accent colour
+        (function() {
+            const picker = document.getElementById('accentPicker');
+            if (!picker) return;
+            // Load saved colour
+            const saved = localStorage.getItem('accentColor');
+            if (saved) {
+                picker.value = saved;
+                updateAccentColor(saved);
+            }
+            picker.addEventListener('input', function() {
+                const color = this.value;
+                localStorage.setItem('accentColor', color);
+                updateAccentColor(color);
+            });
+            function updateAccentColor(hex) {
+                // Convert hex to RGB for lighter variant
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent2', lighter);
+            }
+        })();
+    
+if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+            navigator.serviceWorker.register('/AcadHub/sw.js').catch(() => {});
+        }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -245,7 +255,6 @@
 
     </style>
     <link rel="manifest" href="/AcadHub/manifest.json">
-    <link rel="manifest" href="/AcadHub/manifest.json">
 </head>
 <body class="flex flex-col p-2 sm:p-4">
     <!-- Loading Screen (standalone timer, no dependencies) -->
@@ -269,9 +278,7 @@
 
     <!-- Guaranteed fade-out after 4.5s (even if other scripts fail) -->
     <script>
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/AcadHub/sw.js");
-        }
+        
         (function() {
             var overlay = document.getElementById('loadingOverlay');
             if (overlay) {
@@ -291,623 +298,41 @@
             }
         })();
     
-        // Custom accent colour
-        (function() {
-            const picker = document.getElementById('accentPicker');
-            if (!picker) return;
-            // Load saved colour
-            const saved = localStorage.getItem('accentColor');
-            if (saved) {
-                picker.value = saved;
-                updateAccentColor(saved);
-            }
-            picker.addEventListener('input', function() {
-                const color = this.value;
-                localStorage.setItem('accentColor', color);
-                updateAccentColor(color);
-            });
-            function updateAccentColor(hex) {
-                // Convert hex to RGB for lighter variant
-                const r = parseInt(hex.slice(1,3), 16);
-                const g = parseInt(hex.slice(3,5), 16);
-                const b = parseInt(hex.slice(5,7), 16);
-                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
-                document.documentElement.style.setProperty('--accent', hex);
-                document.documentElement.style.setProperty('--accent2', lighter);
-            }
-        })();
+        
 
     
-        let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-        function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
-        function renderScheduler() {
-            ['todo','progress','done'].forEach(col => {
-                const el = document.getElementById('sched-' + col);
-                if (!el) return;
-                const items = schedItems.filter(i => i.status === col);
-                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deleteSchedItem('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span></div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
-            });
-            const gantt = document.getElementById('ganttChart');
-            if (gantt) {
-                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
-                gantt.innerHTML = milestones.length ? milestones.map(m => `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg"><div class="w-2 h-2 rounded-full ${m.type === 'milestone' ? 'bg-amber-400' : m.type === 'defense' ? 'bg-rose-400' : m.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400'}"></div><span class="text-sm flex-1">${m.title}</span><span class="text-xs opacity-70">${m.deadline}</span></div>`).join('') : '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-            }
-            const countdowns = document.getElementById('countdowns');
-            if (countdowns) {
-                const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
-                countdowns.innerHTML = defenses.length ? defenses.map(d => { const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${d.title}</span><span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
-            }
-            const examMatrix = document.getElementById('examMatrix');
-            if (examMatrix) {
-                const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
-                examMatrix.innerHTML = exams.length ? exams.map(e => { const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${e.title}</span><span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
-            }
-        }
-        function addSchedItem() {
-            const title = document.getElementById('schedTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            schedItems.push({ id: Date.now().toString(), title, deadline: document.getElementById('schedDeadline').value, type: document.getElementById('schedType').value, status: 'todo' });
-            document.getElementById('schedTitle').value = '';
-            document.getElementById('schedDeadline').value = '';
-            saveSched(); renderScheduler();
-        }
-        let draggedSchedId = null;
-        function dragSchedTask(e, id) { draggedSchedId = id; }
-        function dropSchedTask(e, newStatus) { e.preventDefault(); const item = schedItems.find(i => i.id === draggedSchedId); if (item) { item.status = newStatus; saveSched(); renderScheduler(); } draggedSchedId = null; }
-        function deleteSchedItem(id) { schedItems = schedItems.filter(i => i.id !== id); saveSched(); renderScheduler(); }
-        renderScheduler();
-        const origSwitchTab = switchTab;
-        switchTab = function(tab) {
-            document.getElementById('viewScheduler').classList.add('hidden');
-            document.getElementById('tabScheduler').classList.remove('tab-active');
-            document.getElementById('tabScheduler').classList.add('tab-inactive');
-            if (tab === 'scheduler') {
-                document.getElementById('viewScheduler').classList.remove('hidden');
-                document.getElementById('tabScheduler').classList.remove('tab-inactive');
-                document.getElementById('tabScheduler').classList.add('tab-active');
-                renderScheduler();
-            } else { origSwitchTab(tab); }
-        };
-        document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+        
 
     
-        // ------------------ FIREBASE AUTH ------------------
-        const auth = firebase.auth();
-        let isSignUpMode = false;
-
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
-        }
-
-        function closeAuthModal() {
-            if (auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
-
-        // Auth state listener
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + user.email;
-                document.getElementById("authCloseBtn").style.display = "block";
-                // Auto-hide modal when logged in
-                document.getElementById("profileModal").classList.add("hidden");
-            } else {
-                document.getElementById("userIcon").classList.remove("fa-user-check");
-                document.getElementById("userIcon").classList.add("fa-user");
-                document.getElementById("profileButton").title = "Login / Sign Up";
-                document.getElementById("authCloseBtn").style.display = "none";
-            }
-        });
+        
 
     </script>
 
     <!-- Firebase SDK & Config -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
-        // Custom accent colour
-        (function() {
-            const picker = document.getElementById('accentPicker');
-            if (!picker) return;
-            // Load saved colour
-            const saved = localStorage.getItem('accentColor');
-            if (saved) {
-                picker.value = saved;
-                updateAccentColor(saved);
-            }
-            picker.addEventListener('input', function() {
-                const color = this.value;
-                localStorage.setItem('accentColor', color);
-                updateAccentColor(color);
-            });
-            function updateAccentColor(hex) {
-                // Convert hex to RGB for lighter variant
-                const r = parseInt(hex.slice(1,3), 16);
-                const g = parseInt(hex.slice(3,5), 16);
-                const b = parseInt(hex.slice(5,7), 16);
-                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
-                document.documentElement.style.setProperty('--accent', hex);
-                document.documentElement.style.setProperty('--accent2', lighter);
-            }
-        })();
+        
 
     
-        let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-        function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
-        function renderScheduler() {
-            ['todo','progress','done'].forEach(col => {
-                const el = document.getElementById('sched-' + col);
-                if (!el) return;
-                const items = schedItems.filter(i => i.status === col);
-                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deleteSchedItem('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span></div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
-            });
-            const gantt = document.getElementById('ganttChart');
-            if (gantt) {
-                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
-                gantt.innerHTML = milestones.length ? milestones.map(m => `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg"><div class="w-2 h-2 rounded-full ${m.type === 'milestone' ? 'bg-amber-400' : m.type === 'defense' ? 'bg-rose-400' : m.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400'}"></div><span class="text-sm flex-1">${m.title}</span><span class="text-xs opacity-70">${m.deadline}</span></div>`).join('') : '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-            }
-            const countdowns = document.getElementById('countdowns');
-            if (countdowns) {
-                const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
-                countdowns.innerHTML = defenses.length ? defenses.map(d => { const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${d.title}</span><span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
-            }
-            const examMatrix = document.getElementById('examMatrix');
-            if (examMatrix) {
-                const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
-                examMatrix.innerHTML = exams.length ? exams.map(e => { const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${e.title}</span><span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
-            }
-        }
-        function addSchedItem() {
-            const title = document.getElementById('schedTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            schedItems.push({ id: Date.now().toString(), title, deadline: document.getElementById('schedDeadline').value, type: document.getElementById('schedType').value, status: 'todo' });
-            document.getElementById('schedTitle').value = '';
-            document.getElementById('schedDeadline').value = '';
-            saveSched(); renderScheduler();
-        }
-        let draggedSchedId = null;
-        function dragSchedTask(e, id) { draggedSchedId = id; }
-        function dropSchedTask(e, newStatus) { e.preventDefault(); const item = schedItems.find(i => i.id === draggedSchedId); if (item) { item.status = newStatus; saveSched(); renderScheduler(); } draggedSchedId = null; }
-        function deleteSchedItem(id) { schedItems = schedItems.filter(i => i.id !== id); saveSched(); renderScheduler(); }
-        renderScheduler();
-        const origSwitchTab = switchTab;
-        switchTab = function(tab) {
-            document.getElementById('viewScheduler').classList.add('hidden');
-            document.getElementById('tabScheduler').classList.remove('tab-active');
-            document.getElementById('tabScheduler').classList.add('tab-inactive');
-            if (tab === 'scheduler') {
-                document.getElementById('viewScheduler').classList.remove('hidden');
-                document.getElementById('tabScheduler').classList.remove('tab-inactive');
-                document.getElementById('tabScheduler').classList.add('tab-active');
-                renderScheduler();
-            } else { origSwitchTab(tab); }
-        };
-        document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+        
 
     
-        // ------------------ FIREBASE AUTH ------------------
-        const auth = firebase.auth();
-        let isSignUpMode = false;
-
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
-        }
-
-        function closeAuthModal() {
-            if (auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
-
-        // Auth state listener
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + user.email;
-                document.getElementById("authCloseBtn").style.display = "block";
-                // Auto-hide modal when logged in
-                document.getElementById("profileModal").classList.add("hidden");
-            } else {
-                document.getElementById("userIcon").classList.remove("fa-user-check");
-                document.getElementById("userIcon").classList.add("fa-user");
-                document.getElementById("profileButton").title = "Login / Sign Up";
-                document.getElementById("authCloseBtn").style.display = "none";
-            }
-        });
+        
 
     </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js">
-        // ------------------ FIREBASE AUTH ------------------
-        const auth = firebase.auth();
-        let isSignUpMode = false;
-
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
-        }
-
-        function closeAuthModal() {
-            if (auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
-
-        // Auth state listener
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + user.email;
-                document.getElementById("authCloseBtn").style.display = "block";
-                // Auto-hide modal when logged in
-                document.getElementById("profileModal").classList.add("hidden");
-            } else {
-                document.getElementById("userIcon").classList.remove("fa-user-check");
-                document.getElementById("userIcon").classList.add("fa-user");
-                document.getElementById("profileButton").title = "Login / Sign Up";
-                document.getElementById("authCloseBtn").style.display = "none";
-            }
-        });
+        
 
     </script>
-        // Custom accent colour
-        (function() {
-            const picker = document.getElementById('accentPicker');
-            if (!picker) return;
-            // Load saved colour
-            const saved = localStorage.getItem('accentColor');
-            if (saved) {
-                picker.value = saved;
-                updateAccentColor(saved);
-            }
-            picker.addEventListener('input', function() {
-                const color = this.value;
-                localStorage.setItem('accentColor', color);
-                updateAccentColor(color);
-            });
-            function updateAccentColor(hex) {
-                // Convert hex to RGB for lighter variant
-                const r = parseInt(hex.slice(1,3), 16);
-                const g = parseInt(hex.slice(3,5), 16);
-                const b = parseInt(hex.slice(5,7), 16);
-                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
-                document.documentElement.style.setProperty('--accent', hex);
-                document.documentElement.style.setProperty('--accent2', lighter);
-            }
-        })();
+        
 
     
-        let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-        function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
-        function renderScheduler() {
-            ['todo','progress','done'].forEach(col => {
-                const el = document.getElementById('sched-' + col);
-                if (!el) return;
-                const items = schedItems.filter(i => i.status === col);
-                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deleteSchedItem('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span></div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
-            });
-            const gantt = document.getElementById('ganttChart');
-            if (gantt) {
-                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
-                gantt.innerHTML = milestones.length ? milestones.map(m => `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg"><div class="w-2 h-2 rounded-full ${m.type === 'milestone' ? 'bg-amber-400' : m.type === 'defense' ? 'bg-rose-400' : m.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400'}"></div><span class="text-sm flex-1">${m.title}</span><span class="text-xs opacity-70">${m.deadline}</span></div>`).join('') : '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-            }
-            const countdowns = document.getElementById('countdowns');
-            if (countdowns) {
-                const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
-                countdowns.innerHTML = defenses.length ? defenses.map(d => { const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${d.title}</span><span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
-            }
-            const examMatrix = document.getElementById('examMatrix');
-            if (examMatrix) {
-                const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
-                examMatrix.innerHTML = exams.length ? exams.map(e => { const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${e.title}</span><span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
-            }
-        }
-        function addSchedItem() {
-            const title = document.getElementById('schedTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            schedItems.push({ id: Date.now().toString(), title, deadline: document.getElementById('schedDeadline').value, type: document.getElementById('schedType').value, status: 'todo' });
-            document.getElementById('schedTitle').value = '';
-            document.getElementById('schedDeadline').value = '';
-            saveSched(); renderScheduler();
-        }
-        let draggedSchedId = null;
-        function dragSchedTask(e, id) { draggedSchedId = id; }
-        function dropSchedTask(e, newStatus) { e.preventDefault(); const item = schedItems.find(i => i.id === draggedSchedId); if (item) { item.status = newStatus; saveSched(); renderScheduler(); } draggedSchedId = null; }
-        function deleteSchedItem(id) { schedItems = schedItems.filter(i => i.id !== id); saveSched(); renderScheduler(); }
-        renderScheduler();
-        const origSwitchTab = switchTab;
-        switchTab = function(tab) {
-            document.getElementById('viewScheduler').classList.add('hidden');
-            document.getElementById('tabScheduler').classList.remove('tab-active');
-            document.getElementById('tabScheduler').classList.add('tab-inactive');
-            if (tab === 'scheduler') {
-                document.getElementById('viewScheduler').classList.remove('hidden');
-                document.getElementById('tabScheduler').classList.remove('tab-inactive');
-                document.getElementById('tabScheduler').classList.add('tab-active');
-                renderScheduler();
-            } else { origSwitchTab(tab); }
-        };
-        document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+        
 
     
-        // ------------------ FIREBASE AUTH ------------------
-        const auth = firebase.auth();
-        let isSignUpMode = false;
-
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
-        }
-
-        function closeAuthModal() {
-            if (auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
-
-        // Auth state listener
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + user.email;
-                document.getElementById("authCloseBtn").style.display = "block";
-                // Auto-hide modal when logged in
-                document.getElementById("profileModal").classList.add("hidden");
-            } else {
-                document.getElementById("userIcon").classList.remove("fa-user-check");
-                document.getElementById("userIcon").classList.add("fa-user");
-                document.getElementById("profileButton").title = "Login / Sign Up";
-                document.getElementById("authCloseBtn").style.display = "none";
-            }
-        });
+        
 
     </script>
     <script>
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/AcadHub/sw.js");
-        }
+        
         const firebaseConfig = {
             apiKey: "AIzaSyDQA4BN_3jyBWPQGWbYaHhq-aswIP7NvNg",
             authDomain: "acadhub-visitors-69180.firebaseapp.com",
@@ -919,176 +344,13 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
     
-        // Custom accent colour
-        (function() {
-            const picker = document.getElementById('accentPicker');
-            if (!picker) return;
-            // Load saved colour
-            const saved = localStorage.getItem('accentColor');
-            if (saved) {
-                picker.value = saved;
-                updateAccentColor(saved);
-            }
-            picker.addEventListener('input', function() {
-                const color = this.value;
-                localStorage.setItem('accentColor', color);
-                updateAccentColor(color);
-            });
-            function updateAccentColor(hex) {
-                // Convert hex to RGB for lighter variant
-                const r = parseInt(hex.slice(1,3), 16);
-                const g = parseInt(hex.slice(3,5), 16);
-                const b = parseInt(hex.slice(5,7), 16);
-                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
-                document.documentElement.style.setProperty('--accent', hex);
-                document.documentElement.style.setProperty('--accent2', lighter);
-            }
-        })();
+        
 
     
-        let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-        function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
-        function renderScheduler() {
-            ['todo','progress','done'].forEach(col => {
-                const el = document.getElementById('sched-' + col);
-                if (!el) return;
-                const items = schedItems.filter(i => i.status === col);
-                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deleteSchedItem('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span></div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
-            });
-            const gantt = document.getElementById('ganttChart');
-            if (gantt) {
-                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
-                gantt.innerHTML = milestones.length ? milestones.map(m => `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg"><div class="w-2 h-2 rounded-full ${m.type === 'milestone' ? 'bg-amber-400' : m.type === 'defense' ? 'bg-rose-400' : m.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400'}"></div><span class="text-sm flex-1">${m.title}</span><span class="text-xs opacity-70">${m.deadline}</span></div>`).join('') : '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-            }
-            const countdowns = document.getElementById('countdowns');
-            if (countdowns) {
-                const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
-                countdowns.innerHTML = defenses.length ? defenses.map(d => { const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${d.title}</span><span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
-            }
-            const examMatrix = document.getElementById('examMatrix');
-            if (examMatrix) {
-                const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
-                examMatrix.innerHTML = exams.length ? exams.map(e => { const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${e.title}</span><span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
-            }
-        }
-        function addSchedItem() {
-            const title = document.getElementById('schedTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            schedItems.push({ id: Date.now().toString(), title, deadline: document.getElementById('schedDeadline').value, type: document.getElementById('schedType').value, status: 'todo' });
-            document.getElementById('schedTitle').value = '';
-            document.getElementById('schedDeadline').value = '';
-            saveSched(); renderScheduler();
-        }
-        let draggedSchedId = null;
-        function dragSchedTask(e, id) { draggedSchedId = id; }
-        function dropSchedTask(e, newStatus) { e.preventDefault(); const item = schedItems.find(i => i.id === draggedSchedId); if (item) { item.status = newStatus; saveSched(); renderScheduler(); } draggedSchedId = null; }
-        function deleteSchedItem(id) { schedItems = schedItems.filter(i => i.id !== id); saveSched(); renderScheduler(); }
-        renderScheduler();
-        const origSwitchTab = switchTab;
-        switchTab = function(tab) {
-            document.getElementById('viewScheduler').classList.add('hidden');
-            document.getElementById('tabScheduler').classList.remove('tab-active');
-            document.getElementById('tabScheduler').classList.add('tab-inactive');
-            if (tab === 'scheduler') {
-                document.getElementById('viewScheduler').classList.remove('hidden');
-                document.getElementById('tabScheduler').classList.remove('tab-inactive');
-                document.getElementById('tabScheduler').classList.add('tab-active');
-                renderScheduler();
-            } else { origSwitchTab(tab); }
-        };
-        document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+        
 
     
-        // ------------------ FIREBASE AUTH ------------------
-        const auth = firebase.auth();
-        let isSignUpMode = false;
-
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
-        }
-
-        function closeAuthModal() {
-            if (auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
-
-        // Auth state listener
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + user.email;
-                document.getElementById("authCloseBtn").style.display = "block";
-                // Auto-hide modal when logged in
-                document.getElementById("profileModal").classList.add("hidden");
-            } else {
-                document.getElementById("userIcon").classList.remove("fa-user-check");
-                document.getElementById("userIcon").classList.add("fa-user");
-                document.getElementById("profileButton").title = "Login / Sign Up";
-                document.getElementById("authCloseBtn").style.display = "none";
-            }
-        });
+        
 
     </script>
 
@@ -1325,13 +587,9 @@
     </div>
 
     <script>
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/AcadHub/sw.js");
-        }
+        
         // Register service worker for PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/AcadHub/sw.js');
-        }
+        
         if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             navigator.serviceWorker.register('/AcadHub/sw.js')
                 .catch(() => {});
@@ -1725,176 +983,13 @@
             testCorrectCount = 0;
         }
     
-        // Custom accent colour
-        (function() {
-            const picker = document.getElementById('accentPicker');
-            if (!picker) return;
-            // Load saved colour
-            const saved = localStorage.getItem('accentColor');
-            if (saved) {
-                picker.value = saved;
-                updateAccentColor(saved);
-            }
-            picker.addEventListener('input', function() {
-                const color = this.value;
-                localStorage.setItem('accentColor', color);
-                updateAccentColor(color);
-            });
-            function updateAccentColor(hex) {
-                // Convert hex to RGB for lighter variant
-                const r = parseInt(hex.slice(1,3), 16);
-                const g = parseInt(hex.slice(3,5), 16);
-                const b = parseInt(hex.slice(5,7), 16);
-                const lighter = `rgb(${Math.min(r+40,255)}, ${Math.min(g+40,255)}, ${Math.min(b+40,255)})`;
-                document.documentElement.style.setProperty('--accent', hex);
-                document.documentElement.style.setProperty('--accent2', lighter);
-            }
-        })();
+        
 
     
-        let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-        function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
-        function renderScheduler() {
-            ['todo','progress','done'].forEach(col => {
-                const el = document.getElementById('sched-' + col);
-                if (!el) return;
-                const items = schedItems.filter(i => i.status === col);
-                el.innerHTML = items.length ? items.map(i => `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')"><div class="flex items-center justify-between"><p class="text-sm font-semibold">${i.title}</p><button onclick="deleteSchedItem('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button></div>${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span></div>`).join('') : '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
-            });
-            const gantt = document.getElementById('ganttChart');
-            if (gantt) {
-                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
-                gantt.innerHTML = milestones.length ? milestones.map(m => `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg"><div class="w-2 h-2 rounded-full ${m.type === 'milestone' ? 'bg-amber-400' : m.type === 'defense' ? 'bg-rose-400' : m.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400'}"></div><span class="text-sm flex-1">${m.title}</span><span class="text-xs opacity-70">${m.deadline}</span></div>`).join('') : '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-            }
-            const countdowns = document.getElementById('countdowns');
-            if (countdowns) {
-                const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
-                countdowns.innerHTML = defenses.length ? defenses.map(d => { const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${d.title}</span><span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
-            }
-            const examMatrix = document.getElementById('examMatrix');
-            if (examMatrix) {
-                const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
-                examMatrix.innerHTML = exams.length ? exams.map(e => { const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24)); return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2"><span class="text-sm">${e.title}</span><span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span></div>`; }).join('') : '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
-            }
-        }
-        function addSchedItem() {
-            const title = document.getElementById('schedTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            schedItems.push({ id: Date.now().toString(), title, deadline: document.getElementById('schedDeadline').value, type: document.getElementById('schedType').value, status: 'todo' });
-            document.getElementById('schedTitle').value = '';
-            document.getElementById('schedDeadline').value = '';
-            saveSched(); renderScheduler();
-        }
-        let draggedSchedId = null;
-        function dragSchedTask(e, id) { draggedSchedId = id; }
-        function dropSchedTask(e, newStatus) { e.preventDefault(); const item = schedItems.find(i => i.id === draggedSchedId); if (item) { item.status = newStatus; saveSched(); renderScheduler(); } draggedSchedId = null; }
-        function deleteSchedItem(id) { schedItems = schedItems.filter(i => i.id !== id); saveSched(); renderScheduler(); }
-        renderScheduler();
-        const origSwitchTab = switchTab;
-        switchTab = function(tab) {
-            document.getElementById('viewScheduler').classList.add('hidden');
-            document.getElementById('tabScheduler').classList.remove('tab-active');
-            document.getElementById('tabScheduler').classList.add('tab-inactive');
-            if (tab === 'scheduler') {
-                document.getElementById('viewScheduler').classList.remove('hidden');
-                document.getElementById('tabScheduler').classList.remove('tab-inactive');
-                document.getElementById('tabScheduler').classList.add('tab-active');
-                renderScheduler();
-            } else { origSwitchTab(tab); }
-        };
-        document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+        
 
     
-        // ------------------ FIREBASE AUTH ------------------
-        const auth = firebase.auth();
-        let isSignUpMode = false;
-
-        function showProfileModal() {
-            document.getElementById("profileModal").classList.remove("hidden");
-            updateAuthUI();
-        }
-
-        function closeAuthModal() {
-            if (auth.currentUser) {
-                document.getElementById("profileModal").classList.add("hidden");
-            }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        function updateAuthUI() {
-            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
-            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
-            document.getElementById("authError").classList.add("hidden");
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById("authEmail").value.trim();
-            const password = document.getElementById("authPassword").value.trim();
-            const errorEl = document.getElementById("authError");
-            errorEl.classList.add("hidden");
-
-            if (!email || !password) {
-                errorEl.textContent = "Please fill in all fields.";
-                errorEl.classList.remove("hidden");
-                return;
-            }
-
-            try {
-                if (isSignUpMode) {
-                    const firstName = document.getElementById("authFirstName").value.trim();
-                    const lastName = document.getElementById("authLastName").value.trim();
-                    if (!firstName || !lastName) {
-                        errorEl.textContent = "Please enter your first and last name.";
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("visitors").add({
-                        firstName, lastName,
-                        email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                document.getElementById("profileModal").classList.add("hidden");
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + email;
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.remove("hidden");
-            }
-        }
-
-        // Auth state listener
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("userIcon").classList.remove("fa-user");
-                document.getElementById("userIcon").classList.add("fa-user-check");
-                document.getElementById("profileButton").title = "Logged in as " + user.email;
-                document.getElementById("authCloseBtn").style.display = "block";
-                // Auto-hide modal when logged in
-                document.getElementById("profileModal").classList.add("hidden");
-            } else {
-                document.getElementById("userIcon").classList.remove("fa-user-check");
-                document.getElementById("userIcon").classList.add("fa-user");
-                document.getElementById("profileButton").title = "Login / Sign Up";
-                document.getElementById("authCloseBtn").style.display = "none";
-            }
-        });
+        
 
     </script>
 </body>
