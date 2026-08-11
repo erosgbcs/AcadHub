@@ -150,12 +150,21 @@
     </style>
 </head>
 <body>
-<p style="margin-top:0.5rem;font-size:0.8rem;opacity:0.7;">
-  <strong>GitHub:</strong> erosgbcs &nbsp;|&nbsp; 
-  <strong>Gmail:</strong> gabrielagsamosam@gmail.com &nbsp;|&nbsp; 
-  <strong>FB:</strong> Gabriel Agsamosam
-</p>
-<!-- Wake-up overlay --><div id="wakeUpOverlay" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:flex;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;"><div><h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Server is waking up ☕</h1><p style="margin-bottom:1.5rem;">The backend is cold‑starting. Please tap below once it's ready.</p><button id="retryWakeBtn" onclick="retryWakeUp()" style="padding:0.8rem 2rem;background:#6366f1;border:none;color:#fff;border-radius:0.75rem;font-weight:600;font-size:1rem;cursor:pointer;">Check Again</button><p id="wakeUpStatus" style="margin-top:1rem;font-size:0.85rem;opacity:0.6;"></p></div></div><!-- End wake-up overlay -->
+    <p style="margin-top:0.5rem;font-size:0.8rem;opacity:0.7;">
+        <strong>GitHub:</strong> erosgbcs &nbsp;|&nbsp;
+        <strong>Gmail:</strong> gabrielagsamosam@gmail.com &nbsp;|&nbsp;
+        <strong>FB:</strong> Gabriel Agsamosam
+    </p>
+
+    <!-- Wake-up overlay -->
+    <div id="wakeUpOverlay" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:flex;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;">
+        <div>
+            <h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Server is waking up ☕</h1>
+            <p style="margin-bottom:1.5rem;">The backend is cold‑starting. Please tap below once it's ready.</p>
+            <button id="retryWakeBtn" onclick="retryWakeUp()" style="padding:0.8rem 2rem;background:#6366f1;border:none;color:#fff;border-radius:0.75rem;font-weight:600;font-size:1rem;cursor:pointer;">Check Again</button>
+            <p id="wakeUpStatus" style="margin-top:1rem;font-size:0.85rem;opacity:0.6;"></p>
+        </div>
+    </div>
 
     <!-- ===== MAIN WRAPPER ===== -->
     <div class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6">
@@ -484,7 +493,6 @@
         <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile (required)</h3>
-                <!-- no close button – mandatory -->
             </div>
             <p class="text-xs opacity-70 mb-4">Please enter your name to continue. Only the developer can see it.</p>
             <div class="space-y-3">
@@ -520,66 +528,95 @@
         </div>
     </div>
 
+    <!-- ===== AUTH MODAL ===== -->
+    <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i><span id="authTitle">Login</span></h3>
+                <button onclick="document.getElementById('authModal').classList.add('hidden')" id="authCloseBtn" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-xs opacity-70 mb-4" id="authSubtitle">Login to save your data and access all features.</p>
+            <div class="space-y-3">
+                <input type="email" id="authEmail" placeholder="Email" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
+                <input type="password" id="authPassword" placeholder="Password" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
+                <div id="authNameFields" class="space-y-3 hidden">
+                    <input type="text" id="authFirstName" placeholder="First Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
+                    <input type="text" id="authLastName" placeholder="Last Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
+                </div>
+                <div id="authError" class="hidden text-xs text-rose-400"></div>
+                <button onclick="handleAuth()" class="btn-primary w-full text-base py-3"><span id="authBtnText">Login</span></button>
+                <p class="text-xs text-center opacity-50">
+                    <span id="authToggleText">Don't have an account?</span>
+                    <button onclick="toggleAuthMode()" class="text-indigo-400 hover:underline ml-1" id="authToggleBtn">Sign Up</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== FIREBASE SDK ===== -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script>
         // ============================================================
-// ========== SINGLE REQUEST SERVER WAKE-UP CHECK ==========
-let wakeUpAttempted = false;
-let retryInProgress = false;
-async function checkBackendOnce() {
-  const overlay = document.getElementById('wakeUpOverlay');
-  if (!overlay) return;
-  if (wakeUpAttempted) return;
-  wakeUpAttempted = true;
-  const statusEl = document.getElementById('wakeUpStatus');
-  try {
-    statusEl.textContent = 'Checking server…';
-    const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
-      signal: AbortSignal.timeout(8000)
-    });
-    if (overlay) overlay.style.display = 'none';
-  } catch (e) {
-    if (overlay) overlay.style.display = 'flex';
-    statusEl.textContent = 'Not ready yet. Tap the button to try again.';
-  }
-async function retryWakeUp() {
-  if (retryInProgress) return;
-  retryInProgress = true;
-  const statusEl = document.getElementById("wakeUpStatus");
-  const btn = document.getElementById("retryWakeBtn");
-  btn.disabled = true;
-  statusEl.textContent = "Checking server…";
-  try {
-    const res = await fetch("https://acadhub-no6m.onrender.com/api/generate-reviewer-local", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: "ping", num_flashcards: 0, quiz_types: "{}" }),
-      signal: AbortSignal.timeout(30000)
-    });
-    if (res.ok || res.status < 500) {
-      document.getElementById("wakeUpOverlay").style.display = "none";
-      return;
-    }
-  } catch(e) {}
-  statusEl.textContent = "Still waking up… Try again in a few seconds.";
-  btn.disabled = false;
-  retryInProgress = false;
-}
-window.addEventListener('DOMContentLoaded', () => {
-  const overlay = document.getElementById('wakeUpOverlay');
-  if (overlay) overlay.style.display = 'none';
-  checkBackendOnce();
-});
+        // ========== SINGLE REQUEST SERVER WAKE-UP CHECK ==========
+        // ============================================================
+        let wakeUpAttempted = false;
+        let retryInProgress = false;
+
+        async function checkBackendOnce() {
+            const overlay = document.getElementById('wakeUpOverlay');
+            if (!overlay) return;
+            if (wakeUpAttempted) return;
+            wakeUpAttempted = true;
+            const statusEl = document.getElementById('wakeUpStatus');
+            try {
+                statusEl.textContent = 'Checking server…';
+                const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
+                    signal: AbortSignal.timeout(8000)
+                });
+                if (overlay) overlay.style.display = 'none';
+            } catch (e) {
+                if (overlay) overlay.style.display = 'flex';
+                statusEl.textContent = 'Not ready yet. Tap the button to try again.';
+            }
+        }
+
+        async function retryWakeUp() {
+            if (retryInProgress) return;
+            retryInProgress = true;
+            const statusEl = document.getElementById('wakeUpStatus');
+            const btn = document.getElementById('retryWakeBtn');
+            btn.disabled = true;
+            statusEl.textContent = 'Checking server…';
+            try {
+                const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes: 'ping', num_flashcards: 0, quiz_types: '{}' }),
+                    signal: AbortSignal.timeout(30000)
+                });
+                if (res.ok || res.status < 500) {
+                    document.getElementById('wakeUpOverlay').style.display = 'none';
+                    return;
+                }
+            } catch (e) {}
+            statusEl.textContent = 'Still waking up… Try again in a few seconds.';
+            btn.disabled = false;
+            retryInProgress = false;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const overlay = document.getElementById('wakeUpOverlay');
+            if (overlay) overlay.style.display = 'none';
+            checkBackendOnce();
+        });
+
+        // ============================================================
         //  FIREBASE CONFIG & INIT
         // ============================================================
         const firebaseConfig = {
@@ -599,7 +636,7 @@ window.addEventListener('DOMContentLoaded', () => {
         // ============================================================
         const BACKEND_URL = "https://acadhub-no6m.onrender.com";
         let lastGeneratedData = null;
-        let isSignUpMode = false; // only ONE declaration
+        let isSignUpMode = false;
 
         // Scheduler data
         let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
@@ -685,13 +722,11 @@ window.addEventListener('DOMContentLoaded', () => {
         //  TABS
         // ============================================================
         function switchTab(tab) {
-            // hide all views
             document.getElementById('viewReviewer').classList.add('hidden');
             document.getElementById('viewLibrary').classList.add('hidden');
             document.getElementById('viewTest').classList.add('hidden');
             document.getElementById('viewPlanner').classList.add('hidden');
             document.getElementById('viewScheduler').classList.add('hidden');
-            // reset all tab classes
             ['tabReviewer', 'tabLibrary', 'tabTest', 'tabPlanner', 'tabScheduler'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -699,7 +734,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     el.classList.add('tab-inactive');
                 }
             });
-            // show selected
             const map = {
                 reviewer: { view: 'viewReviewer', btn: 'tabReviewer' },
                 library: { view: 'viewLibrary', btn: 'tabLibrary' },
@@ -715,7 +749,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 btn.classList.remove('tab-inactive');
                 btn.classList.add('tab-active');
             }
-            // re-render if needed
             if (tab === 'planner') renderPlanner();
             if (tab === 'scheduler') renderScheduler();
             if (tab === 'library') renderSavedList();
@@ -751,7 +784,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
             });
 
-            // Gantt
             const gantt = document.getElementById('ganttChart');
             if (gantt) {
                 const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
@@ -766,7 +798,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
             }
 
-            // Countdowns
             const countdowns = document.getElementById('countdowns');
             if (countdowns) {
                 const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
@@ -781,7 +812,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
             }
 
-            // Exam Matrix
             const examMatrix = document.getElementById('examMatrix');
             if (examMatrix) {
                 const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
@@ -818,9 +848,11 @@ window.addEventListener('DOMContentLoaded', () => {
         function dropSchedTask(e, newStatus) {
             e.preventDefault();
             const item = schedItems.find(i => i.id === draggedSchedId);
-            if (item) { item.status = newStatus;
+            if (item) {
+                item.status = newStatus;
                 saveSched();
-                renderScheduler(); }
+                renderScheduler();
+            }
             draggedSchedId = null;
         }
 
@@ -874,9 +906,11 @@ window.addEventListener('DOMContentLoaded', () => {
         function dropPlannerTask(e, newStatus) {
             e.preventDefault();
             const item = plannerTasks.find(i => i.id === draggedPlannerId);
-            if (item) { item.status = newStatus;
+            if (item) {
+                item.status = newStatus;
                 savePlanner();
-                renderPlanner(); }
+                renderPlanner();
+            }
             draggedPlannerId = null;
         }
 
@@ -895,19 +929,27 @@ window.addEventListener('DOMContentLoaded', () => {
             const provider = document.getElementById('aiProvider').value;
             const box = document.getElementById('apiKeyContainer');
             const input = document.getElementById('apiKey');
-            if (provider === 'local') { box.style.display = 'none';
-                input.required = false; } else { box.style.display = 'block';
-                input.required = true; }
+            if (provider === 'local') {
+                box.style.display = 'none';
+                input.required = false;
+            } else {
+                box.style.display = 'block';
+                input.required = true;
+            }
         }
 
         function toggleApiKeyVisibility() {
             const input = document.getElementById('apiKey');
             const icon = document.getElementById('toggleEyeIcon');
-            if (input.type === 'password') { input.type = 'text';
+            if (input.type === 'password') {
+                input.type = 'text';
                 icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash'); } else { input.type = 'password';
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
                 icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye'); }
+                icon.classList.add('fa-eye');
+            }
         }
 
         function toggleAccuracyInfo() {
@@ -952,30 +994,18 @@ window.addEventListener('DOMContentLoaded', () => {
             const useInternet = document.getElementById('useInternet').checked;
 
             const quizTypes = {};
-            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById(
-                'numTrueFalse').value) || 0;
-            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document
-                .getElementById('numIdentification').value) || 0;
-            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById(
-                'numEnumeration').value) || 0;
-            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document
-                .getElementById('numMultipleChoice').value) || 0;
-            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat')
-                .value) || 0;
-            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho')
-                .value) || 0;
-            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere')
-                .value) || 0;
-            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen')
-                .value) || 0;
-            if (document.getElementById('useWhy').checked) quizTypes.why = parseInt(document.getElementById('numWhy')
-                .value) || 0;
-            if (document.getElementById('useWhich').checked) quizTypes.which = parseInt(document.getElementById('numWhich')
-                .value) || 0;
-            if (document.getElementById('useHow').checked) quizTypes.how = parseInt(document.getElementById('numHow')
-                .value) || 0;
-            if (document.getElementById('useWhose').checked) quizTypes.whose = parseInt(document.getElementById('numWhose')
-                .value) || 0;
+            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById('numTrueFalse').value) || 0;
+            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document.getElementById('numIdentification').value) || 0;
+            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById('numEnumeration').value) || 0;
+            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document.getElementById('numMultipleChoice').value) || 0;
+            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat').value) || 0;
+            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho').value) || 0;
+            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere').value) || 0;
+            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen').value) || 0;
+            if (document.getElementById('useWhy').checked) quizTypes.why = parseInt(document.getElementById('numWhy').value) || 0;
+            if (document.getElementById('useWhich').checked) quizTypes.which = parseInt(document.getElementById('numWhich').value) || 0;
+            if (document.getElementById('useHow').checked) quizTypes.how = parseInt(document.getElementById('numHow').value) || 0;
+            if (document.getElementById('useWhose').checked) quizTypes.whose = parseInt(document.getElementById('numWhose').value) || 0;
 
             if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
 
@@ -1022,13 +1052,11 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('flashcardGrid').innerHTML = '';
             document.getElementById('quizContainer').innerHTML = '';
 
-            // Summary
             const summaryItems = (data.summary || []).map(s =>
                 `<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-indigo-400 mt-0.5"></i>${s}</li>`
-                );
+            );
             document.getElementById('summaryList').innerHTML = summaryItems.join('');
 
-            // Flashcards
             const flashcardContainer = document.getElementById('flashcardGrid');
             for (let i = 0; i < (data.flashcards || []).length; i++) {
                 const card = data.flashcards[i];
@@ -1039,7 +1067,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 await new Promise(resolve => setTimeout(resolve, 150));
             }
 
-            // Quiz
             const quizContainer = document.getElementById('quizContainer');
             for (let i = 0; i < (data.quiz || []).length; i++) {
                 const q = data.quiz[i];
@@ -1093,8 +1120,11 @@ window.addEventListener('DOMContentLoaded', () => {
             const list = document.getElementById('savedList');
             const empty = document.getElementById('emptyLibrary');
             let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
-            if (saved.length === 0) { empty.classList.remove('hidden');
-                list.innerHTML = ''; return; }
+            if (saved.length === 0) {
+                empty.classList.remove('hidden');
+                list.innerHTML = '';
+                return;
+            }
             empty.classList.add('hidden');
             list.innerHTML = saved.map(entry =>
                 `<div class="saved-card flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
@@ -1190,9 +1220,9 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         function showProfileModal() {
-            // If profile already saved, just show a quick message
             if (localStorage.getItem('profile_saved') === 'true') {
-                alert('Profile already saved.');
+                document.getElementById('authModal').classList.remove('hidden');
+                updateAuthUI();
                 return;
             }
             document.getElementById('profileModal').classList.remove('hidden');
@@ -1280,10 +1310,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
             const difficultyMap = {
                 easy: { truefalse: 3, identification: 3, multiplechoice: 2, total: 8, timePerQuestion: 0 },
-                medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15,
-                timePerQuestion: 20 },
-                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2, which: 2,
-                    total: 26, timePerQuestion: 15 }
+                medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15, timePerQuestion: 20 },
+                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2, which: 2, total: 26, timePerQuestion: 15 }
             };
             const quizTypes = {};
             for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
@@ -1335,10 +1363,8 @@ window.addEventListener('DOMContentLoaded', () => {
             if (q.options && q.options.length) {
                 q.options.forEach((opt, idx) => {
                     const btn = document.createElement('button');
-                    btn.className =
-                        'quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 hover:bg-indigo-500/10 transition';
-                    btn.innerHTML =
-                        `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
+                    btn.className = 'quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 hover:bg-indigo-500/10 transition';
+                    btn.innerHTML = `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
                     btn.addEventListener('click', () => handleTestAnswer(btn, opt === q.answer, q.answer));
                     optionsContainer.appendChild(btn);
                 });
@@ -1419,8 +1445,7 @@ window.addEventListener('DOMContentLoaded', () => {
         function updateAuthUI() {
             document.getElementById('authTitle').textContent = isSignUpMode ? 'Sign Up' : 'Login';
             document.getElementById('authBtnText').textContent = isSignUpMode ? 'Sign Up' : 'Login';
-            document.getElementById('authToggleText').textContent = isSignUpMode ? 'Already have an account?' :
-                "Don't have an account?";
+            document.getElementById('authToggleText').textContent = isSignUpMode ? 'Already have an account?' : "Don't have an account?";
             document.getElementById('authToggleBtn').textContent = isSignUpMode ? 'Login' : 'Sign Up';
             document.getElementById('authNameFields').classList.toggle('hidden', !isSignUpMode);
             document.getElementById('authError').classList.add('hidden');
@@ -1463,7 +1488,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 } else {
                     await auth.signInWithEmailAndPassword(email, password);
                 }
-                document.getElementById('profileModal').classList.add('hidden');
+                document.getElementById('authModal').classList.add('hidden');
                 document.getElementById('userIcon').classList.remove('fa-user');
                 document.getElementById('userIcon').classList.add('fa-user-check');
                 document.getElementById('profileButton').title = 'Logged in as ' + email;
@@ -1504,61 +1529,21 @@ window.addEventListener('DOMContentLoaded', () => {
         renderPlanner();
         renderSavedList();
         updateProviderUI();
-
-        // Set default difficulty highlight
         setDifficulty('medium');
 
-        console.log('AcadHub Suite loaded successfully.');
-    </script>
-
-    <!-- Auth Modal (Login / Sign Up) – placed outside main flow -->
-    <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i><span id="authTitle">Login</span>
-                </h3>
-                <button onclick="document.getElementById('authModal').classList.add('hidden')" id="authCloseBtn"
-                class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
-            </div>
-  // Auto-show mandatory name modal on load if not saved
-  (function() {
-    if (localStorage.getItem('profile_saved') !== 'true') {
-      showProfileModal();
-    }
-  })();
-            <p class="text-xs opacity-70 mb-4" id="authSubtitle">Login to save your data and access all features.</p>
-            <div class="space-y-3">
-                <input type="email" id="authEmail" placeholder="Email" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                <input type="password" id="authPassword" placeholder="Password" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                <div id="authNameFields" class=" space-y-3">
-                    <input type="text" id="authFirstName" placeholder="First Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                    <input type="text" id="authLastName" placeholder="Last Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                </div>
-                <div id="authError" class="hidden text-xs text-rose-400"></div>
-                <button onclick="handleAuth()" class="btn-primary w-full text-base py-3"><span id="authBtnText">Login</span></button>
-                <p class="text-xs text-center opacity-50">
-                    <span id="authToggleText">Don't have an account?</span>
-<p class="text-xs text-center mt-2"><a href="#" onclick="isSignUpMode=true; updateAuthUI(); return false;" class="text-indigo-400 hover:underline">Sign Up here</a></p>
-                    <button onclick="toggleAuthMode()" class="text-indigo-400 hover:underline ml-1" id="authToggleBtn">Sign Up</button>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Ensure auth modal can be opened from profile button -->
-    <script>
-        // Override showProfileModal to show auth modal if profile not saved
-        const origShowProfile = showProfileModal;
-        showProfileModal = function() {
-            if (localStorage.getItem('profile_saved') === 'true') {
-                // profile already saved, show auth modal
-                document.getElementById('authModal').classList.remove('hidden');
-                updateAuthUI();
-                return;
+        // Auto-show mandatory name modal on load if not saved
+        (function() {
+            if (localStorage.getItem('profile_saved') !== 'true') {
+                document.getElementById('profileModal').classList.remove('hidden');
             }
-            origShowProfile();
-        };
+        })();
+
         // Close auth modal when clicking outside
         document.getElementById('authModal').addEventListener('click', function(e) {
             if (e.target === this) this.classList.add('hidden');
         });
+
+        console.log('AcadHub Suite loaded successfully.');
+    </script>
+</body>
+</html>
