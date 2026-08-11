@@ -1,5 +1,11 @@
 fastapi
 uvicorn
 python-multipart
-pypdf
 aiohttp
+pypdf
+pdfplumber
+pytesseract
+pdf2image
+python-docx
+nltk
+Pillow
