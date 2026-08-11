@@ -84,6 +84,93 @@
         };
         document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
 
+    
+        // ------------------ FIREBASE AUTH ------------------
+        const auth = firebase.auth();
+        let isSignUpMode = false;
+
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+            updateAuthUI();
+        }
+
+        function closeAuthModal() {
+            if (auth.currentUser) {
+                document.getElementById("profileModal").classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
+            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
+            document.getElementById("authError").classList.add("hidden");
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById("authEmail").value.trim();
+            const password = document.getElementById("authPassword").value.trim();
+            const errorEl = document.getElementById("authError");
+            errorEl.classList.add("hidden");
+
+            if (!email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    const firstName = document.getElementById("authFirstName").value.trim();
+                    const lastName = document.getElementById("authLastName").value.trim();
+                    if (!firstName || !lastName) {
+                        errorEl.textContent = "Please enter your first and last name.";
+                        errorEl.classList.remove("hidden");
+                        return;
+                    }
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection("visitors").add({
+                        firstName, lastName,
+                        email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                document.getElementById("profileModal").classList.add("hidden");
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + email;
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + user.email;
+                document.getElementById("authCloseBtn").style.display = "block";
+                // Auto-hide modal when logged in
+                document.getElementById("profileModal").classList.add("hidden");
+            } else {
+                document.getElementById("userIcon").classList.remove("fa-user-check");
+                document.getElementById("userIcon").classList.add("fa-user");
+                document.getElementById("profileButton").title = "Login / Sign Up";
+                document.getElementById("authCloseBtn").style.display = "none";
+            }
+        });
+
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -278,6 +365,93 @@
         };
         document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
 
+    
+        // ------------------ FIREBASE AUTH ------------------
+        const auth = firebase.auth();
+        let isSignUpMode = false;
+
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+            updateAuthUI();
+        }
+
+        function closeAuthModal() {
+            if (auth.currentUser) {
+                document.getElementById("profileModal").classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
+            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
+            document.getElementById("authError").classList.add("hidden");
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById("authEmail").value.trim();
+            const password = document.getElementById("authPassword").value.trim();
+            const errorEl = document.getElementById("authError");
+            errorEl.classList.add("hidden");
+
+            if (!email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    const firstName = document.getElementById("authFirstName").value.trim();
+                    const lastName = document.getElementById("authLastName").value.trim();
+                    if (!firstName || !lastName) {
+                        errorEl.textContent = "Please enter your first and last name.";
+                        errorEl.classList.remove("hidden");
+                        return;
+                    }
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection("visitors").add({
+                        firstName, lastName,
+                        email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                document.getElementById("profileModal").classList.add("hidden");
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + email;
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + user.email;
+                document.getElementById("authCloseBtn").style.display = "block";
+                // Auto-hide modal when logged in
+                document.getElementById("profileModal").classList.add("hidden");
+            } else {
+                document.getElementById("userIcon").classList.remove("fa-user-check");
+                document.getElementById("userIcon").classList.add("fa-user");
+                document.getElementById("profileButton").title = "Login / Sign Up";
+                document.getElementById("authCloseBtn").style.display = "none";
+            }
+        });
+
     </script>
 
     <!-- Firebase SDK & Config -->
@@ -361,8 +535,183 @@
         };
         document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
 
+    
+        // ------------------ FIREBASE AUTH ------------------
+        const auth = firebase.auth();
+        let isSignUpMode = false;
+
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+            updateAuthUI();
+        }
+
+        function closeAuthModal() {
+            if (auth.currentUser) {
+                document.getElementById("profileModal").classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
+            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
+            document.getElementById("authError").classList.add("hidden");
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById("authEmail").value.trim();
+            const password = document.getElementById("authPassword").value.trim();
+            const errorEl = document.getElementById("authError");
+            errorEl.classList.add("hidden");
+
+            if (!email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    const firstName = document.getElementById("authFirstName").value.trim();
+                    const lastName = document.getElementById("authLastName").value.trim();
+                    if (!firstName || !lastName) {
+                        errorEl.textContent = "Please enter your first and last name.";
+                        errorEl.classList.remove("hidden");
+                        return;
+                    }
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection("visitors").add({
+                        firstName, lastName,
+                        email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                document.getElementById("profileModal").classList.add("hidden");
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + email;
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + user.email;
+                document.getElementById("authCloseBtn").style.display = "block";
+                // Auto-hide modal when logged in
+                document.getElementById("profileModal").classList.add("hidden");
+            } else {
+                document.getElementById("userIcon").classList.remove("fa-user-check");
+                document.getElementById("userIcon").classList.add("fa-user");
+                document.getElementById("profileButton").title = "Login / Sign Up";
+                document.getElementById("authCloseBtn").style.display = "none";
+            }
+        });
+
     </script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js">
+        // ------------------ FIREBASE AUTH ------------------
+        const auth = firebase.auth();
+        let isSignUpMode = false;
+
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+            updateAuthUI();
+        }
+
+        function closeAuthModal() {
+            if (auth.currentUser) {
+                document.getElementById("profileModal").classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
+            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
+            document.getElementById("authError").classList.add("hidden");
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById("authEmail").value.trim();
+            const password = document.getElementById("authPassword").value.trim();
+            const errorEl = document.getElementById("authError");
+            errorEl.classList.add("hidden");
+
+            if (!email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    const firstName = document.getElementById("authFirstName").value.trim();
+                    const lastName = document.getElementById("authLastName").value.trim();
+                    if (!firstName || !lastName) {
+                        errorEl.textContent = "Please enter your first and last name.";
+                        errorEl.classList.remove("hidden");
+                        return;
+                    }
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection("visitors").add({
+                        firstName, lastName,
+                        email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                document.getElementById("profileModal").classList.add("hidden");
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + email;
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + user.email;
+                document.getElementById("authCloseBtn").style.display = "block";
+                // Auto-hide modal when logged in
+                document.getElementById("profileModal").classList.add("hidden");
+            } else {
+                document.getElementById("userIcon").classList.remove("fa-user-check");
+                document.getElementById("userIcon").classList.add("fa-user");
+                document.getElementById("profileButton").title = "Login / Sign Up";
+                document.getElementById("authCloseBtn").style.display = "none";
+            }
+        });
+
+    </script>
         // Custom accent colour
         (function() {
             const picker = document.getElementById('accentPicker');
@@ -441,6 +790,93 @@
             } else { origSwitchTab(tab); }
         };
         document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+
+    
+        // ------------------ FIREBASE AUTH ------------------
+        const auth = firebase.auth();
+        let isSignUpMode = false;
+
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+            updateAuthUI();
+        }
+
+        function closeAuthModal() {
+            if (auth.currentUser) {
+                document.getElementById("profileModal").classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
+            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
+            document.getElementById("authError").classList.add("hidden");
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById("authEmail").value.trim();
+            const password = document.getElementById("authPassword").value.trim();
+            const errorEl = document.getElementById("authError");
+            errorEl.classList.add("hidden");
+
+            if (!email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    const firstName = document.getElementById("authFirstName").value.trim();
+                    const lastName = document.getElementById("authLastName").value.trim();
+                    if (!firstName || !lastName) {
+                        errorEl.textContent = "Please enter your first and last name.";
+                        errorEl.classList.remove("hidden");
+                        return;
+                    }
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection("visitors").add({
+                        firstName, lastName,
+                        email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                document.getElementById("profileModal").classList.add("hidden");
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + email;
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + user.email;
+                document.getElementById("authCloseBtn").style.display = "block";
+                // Auto-hide modal when logged in
+                document.getElementById("profileModal").classList.add("hidden");
+            } else {
+                document.getElementById("userIcon").classList.remove("fa-user-check");
+                document.getElementById("userIcon").classList.add("fa-user");
+                document.getElementById("profileButton").title = "Login / Sign Up";
+                document.getElementById("authCloseBtn").style.display = "none";
+            }
+        });
 
     </script>
     <script>
@@ -537,6 +973,93 @@
         };
         document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
 
+    
+        // ------------------ FIREBASE AUTH ------------------
+        const auth = firebase.auth();
+        let isSignUpMode = false;
+
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+            updateAuthUI();
+        }
+
+        function closeAuthModal() {
+            if (auth.currentUser) {
+                document.getElementById("profileModal").classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
+            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
+            document.getElementById("authError").classList.add("hidden");
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById("authEmail").value.trim();
+            const password = document.getElementById("authPassword").value.trim();
+            const errorEl = document.getElementById("authError");
+            errorEl.classList.add("hidden");
+
+            if (!email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    const firstName = document.getElementById("authFirstName").value.trim();
+                    const lastName = document.getElementById("authLastName").value.trim();
+                    if (!firstName || !lastName) {
+                        errorEl.textContent = "Please enter your first and last name.";
+                        errorEl.classList.remove("hidden");
+                        return;
+                    }
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection("visitors").add({
+                        firstName, lastName,
+                        email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                document.getElementById("profileModal").classList.add("hidden");
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + email;
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + user.email;
+                document.getElementById("authCloseBtn").style.display = "block";
+                // Auto-hide modal when logged in
+                document.getElementById("profileModal").classList.add("hidden");
+            } else {
+                document.getElementById("userIcon").classList.remove("fa-user-check");
+                document.getElementById("userIcon").classList.add("fa-user");
+                document.getElementById("profileButton").title = "Login / Sign Up";
+                document.getElementById("authCloseBtn").style.display = "none";
+            }
+        });
+
     </script>
 
     <!-- Main Content -->
@@ -557,7 +1080,7 @@
 
                 <button onclick="switchTab('library')" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition"><i class="fa-solid fa-bookmark mr-1"></i> Library</button>
                 <button onclick="showProfileModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
-                    <i class="fa-solid fa-user text-xs"></i>
+                    <i id="userIcon" class="fa-solid fa-user text-xs"></i>
                 </button>
                 <button onclick="toggleEvalModal()" id="evalButton" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition">
                     <i class="fa-solid fa-star text-xs text-amber-400 mr-1"></i> Evaluate to improve
@@ -709,8 +1232,30 @@
 
     <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam</footer>
 
-    <!-- Profile Modal (cannot be closed until saved) -->
+    <!-- Auth Modal (Login / Sign Up) -->
     <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i><span id="authTitle">Login</span></h3>
+                <button onclick="closeAuthModal()" id="authCloseBtn" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-xs opacity-70 mb-4" id="authSubtitle">Login to save your data and access all features.</p>
+            <div class="space-y-3">
+                <input type="email" id="authEmail" placeholder="Email" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <input type="password" id="authPassword" placeholder="Password" required class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <div id="authNameFields" class="hidden space-y-3">
+                    <input type="text" id="authFirstName" placeholder="First Name" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                    <input type="text" id="authLastName" placeholder="Last Name" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div id="authError" class="hidden text-xs text-rose-400"></div>
+                <button onclick="handleAuth()" class="btn-primary w-full text-sm"><span id="authBtnText">Login</span></button>
+                <p class="text-xs text-center opacity-50">
+                    <span id="authToggleText">Don't have an account?</span>
+                    <button onclick="toggleAuthMode()" class="text-indigo-400 hover:underline ml-1" id="authToggleBtn">Sign Up</button>
+                </p>
+            </div>
+        </div>
+    </div>
         <div class="glass-card w-80 p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i>Your Profile (required)</h3>
@@ -1228,6 +1773,93 @@
             } else { origSwitchTab(tab); }
         };
         document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+
+    
+        // ------------------ FIREBASE AUTH ------------------
+        const auth = firebase.auth();
+        let isSignUpMode = false;
+
+        function showProfileModal() {
+            document.getElementById("profileModal").classList.remove("hidden");
+            updateAuthUI();
+        }
+
+        function closeAuthModal() {
+            if (auth.currentUser) {
+                document.getElementById("profileModal").classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            document.getElementById("authTitle").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authBtnText").textContent = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("authToggleText").textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("authToggleBtn").textContent = isSignUpMode ? "Login" : "Sign Up";
+            document.getElementById("authNameFields").classList.toggle("hidden", !isSignUpMode);
+            document.getElementById("authError").classList.add("hidden");
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById("authEmail").value.trim();
+            const password = document.getElementById("authPassword").value.trim();
+            const errorEl = document.getElementById("authError");
+            errorEl.classList.add("hidden");
+
+            if (!email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    const firstName = document.getElementById("authFirstName").value.trim();
+                    const lastName = document.getElementById("authLastName").value.trim();
+                    if (!firstName || !lastName) {
+                        errorEl.textContent = "Please enter your first and last name.";
+                        errorEl.classList.remove("hidden");
+                        return;
+                    }
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection("visitors").add({
+                        firstName, lastName,
+                        email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                document.getElementById("profileModal").classList.add("hidden");
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + email;
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("userIcon").classList.remove("fa-user");
+                document.getElementById("userIcon").classList.add("fa-user-check");
+                document.getElementById("profileButton").title = "Logged in as " + user.email;
+                document.getElementById("authCloseBtn").style.display = "block";
+                // Auto-hide modal when logged in
+                document.getElementById("profileModal").classList.add("hidden");
+            } else {
+                document.getElementById("userIcon").classList.remove("fa-user-check");
+                document.getElementById("userIcon").classList.add("fa-user");
+                document.getElementById("profileButton").title = "Login / Sign Up";
+                document.getElementById("authCloseBtn").style.display = "none";
+            }
+        });
 
     </script>
 </body>
