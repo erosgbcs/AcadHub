@@ -150,6 +150,11 @@
     </style>
 </head>
 <body>
+<p style="margin-top:0.5rem;font-size:0.8rem;opacity:0.7;">
+  <strong>GitHub:</strong> erosgbcs &nbsp;|&nbsp; 
+  <strong>Gmail:</strong> gabrielagsamosam@gmail.com &nbsp;|&nbsp; 
+  <strong>FB:</strong> Gabriel Agsamosam
+</p>
 <!-- Wake-up overlay --><div id="wakeUpOverlay" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:flex;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;"><div><h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Server is waking up ☕</h1><p style="margin-bottom:1.5rem;">The backend is cold‑starting. Please tap below once it's ready.</p><button id="retryWakeBtn" onclick="retryWakeUp()" style="padding:0.8rem 2rem;background:#6366f1;border:none;color:#fff;border-radius:0.75rem;font-weight:600;font-size:1rem;cursor:pointer;">Check Again</button><p id="wakeUpStatus" style="margin-top:1rem;font-size:0.85rem;opacity:0.6;"></p></div></div><!-- End wake-up overlay -->
 
     <!-- ===== MAIN WRAPPER ===== -->
@@ -253,7 +258,7 @@
                             </div>
                             <p class="text-xs sm:text-sm" id="fileNameDisplay">Drop file or click to browse</p>
                             <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
-                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateFileName(this)" />
+                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateFileName(this)" />
                         </label>
                     </div>
 
@@ -352,7 +357,7 @@
                         </div>
                         <p class="text-xs sm:text-sm" id="testFileNameDisplay">Drop file or click to browse</p>
                         <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
-                        <input id="testFileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="updateTestFileName(this)" />
+                        <input id="testFileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateTestFileName(this)" />
                     </label>
                 </div>
                 <div class="flex items-center gap-2 mb-3 sm:mb-4">
@@ -1522,7 +1527,7 @@ window.addEventListener('DOMContentLoaded', () => {
             <div class="space-y-3">
                 <input type="email" id="authEmail" placeholder="Email" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
                 <input type="password" id="authPassword" placeholder="Password" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                <div id="authNameFields" class="hidden space-y-3">
+                <div id="authNameFields" class=" space-y-3">
                     <input type="text" id="authFirstName" placeholder="First Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
                     <input type="text" id="authLastName" placeholder="Last Name" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
                 </div>
@@ -1530,6 +1535,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 <button onclick="handleAuth()" class="btn-primary w-full text-base py-3"><span id="authBtnText">Login</span></button>
                 <p class="text-xs text-center opacity-50">
                     <span id="authToggleText">Don't have an account?</span>
+<p class="text-xs text-center mt-2"><a href="#" onclick="isSignUpMode=true; updateAuthUI(); return false;" class="text-indigo-400 hover:underline">Sign Up here</a></p>
                     <button onclick="toggleAuthMode()" class="text-indigo-400 hover:underline ml-1" id="authToggleBtn">Sign Up</button>
                 </p>
             </div>
