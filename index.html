@@ -11,14 +11,42 @@
         :root {
             --accent: #6366f1;
             --accent2: #818cf8;
+            --bg-body: #0a0a12;
+            --text-body: #e2e8f0;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --bg-card-solid: #1a1a2e;
+            --bg-elevated: rgba(255, 255, 255, 0.06);
+            --bg-hover: rgba(255, 255, 255, 0.08);
+            --bg-input: rgba(255, 255, 255, 0.06);
+            --border-card: rgba(255, 255, 255, 0.08);
+            --border-input: rgba(255, 255, 255, 0.08);
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --shadow-card: none;
         }
+
+        html.light {
+            --bg-body: #f1f5f9;
+            --text-body: #0f172a;
+            --bg-card: rgba(255, 255, 255, 0.75);
+            --bg-card-solid: #ffffff;
+            --bg-elevated: rgba(0, 0, 0, 0.04);
+            --bg-hover: rgba(0, 0, 0, 0.06);
+            --bg-input: rgba(0, 0, 0, 0.04);
+            --border-card: rgba(0, 0, 0, 0.08);
+            --border-input: rgba(0, 0, 0, 0.12);
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
         * {
             box-sizing: border-box;
         }
         html,
         body {
-            background: #0a0a12;
-            color: #e2e8f0;
+            background: var(--bg-body);
+            color: var(--text-body);
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             min-height: 100vh;
             transition: background 0.3s, color 0.3s;
@@ -26,71 +54,46 @@
         body {
             padding: 1rem;
         }
-        html.light {
-            background: #f1f5f9;
-            color: #0f172a;
-        }
-        html.light .glass-card {
-            background: rgba(255, 255, 255, 0.7);
-            border-color: rgba(0, 0, 0, 0.08);
-            backdrop-filter: blur(12px);
-        }
-        html.light .glass-card .bg-white\/5 {
-            background: rgba(0, 0, 0, 0.04);
-        }
-        html.light .glass-card .border-white\/10 {
-            border-color: rgba(0, 0, 0, 0.08);
-        }
-        html.light input,
-        html.light textarea,
-        html.light select {
-            background: rgba(0, 0, 0, 0.04);
-            border-color: rgba(0, 0, 0, 0.1);
-            color: #0f172a;
-        }
-        html.light input::placeholder,
-        html.light textarea::placeholder {
-            color: #64748b;
-        }
-        html.light .tab-inactive {
-            color: #475569;
-        }
-        html.light .tab-active {
-            background: rgba(99, 102, 241, 0.15);
-            color: #4338ca;
-        }
+
         .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
             backdrop-filter: blur(12px);
             border-radius: 1.5rem;
             padding: 1.25rem;
-            transition: background 0.3s, border-color 0.3s;
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+            box-shadow: var(--shadow-card);
         }
         @media (min-width: 640px) {
             .glass-card {
                 padding: 1.5rem;
             }
         }
+
         input,
         textarea,
         select {
             width: 100%;
             padding: 0.7rem 1rem;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--bg-input);
+            border: 1px solid var(--border-input);
             border-radius: 0.75rem;
-            color: #e2e8f0;
+            color: var(--text-body);
             font-size: 0.9rem;
-            transition: border-color 0.2s, background 0.2s;
+            transition: border-color 0.2s, background 0.2s, color 0.2s;
         }
         input:focus,
         textarea:focus,
         select:focus {
             outline: none;
             border-color: var(--accent);
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--bg-elevated);
         }
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
         .btn-primary {
             padding: 0.7rem 1.5rem;
             background: var(--accent);
@@ -109,16 +112,25 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+
         .tab-active {
             background: rgba(99, 102, 241, 0.15);
             color: #a5b4fc;
         }
+        html.light .tab-active {
+            background: rgba(99, 102, 241, 0.12);
+            color: #4338ca;
+        }
         .tab-inactive {
             color: #94a3b8;
         }
-        .tab-inactive:hover {
-            background: rgba(255, 255, 255, 0.05);
+        html.light .tab-inactive {
+            color: #475569;
         }
+        .tab-inactive:hover {
+            background: var(--bg-hover);
+        }
+
         .reveal-item {
             animation: reveal 0.35s ease-out forwards;
             opacity: 0;
@@ -137,15 +149,303 @@
         .quiz-option:hover {
             background: rgba(99, 102, 241, 0.08);
         }
+        html.light .quiz-option:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
         .saved-card {
             transition: background 0.15s, border-color 0.15s;
         }
         .saved-card:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--bg-hover);
             border-color: rgba(255, 255, 255, 0.2);
         }
+        html.light .saved-card:hover {
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
         #gcashFull p {
             word-break: break-all;
+        }
+
+        /* ============ LIGHT MODE OVERRIDES FOR TAILWIND UTILITIES ============ */
+        html.light .bg-white\/5,
+        html.light .bg-white\/5 {
+            background: rgba(0, 0, 0, 0.04) !important;
+        }
+        html.light .bg-white\/10 {
+            background: rgba(0, 0, 0, 0.06) !important;
+        }
+        html.light .bg-white\/20 {
+            background: rgba(0, 0, 0, 0.08) !important;
+        }
+        html.light .border-white\/10 {
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+        html.light .border-white\/5 {
+            border-color: rgba(0, 0, 0, 0.05) !important;
+        }
+        html.light .border-white\/20 {
+            border-color: rgba(0, 0, 0, 0.12) !important;
+        }
+
+        /* Text overrides */
+        html.light .text-gray-400 {
+            color: #475569 !important;
+        }
+        html.light .text-white {
+            color: #0f172a !important;
+        }
+        html.light .opacity-50 {
+            opacity: 0.6;
+        }
+        html.light .opacity-70 {
+            opacity: 0.75;
+        }
+
+        /* Inline-code and mono elements */
+        html.light .font-mono {
+            color: #1e293b;
+        }
+
+        /* File upload border hover */
+        html.light .hover\:border-indigo-400\/50:hover {
+            border-color: rgba(99, 102, 241, 0.5) !important;
+        }
+
+        /* Accent checkbox */
+        html.light .accent-indigo-500 {
+            accent-color: #6366f1;
+        }
+
+        /* Progress spinner */
+        html.light .animate-spin {
+            color: #6366f1;
+        }
+
+        /* Specific component overrides */
+        html.light #wakeUpOverlay {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        html.light #wakeUpOverlay h1 {
+            color: #0f172a;
+        }
+        html.light #wakeUpOverlay p {
+            color: #334155;
+        }
+
+        html.light footer {
+            color: #64748b !important;
+        }
+        html.light footer a {
+            color: #6366f1 !important;
+        }
+
+        html.light #backendStatus {
+            background: rgba(16, 185, 129, 0.1) !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+            color: #059669 !important;
+        }
+
+        html.light .bg-emerald-500\/10 {
+            background: rgba(16, 185, 129, 0.1) !important;
+        }
+        html.light .border-emerald-500\/20 {
+            border-color: rgba(16, 185, 129, 0.25) !important;
+        }
+        html.light .text-emerald-400 {
+            color: #059669 !important;
+        }
+        html.light .bg-emerald-500\/20 {
+            background: rgba(16, 185, 129, 0.18) !important;
+        }
+        html.light .border-emerald-500 {
+            border-color: #10b981 !important;
+        }
+        html.light .text-emerald-300 {
+            color: #047857 !important;
+        }
+
+        html.light .bg-rose-500\/20 {
+            background: rgba(239, 68, 68, 0.15) !important;
+        }
+        html.light .border-rose-500 {
+            border-color: #ef4444 !important;
+        }
+        html.light .text-rose-300 {
+            color: #b91c1c !important;
+        }
+        html.light .text-rose-400 {
+            color: #dc2626 !important;
+        }
+
+        html.light .bg-amber-500\/20 {
+            background: rgba(245, 158, 11, 0.15) !important;
+        }
+        html.light .text-amber-400 {
+            color: #d97706 !important;
+        }
+        html.light .text-amber-300 {
+            color: #b45309 !important;
+        }
+
+        html.light .bg-indigo-500\/10 {
+            background: rgba(99, 102, 241, 0.1) !important;
+        }
+        html.light .bg-indigo-500\/20 {
+            background: rgba(99, 102, 241, 0.15) !important;
+        }
+        html.light .bg-indigo-500\/5 {
+            background: rgba(99, 102, 241, 0.06) !important;
+        }
+        html.light .bg-indigo-600 {
+            background: #6366f1 !important;
+        }
+        html.light .bg-indigo-600:hover {
+            background: #4f46e5 !important;
+        }
+
+        html.light .text-indigo-400 {
+            color: #6366f1 !important;
+        }
+        html.light .text-cyan-400 {
+            color: #0891b2 !important;
+        }
+        html.light .text-teal-400 {
+            color: #0d9488 !important;
+        }
+        html.light .text-blue-400 {
+            color: #2563eb !important;
+        }
+
+        html.light .bg-rose-500\/20 {
+            background: rgba(239, 68, 68, 0.12) !important;
+        }
+        html.light .hover\:bg-rose-500\/30:hover {
+            background: rgba(239, 68, 68, 0.2) !important;
+        }
+        html.light .bg-rose-500\/10 {
+            background: rgba(239, 68, 68, 0.08) !important;
+        }
+
+        /* Modal backdrops */
+        html.light .bg-black\/60 {
+            background: rgba(0, 0, 0, 0.4) !important;
+        }
+
+        /* Gradient text override */
+        html.light .bg-gradient-to-r.from-indigo-400.to-cyan-300 {
+            background: linear-gradient(to right, #6366f1, #0891b2) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            color: transparent !important;
+            -webkit-text-fill-color: transparent !important;
+        }
+
+        /* Star rating in eval modal */
+        html.light #starContainer .fa-star {
+            color: #94a3b8;
+        }
+        html.light #starContainer .fa-star.text-amber-400,
+        html.light #starContainer .fa-star.fa-solid {
+            color: #f59e0b !important;
+        }
+        html.light #starContainer .fa-star:hover {
+            color: #f59e0b !important;
+        }
+
+        /* Select dropdowns */
+        html.light select option {
+            background: #ffffff;
+            color: #0f172a;
+        }
+
+        /* Checkbox labels */
+        html.light label {
+            color: var(--text-body);
+        }
+
+        /* Draggable cards in scheduler/planner */
+        html.light .cursor-grab {
+            color: var(--text-body);
+        }
+        html.light .cursor-grab:hover {
+            background: rgba(0, 0, 0, 0.06) !important;
+        }
+
+        /* Gantt chart, countdowns, exam matrix */
+        html.light #ganttChart,
+        html.light #countdowns,
+        html.light #examMatrix {
+            background: rgba(0, 0, 0, 0.03) !important;
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* Kanban columns */
+        html.light #sched-todo,
+        html.light #sched-progress,
+        html.light #sched-done,
+        html.light #planner-todo,
+        html.light #planner-progress,
+        html.light #planner-done {
+            background: rgba(0, 0, 0, 0.03) !important;
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* Test question card */
+        html.light #testQuestionCard {
+            background: rgba(0, 0, 0, 0.03) !important;
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* Summary list items */
+        html.light #summaryList li {
+            background: rgba(0, 0, 0, 0.03) !important;
+        }
+
+        /* Flashcard grid items */
+        html.light #flashcardGrid>div {
+            background: rgba(0, 0, 0, 0.03) !important;
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* Quiz container items */
+        html.light #quizContainer>div {
+            background: rgba(0, 0, 0, 0.03) !important;
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* Profile modal input overrides */
+        html.light #profileModal input,
+        html.light #authModal input {
+            background: rgba(0, 0, 0, 0.04) !important;
+            border-color: rgba(0, 0, 0, 0.12) !important;
+            color: #0f172a !important;
+        }
+        html.light #profileModal input::placeholder,
+        html.light #authModal input::placeholder {
+            color: #64748b !important;
+        }
+
+        /* Eval modal textarea */
+        html.light #evalModal textarea {
+            background: rgba(0, 0, 0, 0.04) !important;
+            border-color: rgba(0, 0, 0, 0.12) !important;
+            color: #0f172a !important;
+        }
+
+        /* Donation card */
+        html.light #gcashHidden p,
+        html.light #gcashFull p {
+            color: #0f172a !important;
+        }
+
+        /* Test results */
+        html.light #testResultsContainer h3 {
+            color: #0f172a;
+        }
+        html.light #testResultsContainer .text-2xl {
+            color: #0f172a;
         }
     </style>
 </head>
@@ -488,7 +788,7 @@
         Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam
     </footer>
 
-    <!-- ===== PROFILE MODAL (mandatory name capture) ===== -->
+    <!-- ===== PROFILE MODAL ===== -->
     <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
         <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
@@ -560,99 +860,95 @@
 
     <script>
         /// ============================================================
-//  SERVER WAKE‑UP (auto‑retry every 5 seconds)
-// ============================================================
-let wakeUpPollingInterval = null;
+        //  SERVER WAKE‑UP (auto‑retry every 5 seconds)
+        // ============================================================
+        let wakeUpPollingInterval = null;
 
-async function pingServer() {
-  const overlay = document.getElementById('wakeUpOverlay');
-  const statusEl = document.getElementById('wakeUpStatus');
-  if (!overlay || !statusEl) return;
-
-  try {
-    const res = await fetch('https://acadhub-no6m.onrender.com/api/health', {
-      method: 'GET',   // ← use GET on the health endpoint (which always works)
-      signal: AbortSignal.timeout(6000)
-    });
-    // ANY response means the server is reachable
-    overlay.style.display = 'none';
-    if (wakeUpPollingInterval) {
-      clearInterval(wakeUpPollingInterval);
-      wakeUpPollingInterval = null;
-    }
-  } catch (e) {
-    // Timeout or network error → server still cold
-    statusEl.textContent = 'Not ready yet. Auto‑retrying every 5 seconds…';
-    if (!wakeUpPollingInterval) {
-      wakeUpPollingInterval = setInterval(pingServer, 5000);
-    }
-  }
-}
-// Manual retry (still works with the button)
-async function retryWakeUp() {
-  // Stop auto‑polling while we do a manual check
-  if (wakeUpPollingInterval) {
-    clearInterval(wakeUpPollingInterval);
-    wakeUpPollingInterval = null;
-  }
-
-  const statusEl = document.getElementById('wakeUpStatus');
-  const btn = document.getElementById('retryWakeBtn');
-  btn.disabled = true;
-  statusEl.textContent = 'Checking server…';
-
-  try {
-    const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: '', num_flashcards: 0, quiz_types: '{}' }),
-      signal: AbortSignal.timeout(12000)
-    });
-    if (res.ok || res.status < 500) {
-      document.getElementById('wakeUpOverlay').style.display = 'none';
-      return;
-    }
-  } catch (e) {}
-
-  statusEl.textContent = 'Still waking up… Auto‑retrying again.';
-  btn.disabled = false;
-
-  // Resume polling
-  if (!wakeUpPollingInterval) {
-    wakeUpPollingInterval = setInterval(pingServer, 5000);
-  }
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    pingServer();
-    
-    // After 30 seconds, if still showing, add a "Skip" option
-    setTimeout(() => {
-        const overlay = document.getElementById('wakeUpOverlay');
-        if (overlay && overlay.style.display !== 'none') {
+        async function pingServer() {
+            const overlay = document.getElementById('wakeUpOverlay');
             const statusEl = document.getElementById('wakeUpStatus');
-            const btn = document.getElementById('retryWakeBtn');
-            
-            if (statusEl) {
-                statusEl.textContent = '⏳ Server is still waking up. You can try again or continue anyway.';
-                statusEl.style.color = '#fbbf24';
-            }
-            
-            if (btn) {
-                btn.textContent = '⏩ Continue Anyway';
-                btn.style.background = '#8b5cf6';
-                btn.onclick = function() {
-                    overlay.style.display = 'none';
-                    // Stop polling
-                    if (wakeUpPollingInterval) {
-                        clearInterval(wakeUpPollingInterval);
-                        wakeUpPollingInterval = null;
-                    }
-                };
+            if (!overlay || !statusEl) return;
+
+            try {
+                const res = await fetch('https://acadhub-no6m.onrender.com/api/health', {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(6000)
+                });
+                overlay.style.display = 'none';
+                if (wakeUpPollingInterval) {
+                    clearInterval(wakeUpPollingInterval);
+                    wakeUpPollingInterval = null;
+                }
+            } catch (e) {
+                statusEl.textContent = 'Not ready yet. Auto‑retrying every 5 seconds…';
+                if (!wakeUpPollingInterval) {
+                    wakeUpPollingInterval = setInterval(pingServer, 5000);
+                }
             }
         }
-    }, 30000);
-});
+
+        async function retryWakeUp() {
+            if (wakeUpPollingInterval) {
+                clearInterval(wakeUpPollingInterval);
+                wakeUpPollingInterval = null;
+            }
+
+            const statusEl = document.getElementById('wakeUpStatus');
+            const btn = document.getElementById('retryWakeBtn');
+            btn.disabled = true;
+            statusEl.textContent = 'Checking server…';
+
+            try {
+                const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes: '', num_flashcards: 0, quiz_types: '{}' }),
+                    signal: AbortSignal.timeout(12000)
+                });
+                if (res.ok || res.status < 500) {
+                    document.getElementById('wakeUpOverlay').style.display = 'none';
+                    return;
+                }
+            } catch (e) {}
+
+            statusEl.textContent = 'Still waking up… Auto‑retrying again.';
+            btn.disabled = false;
+
+            if (!wakeUpPollingInterval) {
+                wakeUpPollingInterval = setInterval(pingServer, 5000);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            pingServer();
+
+            setTimeout(() => {
+                const overlay = document.getElementById('wakeUpOverlay');
+                if (overlay && overlay.style.display !== 'none') {
+                    const statusEl = document.getElementById('wakeUpStatus');
+                    const btn = document.getElementById('retryWakeBtn');
+
+                    if (statusEl) {
+                        statusEl.textContent =
+                            '⏳ Server is still waking up. You can try again or continue anyway.';
+                        statusEl.style.color = '#fbbf24';
+                    }
+
+                    if (btn) {
+                        btn.textContent = '⏩ Continue Anyway';
+                        btn.style.background = '#8b5cf6';
+                        btn.onclick = function() {
+                            overlay.style.display = 'none';
+                            if (wakeUpPollingInterval) {
+                                clearInterval(wakeUpPollingInterval);
+                                wakeUpPollingInterval = null;
+                            }
+                        };
+                    }
+                }
+            }, 30000);
+        });
+
         // ============================================================
         //  FIREBASE CONFIG & INIT
         // ============================================================
@@ -675,13 +971,9 @@ window.addEventListener('DOMContentLoaded', () => {
         let lastGeneratedData = null;
         let isSignUpMode = false;
 
-        // Scheduler data
         let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-
-        // Planner data
         let plannerTasks = JSON.parse(localStorage.getItem('acadhub_planner') || '[]');
 
-        // Test state
         let testDifficulty = 'medium';
         let testQuestions = [];
         let testCurrentIndex = 0;
@@ -689,7 +981,6 @@ window.addEventListener('DOMContentLoaded', () => {
         let testTimerInterval = null;
         let testTimeLeft = 0;
 
-        // Drag state
         let draggedSchedId = null;
         let draggedPlannerId = null;
 
@@ -749,7 +1040,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const r = parseInt(hex.slice(1, 3), 16);
                 const g = parseInt(hex.slice(3, 5), 16);
                 const b = parseInt(hex.slice(5, 7), 16);
-                const lighter = `rgb(${Math.min(r + 40, 255)}, ${Math.min(g + 40, 255)}, ${Math.min(b + 40, 255)})`;
+                const lighter =
+                    `rgb(${Math.min(r + 40, 255)}, ${Math.min(g + 40, 255)}, ${Math.min(b + 40, 255)})`;
                 document.documentElement.style.setProperty('--accent', hex);
                 document.documentElement.style.setProperty('--accent2', lighter);
             }
@@ -823,7 +1115,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
             const gantt = document.getElementById('ganttChart');
             if (gantt) {
-                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
+                const milestones = schedItems.filter(i => i.deadline).sort((a, b) => (a.deadline > b.deadline ? 1 :
+                    -1));
                 gantt.innerHTML = milestones.length ?
                     milestones.map(m =>
                         `<div class="flex items-center gap-3 mb-2 p-2 bg-white/5 rounded-lg">
@@ -840,7 +1133,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
                 countdowns.innerHTML = defenses.length ?
                     defenses.map(d => {
-                        const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+                        const daysLeft = Math.ceil((new Date(d.deadline) - new Date()) / (1000 * 60 * 60 *
+                            24));
                         return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2">
                             <span class="text-sm">${d.title}</span>
                             <span class="text-sm font-bold ${daysLeft <= 7 ? 'text-rose-400' : daysLeft <= 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft > 0 ? daysLeft + ' days left' : 'Passed'}</span>
@@ -854,7 +1148,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
                 examMatrix.innerHTML = exams.length ?
                     exams.map(e => {
-                        const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+                        const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000 * 60 * 60 *
+                            24));
                         return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2">
                             <span class="text-sm">${e.title}</span>
                             <span class="text-xs px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span>
@@ -1031,18 +1326,30 @@ window.addEventListener('DOMContentLoaded', () => {
             const useInternet = document.getElementById('useInternet').checked;
 
             const quizTypes = {};
-            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById('numTrueFalse').value) || 0;
-            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document.getElementById('numIdentification').value) || 0;
-            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById('numEnumeration').value) || 0;
-            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document.getElementById('numMultipleChoice').value) || 0;
-            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat').value) || 0;
-            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho').value) || 0;
-            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere').value) || 0;
-            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen').value) || 0;
-            if (document.getElementById('useWhy').checked) quizTypes.why = parseInt(document.getElementById('numWhy').value) || 0;
-            if (document.getElementById('useWhich').checked) quizTypes.which = parseInt(document.getElementById('numWhich').value) || 0;
-            if (document.getElementById('useHow').checked) quizTypes.how = parseInt(document.getElementById('numHow').value) || 0;
-            if (document.getElementById('useWhose').checked) quizTypes.whose = parseInt(document.getElementById('numWhose').value) || 0;
+            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById(
+                'numTrueFalse').value) || 0;
+            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document
+                .getElementById('numIdentification').value) || 0;
+            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById(
+                'numEnumeration').value) || 0;
+            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document
+                .getElementById('numMultipleChoice').value) || 0;
+            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat')
+                .value) || 0;
+            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho')
+            .value) || 0;
+            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere')
+                .value) || 0;
+            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen')
+                .value) || 0;
+            if (document.getElementById('useWhy').checked) quizTypes.why = parseInt(document.getElementById('numWhy')
+            .value) || 0;
+            if (document.getElementById('useWhich').checked) quizTypes.which = parseInt(document.getElementById('numWhich')
+                .value) || 0;
+            if (document.getElementById('useHow').checked) quizTypes.how = parseInt(document.getElementById('numHow')
+            .value) || 0;
+            if (document.getElementById('useWhose').checked) quizTypes.whose = parseInt(document.getElementById('numWhose')
+                .value) || 0;
 
             if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
 
@@ -1076,7 +1383,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 alert('Error: ' + err.message);
             } finally {
                 btn.disabled = false;
-                btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+                btnContent.innerHTML =
+                '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
             }
         }
 
@@ -1099,7 +1407,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const card = data.flashcards[i];
                 const div = document.createElement('div');
                 div.className = 'reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';
-                div.innerHTML = `<p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p>`;
+                div.innerHTML =
+                    `<p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p>`;
                 flashcardContainer.appendChild(div);
                 await new Promise(resolve => setTimeout(resolve, 150));
             }
@@ -1128,7 +1437,8 @@ window.addEventListener('DOMContentLoaded', () => {
         function checkAnswer(btn, isCorrect) {
             const parent = btn.parentElement;
             Array.from(parent.children).forEach(child => {
-                child.classList.remove('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300', 'bg-rose-500/20',
+                child.classList.remove('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300',
+                    'bg-rose-500/20',
                     'border-rose-500', 'text-rose-300');
             });
             if (isCorrect === 'true') btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
@@ -1347,8 +1657,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
             const difficultyMap = {
                 easy: { truefalse: 3, identification: 3, multiplechoice: 2, total: 8, timePerQuestion: 0 },
-                medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15, timePerQuestion: 20 },
-                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2, which: 2, total: 26, timePerQuestion: 15 }
+                medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15,
+                    timePerQuestion: 20 },
+                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2,
+                    which: 2, total: 26, timePerQuestion: 15 }
             };
             const quizTypes = {};
             for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
@@ -1356,7 +1668,8 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             document.getElementById('startTestBtn').disabled = true;
-            document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+            document.getElementById('startTestBtn').innerHTML =
+                '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
 
             const formData = new FormData();
             formData.append('notes', notes);
@@ -1367,7 +1680,8 @@ window.addEventListener('DOMContentLoaded', () => {
             if (testFileInput.files[0]) formData.append('file', testFileInput.files[0]);
 
             try {
-                const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, { method: 'POST', body: formData });
+                const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, { method: 'POST',
+                    body: formData });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.detail || 'Generation failed');
                 testQuestions = data.quiz || [];
@@ -1376,7 +1690,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (testQuestions.length === 0) {
                     alert('No questions could be generated. Please provide more detailed notes.');
                     document.getElementById('startTestBtn').disabled = false;
-                    document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+                    document.getElementById('startTestBtn').innerHTML =
+                        '<i class="fa-solid fa-play mr-2"></i>Start Test';
                     return;
                 }
                 document.getElementById('testQuizContainer').classList.remove('hidden');
@@ -1386,7 +1701,8 @@ window.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 alert('Error: ' + err.message);
                 document.getElementById('startTestBtn').disabled = false;
-                document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+                document.getElementById('startTestBtn').innerHTML =
+                    '<i class="fa-solid fa-play mr-2"></i>Start Test';
             }
         }
 
@@ -1400,9 +1716,12 @@ window.addEventListener('DOMContentLoaded', () => {
             if (q.options && q.options.length) {
                 q.options.forEach((opt, idx) => {
                     const btn = document.createElement('button');
-                    btn.className = 'quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 hover:bg-indigo-500/10 transition';
-                    btn.innerHTML = `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
-                    btn.addEventListener('click', () => handleTestAnswer(btn, opt === q.answer, q.answer));
+                    btn.className =
+                        'quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 hover:bg-indigo-500/10 transition';
+                    btn.innerHTML =
+                        `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
+                    btn.addEventListener('click', () => handleTestAnswer(btn, opt === q.answer, q
+                        .answer));
                     optionsContainer.appendChild(btn);
                 });
             } else {
@@ -1482,7 +1801,8 @@ window.addEventListener('DOMContentLoaded', () => {
         function updateAuthUI() {
             document.getElementById('authTitle').textContent = isSignUpMode ? 'Sign Up' : 'Login';
             document.getElementById('authBtnText').textContent = isSignUpMode ? 'Sign Up' : 'Login';
-            document.getElementById('authToggleText').textContent = isSignUpMode ? 'Already have an account?' : "Don't have an account?";
+            document.getElementById('authToggleText').textContent = isSignUpMode ? 'Already have an account?' :
+                "Don't have an account?";
             document.getElementById('authToggleBtn').textContent = isSignUpMode ? 'Login' : 'Sign Up';
             document.getElementById('authNameFields').classList.toggle('hidden', !isSignUpMode);
             document.getElementById('authError').classList.add('hidden');
@@ -1568,14 +1888,12 @@ window.addEventListener('DOMContentLoaded', () => {
         updateProviderUI();
         setDifficulty('medium');
 
-        // Auto-show mandatory name modal on load if not saved
         (function() {
             if (localStorage.getItem('profile_saved') !== 'true') {
                 document.getElementById('profileModal').classList.remove('hidden');
             }
         })();
 
-        // Close auth modal when clicking outside
         document.getElementById('authModal').addEventListener('click', function(e) {
             if (e.target === this) this.classList.add('hidden');
         });
