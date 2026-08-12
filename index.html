@@ -596,13 +596,18 @@
                             <div class="flex items-center gap-2"><input type="checkbox" id="useWhich" class="accent-indigo-500" /><label class="text-xs">Which</label><input type="number" id="numWhich" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
                             <div class="flex items-center gap-2"><input type="checkbox" id="useHow" class="accent-indigo-500" /><label class="text-xs">How</label><input type="number" id="numHow" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
                             <div class="flex items-center gap-2"><input type="checkbox" id="useWhose" class="accent-indigo-500" /><label class="text-xs">Whose</label><input type="number" id="numWhose" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
+                            <div class="flex items-center gap-2"><input type="checkbox" id="useMatching" class="accent-indigo-500" /><label class="text-xs">Matching</label><input type="number" id="numMatching" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
+                            <div class="flex items-center gap-2"><input type="checkbox" id="useOrdering" class="accent-indigo-500" /><label class="text-xs">Ordering</label><input type="number" id="numOrdering" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
+                            <div class="flex items-center gap-2"><input type="checkbox" id="useFillmultiple" class="accent-indigo-500" /><label class="text-xs">Fill Multiple</label><input type="number" id="numFillmultiple" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <input type="checkbox" id="useInternet" class="accent-indigo-500" />
-                        <label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
-                    </div>
+    <input type="checkbox" id="useInternet" class="accent-indigo-500" />
+    <label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
+    <label class="text-xs opacity-70 ml-2">Enrich count:</label>
+    <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
+</div>
 
                     <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base">
                         <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
@@ -888,36 +893,34 @@
         }
 
         async function retryWakeUp() {
-            if (wakeUpPollingInterval) {
-                clearInterval(wakeUpPollingInterval);
-                wakeUpPollingInterval = null;
-            }
+    if (wakeUpPollingInterval) {
+        clearInterval(wakeUpPollingInterval);
+        wakeUpPollingInterval = null;
+    }
 
-            const statusEl = document.getElementById('wakeUpStatus');
-            const btn = document.getElementById('retryWakeBtn');
-            btn.disabled = true;
-            statusEl.textContent = 'Checking server…';
+    const statusEl = document.getElementById('wakeUpStatus');
+    const btn = document.getElementById('retryWakeBtn');
+    btn.disabled = true;
+    statusEl.textContent = 'Checking server…';
 
-            try {
-                const res = await fetch('https://acadhub-no6m.onrender.com/api/generate-reviewer-local', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ notes: '', num_flashcards: 0, quiz_types: '{}' }),
-                    signal: AbortSignal.timeout(12000)
-                });
-                if (res.ok || res.status < 500) {
-                    document.getElementById('wakeUpOverlay').style.display = 'none';
-                    return;
-                }
-            } catch (e) {}
-
-            statusEl.textContent = 'Still waking up… Auto‑retrying again.';
-            btn.disabled = false;
-
-            if (!wakeUpPollingInterval) {
-                wakeUpPollingInterval = setInterval(pingServer, 5000);
-            }
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/health`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(6000)
+        });
+        if (res.ok) {
+            document.getElementById('wakeUpOverlay').style.display = 'none';
+            return;
         }
+    } catch (e) {}
+
+    statusEl.textContent = 'Still waking up… Auto‑retrying again.';
+    btn.disabled = false;
+
+    if (!wakeUpPollingInterval) {
+        wakeUpPollingInterval = setInterval(pingServer, 5000);
+    }
+}
 
         window.addEventListener('DOMContentLoaded', () => {
             pingServer();
@@ -1350,7 +1353,9 @@
             .value) || 0;
             if (document.getElementById('useWhose').checked) quizTypes.whose = parseInt(document.getElementById('numWhose')
                 .value) || 0;
-
+            if (document.getElementById('useMatching').checked) quizTypes.matching = parseInt(document.getElementById('numMatching').value) || 0;
+            if (document.getElementById('useOrdering').checked) quizTypes.ordering = parseInt(document.getElementById('numOrdering').value) || 0;
+            if (document.getElementById('useFillmultiple').checked) quizTypes.fillmultiple = parseInt(document.getElementById('numFillmultiple').value) || 0;
             if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
 
             btn.disabled = true;
@@ -1364,6 +1369,7 @@
             formData.append('num_flashcards', numFlashcards);
             formData.append('quiz_types', JSON.stringify(quizTypes));
             formData.append('use_internet', useInternet);
+            formData.append('enrich_count', document.getElementById('enrichCount').value || 5);
             if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
 
             const endpoint = provider === 'local' ?
