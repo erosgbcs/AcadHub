@@ -1,16 +1,3 @@
-"""
-AcademicHub API Engine – Accuracy v5 + Robust File Handling
-
-Required packages:
-    pip install fastapi uvicorn python-multipart aiohttp pypdf pdfplumber pytesseract pdf2image python-docx nltk Pillow
-
-System dependencies:
-    - Tesseract OCR (for scanned PDFs): https://github.com/tesseract-ocr/tesseract
-    - Poppler (for pdf2image): Linux: sudo apt install poppler-utils,
-                               macOS: brew install poppler,
-                               Windows: download from http://blog.alivate.com.au/poppler-windows/
-"""
-
 import json
 import io
 import zipfile
@@ -19,44 +6,20 @@ import re
 import random
 import time
 import asyncio
+import hashlib
 from collections import Counter
+from typing import List, Dict, Optional, Any
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+import pypdf
 import aiohttp
 
-# ---------- PDF libraries ----------
-import pypdf  # fallback
-import pdfplumber
-from pdf2image import convert_from_bytes
-import pytesseract
-
-# ---------- DOCX library ----------
-from docx import Document
-
-# ---------- Sentence tokenization ----------
-try:
-    import nltk
-    nltk.download('punkt_tab', quiet=True)  # download if missing
-    from nltk.tokenize import sent_tokenize
-    def split_sentences(text):
-        return sent_tokenize(text)
-except ImportError:
-    # Fallback: robust regex with many abbreviations
-    SENT_SPLIT = re.compile(
-        r'(?<!\b(?:Dr|Mr|Mrs|Ms|Prof|etc|vs|e\.g|i\.e|U\.S|Ph\.D|a\.m|p\.m|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec))[.!?](?!\d)'
-    )
-    def split_sentences(text):
-        # protect abbreviations
-        text = re.sub(
-            r'\b(Dr|Mr|Mrs|Ms|Prof|etc|vs|e\.g|i\.e|U\.S|Ph\.D|a\.m|p\.m)\.',
-            r'\1<DOT>', text
-        )
-        sents = SENT_SPLIT.split(text)
-        return [s.strip().replace('<DOT>', '.') for s in sents if len(s.strip()) > 10]
-
-# ---------- FastAPI app ----------
+# ------------------------------
+# App Initialization
+# ------------------------------
 app = FastAPI(title="AcademicHub API Engine")
 app.add_middleware(
     CORSMiddleware,
@@ -66,156 +29,164 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def root():
-    return {"status": "online", "system": "AcademicHub Core API"}
+# ------------------------------
+# Pydantic Models for JSON Input
+# ------------------------------
+class ReviewRequest(BaseModel):
+    notes: str = ""
+    num_flashcards: int = 12
+    quiz_types: Dict[str, int] = {"identification": 5}
+    use_internet: bool = False
+    enrich_count: int = 5
 
-@app.get("/api/health")
-def health():
-    return {"service": "AcademicHub Engine", "status": "healthy"}
+class AIReviewRequest(BaseModel):
+    api_key: str
+    provider: str = "gemini"
+    notes: str = ""
+    num_flashcards: int = 10
+    num_quiz: int = 7
 
-# ---------- Constants ----------
+# ------------------------------
+# Utility Patterns and Constants
+# ------------------------------
+SENTENCE_PATTERN = re.compile(r'(?<!\d)[.!?](?!\d)')
 WORD_PATTERN = re.compile(r'[a-zA-Z]+')
 CAPITALIZED_PHRASE = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b')
 TECH_TERM = re.compile(r'\b[A-Za-z]+[#+]\b')
 STOP_WORDS = frozenset({
-    'the','is','at','which','on','a','an','and','or','but','in','with','to','for','of','from','by',
-    'as','be','was','are','been','this','that','these','those','it','its','they','them','we','you',
-    'he','she','his','her','their','our','my','your','has','have','had','do','does','did','will',
-    'would','could','should','may','might','can','shall','not','no','so','if','then','than','too',
-    'very','just','about','also','into','onto','upon','within','without','because','each','all',
-    'some','any','every','both','few','more','most','other','such','only','own','same','new','good',
-    'great','big','small','large','long','short','high','low','different','important','many','much'
+    'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but', 'in',
+    'with', 'to', 'for', 'of', 'from', 'by', 'as', 'be', 'was', 'are', 'been',
+    'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'we', 'you',
+    'he', 'she', 'his', 'her', 'their', 'our', 'my', 'your', 'has', 'have',
+    'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may',
+    'might', 'can', 'shall', 'not', 'no', 'so', 'if', 'then', 'than', 'too',
+    'very', 'just', 'about', 'also', 'into', 'onto', 'upon', 'within',
+    'without', 'because', 'each', 'all', 'some', 'any', 'every', 'both',
+    'few', 'more', 'most', 'other', 'such', 'only', 'own', 'same', 'new',
+    'good', 'great', 'big', 'small', 'large', 'long', 'short', 'high', 'low',
+    'different', 'important', 'many', 'much', 'using', 'use', 'used', 'uses'
 })
 
-# ---------- Robust PDF extraction ----------
-def extract_pdf_text_robust(file_bytes):
-    """
-    Extract text from PDF using pdfplumber (layout-aware).
-    If text seems empty/garbled, fall back to OCR via Tesseract.
-    Returns cleaned text.
-    """
-    text = ""
-    # Try pdfplumber first
+# ------------------------------
+# File Extraction Functions
+# ------------------------------
+def extract_docx_text(file_bytes):
+    """Extract text from a .docx file."""
     try:
-        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-            all_text = []
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    all_text.append(page_text)
-            text = "\n".join(all_text)
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+            with z.open("word/document.xml") as f:
+                tree = ET.parse(f)
+                ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+                paragraphs = []
+                for p in tree.iterfind('.//w:p', ns):
+                    texts = [t.text for t in p.iterfind('.//w:t', ns) if t.text]
+                    if texts:
+                        paragraphs.append(''.join(texts))
+                return '\n'.join(paragraphs)
     except Exception:
-        # pdfplumber failed, fall back to pypdf
-        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        raise HTTPException(400, "DOCX read error")
 
-    # Determine if we need OCR
-    def needs_ocr(txt):
-        if len(txt.strip()) < 50:
-            return True
-        # If more than 50% of characters are non-alphabetic/space/digit
-        alpha_count = sum(1 for c in txt if c.isalpha() or c.isspace())
-        if alpha_count / max(len(txt), 1) < 0.5:
-            return True
-        return False
+def extract_rtf_text(file_bytes):
+    """Basic RTF to plain text extraction."""
+    try:
+        text = file_bytes.decode('utf-8', errors='ignore')
+        # Remove RTF control words and groups
+        text = re.sub(r'\\[a-z]+\-?\d* ?', '', text)
+        text = re.sub(r'[{}]', '', text)
+        text = re.sub(r'\\\'[0-9a-fA-F]{2}', ' ', text)
+        return text
+    except Exception:
+        raise HTTPException(400, "RTF read error")
 
-    if needs_ocr(text):
-        try:
-            images = convert_from_bytes(file_bytes)
-            ocr_text = []
-            for img in images:
-                ocr_text.append(pytesseract.image_to_string(img))
-            text = "\n".join(ocr_text)
-        except Exception:
-            # OCR not available – keep whatever we had
-            pass
+def extract_md_text(file_bytes):
+    """Markdown file is plain text."""
+    return file_bytes.decode('utf-8', errors='ignore')
 
-    # Post‑processing
-    text = re.sub(r'(\w+)-\n(\w+)', r'\1\2', text)  # fix hyphenated line breaks
-    text = re.sub(r'\n{3,}', '\n\n', text)  # collapse multiple newlines
-    return text.strip()
+def extract_html_text(file_bytes):
+    """Extract text from basic HTML."""
+    try:
+        html = file_bytes.decode('utf-8', errors='ignore')
+        # Remove scripts and styles
+        html = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.DOTALL)
+        html = re.sub(r'<style[^>]*>.*?</style>', ' ', html, flags=re.DOTALL)
+        # Replace tags with spaces
+        html = re.sub(r'<[^>]+>', ' ', html)
+        # Decode common entities
+        html = html.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+        return html
+    except Exception:
+        raise HTTPException(400, "HTML read error")
 
-# ---------- Rich DOCX extraction ----------
-def extract_docx_text_rich(file_bytes):
-    """
-    Extract text from .docx preserving paragraphs, tables, and noting headings/lists.
-    """
-    doc = Document(io.BytesIO(file_bytes))
-    parts = []
-
-    # Paragraphs
-    for para in doc.paragraphs:
-        style = para.style.name if para.style else ''
-        text = para.text.strip()
-        if not text:
-            continue
-        # Mark headings
-        if 'heading' in style.lower():
-            parts.append(f"[{style.upper()}] {text}")
-        # Mark list items
-        elif 'list' in style.lower() or text.startswith(('•', '-', '1.', '2.')):
-            parts.append(f"• {text}")
-        else:
-            parts.append(text)
-
-    # Tables
-    for table in doc.tables:
-        for row in table.rows:
-            row_text = []
-            for cell in row.cells:
-                cell_text = cell.text.strip()
-                if cell_text:
-                    row_text.append(cell_text)
-            if row_text:
-                parts.append(" | ".join(row_text))
-
-    return "\n".join(parts)
-
-# ---------- Unified text extraction ----------
-def extract_text_fast(file_bytes, filename):
-    fname = filename.lower()
+def extract_text_fast(file_bytes, fname):
+    """Extract text from various file types."""
+    fname = fname.lower()
     if fname.endswith(".pdf"):
-        return extract_pdf_text_robust(file_bytes)
+        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+        return '\n'.join(page.extract_text() or "" for page in reader.pages)
     elif fname.endswith(".docx"):
-        return extract_docx_text_rich(file_bytes)
+        return extract_docx_text(file_bytes)
     elif fname.endswith(".txt"):
         return file_bytes.decode("utf-8", "ignore")
+    elif fname.endswith(".md"):
+        return extract_md_text(file_bytes)
+    elif fname.endswith(".rtf"):
+        return extract_rtf_text(file_bytes)
+    elif fname.endswith((".html", ".htm")):
+        return extract_html_text(file_bytes)
     else:
-        raise HTTPException(400, "Unsupported file type. Use PDF, DOCX, or TXT.")
+        raise HTTPException(400, "Unsupported file type")
 
-# ---------- Key phrase extraction ----------
+# ------------------------------
+# Text Preprocessing & NLP Helpers
+# ------------------------------
 def smart_sentences(text):
-    return [s for s in split_sentences(text) if len(s.strip()) > 20]
+    """Split text into sentences, handling common abbreviations."""
+    # Protect abbreviations
+    text = re.sub(r'(Dr|Mr|Mrs|Ms|Prof|etc|vs|e\.g|i\.e)\.', r'\1<DOT>', text)
+    sents = SENTENCE_PATTERN.split(text)
+    return [s.strip().replace('<DOT>', '.') for s in sents if len(s.strip()) > 20]
 
 def extract_key_phrases(text, top_n=15):
+    """
+    Extract key phrases using a combination of:
+    - Capitalized multi-word phrases
+    - Technical terms with symbols
+    - Adjacent capitalized words (bigrams)
+    - Frequency weighting
+    """
     phrases = []
-    # Capitalised multi-word phrases
+    # Capitalized phrases (e.g., "Machine Learning")
     cap_phrases = CAPITALIZED_PHRASE.findall(text)
     for phrase in cap_phrases:
         if len(phrase.split()) >= 2 and phrase.lower() not in STOP_WORDS:
             phrases.append(phrase)
-    # Tech terms with special chars
+
+    # Technical terms like C++, Python#
     tech_terms = TECH_TERM.findall(text)
     phrases.extend(tech_terms)
-    # Title-case bigrams
+
+    # Adjacent capitalized words (bigrams)
     words = WORD_PATTERN.findall(text)
-    for i in range(len(words)-1):
+    for i in range(len(words) - 1):
         if words[i][0].isupper() and words[i+1][0].isupper():
             bigram = f"{words[i]} {words[i+1]}"
             if len(bigram.split()) == 2 and bigram.lower() not in STOP_WORDS:
                 phrases.append(bigram)
+
+    # Weighted frequency: longer phrases get higher weight
     phrase_counts = Counter(phrases)
-    # Weight by length²
     weighted = [(p, c * (len(p.split()) ** 2)) for p, c in phrase_counts.items() if len(p) > 2]
     weighted.sort(key=lambda x: x[1], reverse=True)
+
+    # Remove sub-phrases (e.g., "Machine" if "Machine Learning" already selected)
     final = []
     for phrase, _ in weighted:
         if not any(phrase != other and phrase in other for other in final):
             final.append(phrase)
         if len(final) >= top_n:
             break
-    # Fallback: single words
+
+    # Fallback to single capitalized words if not enough
     if len(final) < top_n:
         singles = [w for w in words if w not in STOP_WORDS and len(w) > 5 and w[0].isupper()]
         for w, c in Counter(singles).most_common():
@@ -225,61 +196,152 @@ def extract_key_phrases(text, top_n=15):
                 break
     return final
 
-# ---------- Definition finding (scored) ----------
-DEFINITION_PATTERNS = [r'\bis a\b', r'\bdefined as\b', r'\brefers to\b', r'\bmeans\b', r'\bis the\b']
-
-def score_definition_sentence(sent, term):
-    if term.lower() not in sent.lower():
-        return 0
-    score = 1
-    for pat in DEFINITION_PATTERNS:
-        if re.search(pat, sent, re.IGNORECASE):
-            score += 3
-    if 30 < len(sent) < 300:
-        score += 1
-    return score
-
 def find_definition_sentence(text, phrase):
+    """Find a sentence that likely defines or mentions the phrase."""
     sents = smart_sentences(text)
-    best = None
-    best_score = 0
-    for sent in sents:
-        s = score_definition_sentence(sent, phrase)
-        if s > best_score:
-            best_score = s
-            best = sent
-    if best:
-        return best[:300]
-    # fallback: first sentence containing the phrase
     for sent in sents:
         if phrase.lower() in sent.lower():
             return sent[:300]
     return f"Related to {phrase}"
 
-# ---------- Entity extractors (tightened) ----------
-PERSON_NON_NAMES = {
-    'rendering','pipeline','definition','high','android','ios','app','store','asset','game',
-    'engine','cut','pro','final','mac','os','x','windows','machine','learning','deep','data',
-    'science','big','small','large','long','short','high','low','different','important','many',
-    'much','city','street','road','avenue','country','state','province','district','headquarters',
-    'office','center','lab','studio','january','february','march','april','may','june','july',
-    'august','september','october','november','december','monday','tuesday','wednesday','thursday',
-    'friday','saturday','sunday'
-}
+def summarize_text(text, max_sentences=5):
+    """
+    Extractive summarization using a simple TextRank-like algorithm.
+    """
+    sents = smart_sentences(text)
+    if len(sents) <= max_sentences:
+        return sents
 
+    # Tokenize sentences into sets of meaningful words
+    word_sets = []
+    for sent in sents:
+        words = set(WORD_PATTERN.findall(sent.lower()))
+        words = {w for w in words if w not in STOP_WORDS}
+        word_sets.append(words)
+
+    # Build similarity matrix
+    n = len(sents)
+    similarity = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(i+1, n):
+            if not word_sets[i] or not word_sets[j]:
+                continue
+            common = word_sets[i] & word_sets[j]
+            union = word_sets[i] | word_sets[j]
+            if union:
+                sim = len(common) / len(union)
+                similarity[i][j] = sim
+                similarity[j][i] = sim
+
+    # PageRank-like iterative ranking
+    scores = [1.0] * n
+    damping = 0.85
+    for _ in range(10):
+        new_scores = [1.0 - damping] * n
+        for i in range(n):
+            for j in range(n):
+                if i != j and similarity[i][j] > 0:
+                    new_scores[i] += damping * similarity[i][j] * scores[j]
+        scores = new_scores
+
+    # Rank sentences
+    ranked = sorted(range(n), key=lambda i: scores[i], reverse=True)
+    top_indices = sorted(ranked[:max_sentences])
+    return [sents[i] for i in top_indices]
+
+# ------------------------------
+# Internet Enrichment (Wikipedia)
+# ------------------------------
+# Simple in-memory cache for enrichment
+enrichment_cache: Dict[str, str] = {}
+
+async def fetch_wikipedia_summary(term: str, session: aiohttp.ClientSession) -> Optional[str]:
+    """Fetch summary from Wikipedia REST API."""
+    if term in enrichment_cache:
+        return enrichment_cache[term]
+
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{term.replace(' ', '_')}"
+    try:
+        async with session.get(url, timeout=5) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                extract = data.get('extract', '')
+                if extract:
+                    result = f"{term}: {extract[:300]}"
+                    enrichment_cache[term] = result
+                    return result
+    except Exception:
+        pass
+    return None
+
+async def fetch_wikipedia_search(term: str, session: aiohttp.ClientSession) -> Optional[str]:
+    """Fallback: use Wikipedia search API to get a snippet."""
+    search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={term}&format=json&utf8=1&srlimit=1"
+    try:
+        async with session.get(search_url, timeout=5) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                results = data.get('query', {}).get('search', [])
+                if results:
+                    snippet = results[0].get('snippet', '')
+                    # Clean HTML tags
+                    snippet = re.sub(r'<[^>]+>', '', snippet)
+                    if snippet:
+                        result = f"{term}: {snippet[:300]}"
+                        enrichment_cache[term] = result
+                        return result
+    except Exception:
+        pass
+    return None
+
+async def enrich_with_internet(key_phrases: List[str], enrich_count: int = 5) -> str:
+    """Fetch Wikipedia summaries for the top key phrases concurrently, with fallback."""
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for phrase in key_phrases[:enrich_count]:
+            tasks.append(fetch_wikipedia_summary(phrase, session))
+        results = await asyncio.gather(*tasks)
+
+        # For any None results, try fallback search
+        fallback_tasks = []
+        fallback_indices = []
+        for i, res in enumerate(results):
+            if res is None:
+                fallback_tasks.append(fetch_wikipedia_search(key_phrases[i], session))
+                fallback_indices.append(i)
+        fallback_results = await asyncio.gather(*fallback_tasks)
+
+        for idx, res in zip(fallback_indices, fallback_results):
+            if res:
+                results[idx] = res
+
+        summaries = [r for r in results if r]
+        return "\n".join(summaries)
+
+# ------------------------------
+# Entity Extraction
+# ------------------------------
 def extract_persons(text):
+    """Extract potential person names (two consecutive capitalized words)."""
     words = WORD_PATTERN.findall(text)
     persons = set()
-    for i in range(len(words)-1):
+    non_person = {
+        'rendering', 'pipeline', 'definition', 'high', 'android', 'ios', 'app',
+        'store', 'asset', 'game', 'engine', 'cut', 'pro', 'final', 'mac', 'os',
+        'x', 'windows', 'machine', 'learning', 'deep', 'neural', 'network',
+        'data', 'science', 'computer', 'vision', 'natural', 'language',
+        'processing', 'artificial', 'intelligence'
+    }
+    for i in range(len(words) - 1):
         if words[i][0].isupper() and words[i+1][0].isupper():
             full = f"{words[i]} {words[i+1]}"
-            parts_lower = [w.lower() for w in full.split()]
-            if not any(w in STOP_WORDS for w in parts_lower):
-                if not any(w in PERSON_NON_NAMES for w in parts_lower):
+            if not any(w.lower() in STOP_WORDS for w in full.split()):
+                if not any(w.lower() in non_person for w in full.split()):
                     persons.add(full)
     return list(persons)
 
 def extract_locations(text):
+    """Extract location-like phrases using patterns."""
     locs = set()
     loc_patterns = [
         r'\b(?:in|at|from|near)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
@@ -289,11 +351,13 @@ def extract_locations(text):
     for pat in loc_patterns:
         for m in re.finditer(pat, text):
             candidate = m.group(1).strip()
-            if candidate.lower() not in PERSON_NON_NAMES and not any(
-                d in candidate.lower()
-                for d in ['january','february','march','april','may','june','july','august',
-                          'september','october','november','december']
-            ):
+            if candidate.lower() not in {
+                'january', 'february', 'march', 'april', 'may', 'june', 'july',
+                'august', 'september', 'october', 'november', 'december',
+                'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
+                'saturday', 'sunday', 'apple', 'microsoft', 'google', 'unity',
+                'unreal'
+            }:
                 locs.add(candidate)
     return list(locs)[:10]
 
@@ -306,91 +370,25 @@ def extract_dates(text):
 
 def extract_reason_sentences(text):
     sents = smart_sentences(text)
-    return [s for s in sents if any(w in s.lower() for w in ['because','due to','reason','cause','lead to','result in'])]
+    return [s for s in sents if any(w in s.lower() for w in ['because', 'due to', 'reason', 'cause', 'lead to', 'result in'])]
 
 def extract_method_sentences(text):
     sents = smart_sentences(text)
-    return [s for s in sents if any(w in s.lower() for w in ['how','method','process','steps','procedure','way','by'])]
+    return [s for s in sents if any(w in s.lower() for w in ['how', 'method', 'process', 'steps', 'procedure', 'way', 'by'])]
 
-# ---------- Distractor filtering ----------
-def is_too_similar(opt1, opt2, threshold=0.7):
-    """Jaccard similarity of word sets."""
-    words1 = set(WORD_PATTERN.findall(opt1.lower()))
-    words2 = set(WORD_PATTERN.findall(opt2.lower()))
-    if not words1 or not words2:
-        return False
-    intersection = words1 & words2
-    union = words1 | words2
-    return len(intersection) / len(union) > threshold
-
+# ------------------------------
+# Question Generation Helpers
+# ------------------------------
 def deduplicate_options(options, correct):
-    """Keep up to 3 unique, non‑similar distractors + correct."""
+    """Remove duplicates and keep exactly 4 options."""
     unique = []
     for opt in options:
-        if opt == correct:
-            continue
-        if not any(is_too_similar(opt, u, 0.7) for u in unique):
+        if opt not in unique and opt != correct:
             unique.append(opt)
     distractors = unique[:3]
     while len(distractors) < 3:
         distractors.append("None of the above")
     return [correct] + distractors
-
-# ---------- Safe Wikipedia enrichment ----------
-async def fetch_wikipedia_title_and_summary(term):
-    """Search for best non‑disambiguation article and fetch its summary."""
-    search_url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={term.replace(' ', '_')}&limit=3&namespace=0&format=json"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(search_url, timeout=5) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    titles = data[1]  # list of titles
-                    # pick first title that is not a disambiguation page
-                    best_title = None
-                    for t in titles:
-                        if "(disambiguation)" not in t:
-                            best_title = t
-                            break
-                    if not best_title and titles:
-                        best_title = titles[0]
-                    if best_title:
-                        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{best_title.replace(' ', '_')}"
-                        async with session.get(summary_url, timeout=5) as resp2:
-                            if resp2.status == 200:
-                                data2 = await resp2.json()
-                                extract = data2.get('extract', '')
-                                # ensure it's not a hidden disambiguation
-                                if extract and "may refer to:" not in extract[:200]:
-                                    return best_title, extract[:300]
-    except Exception:
-        pass
-    return None, None
-
-async def get_wikipedia_definitions(phrases):
-    """Fetch definitions only for top phrases, return dict {phrase: summary}."""
-    summaries = {}
-    tasks = [fetch_wikipedia_title_and_summary(p) for p in phrases[:8]]
-    results = await asyncio.gather(*tasks)
-    for phrase, (title, summary) in zip(phrases[:8], results):
-        if summary:
-            summaries[phrase] = f"{phrase}: {summary}"
-    return summaries
-
-# ---------- Question generators (fixed) ----------
-def negate_sentence(sent):
-    """Simple negation: insert 'not' after first auxiliary, or after first word."""
-    aux_pattern = re.compile(r'\b(is|are|was|were|has|have|had|will|would|can|could|should|may|might|must|does|did|do)\b', re.IGNORECASE)
-    match = aux_pattern.search(sent)
-    if match:
-        idx = match.end()
-        return sent[:idx] + ' not' + sent[idx:]
-    else:
-        words = sent.split()
-        if len(words) > 1:
-            words.insert(1, 'not')
-            return ' '.join(words)
-    return "Not " + sent
 
 def generate_what_questions(phrases, text, n):
     questions = []
@@ -478,31 +476,26 @@ def generate_when_questions(dates, sents, n):
     return questions
 
 def generate_why_questions(reason_sents, n):
-    """Now extracts the full reason clause as answer, not just the connector."""
     questions = []
     for sent in reason_sents[:n]:
-        match = re.search(r'\b(because|due to|as a result of)\b\s*(.*)', sent, re.IGNORECASE)
-        if not match:
+        causal_phrases = re.findall(r'\b(because|due to|reason|as a result)\b', sent, re.IGNORECASE)
+        if not causal_phrases:
             continue
-        connector = match.group(1)
-        reason_clause = match.group(2).strip().rstrip('.')
-        if len(reason_clause) < 5:
-            continue
-        question_text = re.sub(r'\b(because|due to|as a result of)\b.*', '________', sent, flags=re.IGNORECASE)
-        # distractors: other sentence fragments
-        other_reasons = [s.split()[-20:] for s in reason_sents if s != sent][:3]
-        other_strs = [' '.join(frag) if isinstance(frag, list) else str(frag) for frag in other_reasons]
-        while len(other_strs) < 3:
-            other_strs.append("None of the above")
-        options = deduplicate_options([reason_clause] + other_strs, reason_clause)
+        blanked = re.sub(r'\b(because|due to|reason|as a result)\b', '________', sent, count=1, flags=re.IGNORECASE)
+        correct = causal_phrases[0]
+        distractors = ["because", "due to", "as a result", "therefore"]
+        distractors = [d for d in distractors if d != correct][:3]
+        while len(distractors) < 3:
+            distractors.append("None of the above")
+        options = [correct] + distractors
         random.shuffle(options)
         questions.append({
             "id": len(questions) + 1,
             "type": "why",
-            "question": f"Why? Complete the sentence: \"{question_text}\"",
+            "question": f"Why did this happen? Fill in the blank: \"{blanked}\"",
             "options": options,
-            "answer": reason_clause,
-            "explanation": f"The reason is '{reason_clause}'."
+            "answer": correct,
+            "explanation": f"The missing cause is '{correct}'."
         })
     return questions
 
@@ -520,74 +513,170 @@ def generate_how_questions(method_sents, n):
     return questions
 
 def generate_which_questions(phrases, text, n):
-    """Reliable: true statement vs its negation."""
     questions = []
     for phrase in phrases[:n]:
-        def_sent = find_definition_sentence(text, phrase)
-        if def_sent.startswith("Related to"):
-            continue
-        false_sent = re.sub(
-            r'\b(is|are|was|were|has|have|had|will|would|can|could|should|may|might|must|does|did|do)\b',
-            r'\1 not', def_sent, count=1, flags=re.IGNORECASE
-        )
-        if false_sent == def_sent:
-            words = def_sent.split()
-            if len(words) > 1:
-                words.insert(1, 'not')
-                false_sent = ' '.join(words)
-        options = [def_sent, false_sent]
-        random.shuffle(options)
-        questions.append({
-            "id": len(questions) + 1,
-            "type": "which",
-            "question": f"Which statement is true about {phrase}?",
-            "options": options,
-            "answer": def_sent,
-            "explanation": f"The correct statement about {phrase}."
-        })
+        true_stmt = find_definition_sentence(text, phrase)
+        words = WORD_PATTERN.findall(true_stmt)
+        if words:
+            long_words = [w for w in words if w.lower() not in STOP_WORDS and len(w) > 4]
+            if long_words:
+                random_word = random.choice(long_words)
+                false_stmt = true_stmt.replace(random_word, "something")
+                options = [true_stmt, false_stmt, "None of the above", "Both A and B"]
+                random.shuffle(options)
+                questions.append({
+                    "id": len(questions) + 1,
+                    "type": "which",
+                    "question": f"Which statement is correct about {phrase}?",
+                    "options": options,
+                    "answer": true_stmt,
+                    "explanation": f"The correct description of {phrase}."
+                })
     return questions
 
-# ---------- MAIN GENERATION ENDPOINT ----------
-@app.post("/api/generate-reviewer-local")
-async def gen_local(
-    notes: str = Form(""),
-    file: UploadFile = File(None),
-    num_flashcards: int = Form(12),
-    quiz_types: str = Form('{"identification":5}'),
-    use_internet: bool = Form(False)
-):
-    start = time.time()
-    text = notes.strip() if notes else ""
-    if file:
-        fb = await file.read()
-        text += "\n" + extract_text_fast(fb, file.filename)
-    if not text.strip():
-        raise HTTPException(400, "Provide notes or a file.")
+def generate_whose_questions(persons, sents, n):
+    questions = []
+    for sent in sents:
+        for person in persons:
+            if person.lower() in sent.lower() and re.search(rf"\b{re.escape(person)}'s\b|\bof\s+{re.escape(person)}\b", sent, re.IGNORECASE):
+                questions.append({
+                    "id": len(questions) + 1,
+                    "type": "whose",
+                    "question": f"Whose is this? \"{sent[:120]}...\"",
+                    "options": [],
+                    "answer": sent[:200],
+                    "explanation": f"Ownership related to {person}."
+                })
+                if len(questions) >= n:
+                    break
+        if len(questions) >= n:
+            break
+    return questions
 
+def generate_matching_questions(phrases, text, n):
+    """Generate matching questions: match term to definition."""
+    questions = []
+    if len(phrases) >= 2 and n > 0:
+        for _ in range(min(n, len(phrases) // 2)):
+            selected = random.sample(phrases, 4)
+            pairs = [(p, find_definition_sentence(text, p)) for p in selected]
+            terms = [p[0] for p in pairs]
+            definitions = [p[1] for p in pairs]
+            random.shuffle(definitions)
+            questions.append({
+                "id": len(questions) + 1,
+                "type": "matching",
+                "question": "Match the terms with their definitions.",
+                "options": [],
+                "answer": {"terms": terms, "definitions": definitions},
+                "explanation": "Match each term to its correct definition."
+            })
+    return questions
+
+def generate_ordering_questions(method_sents, n):
+    """Generate ordering questions from process-like sentences."""
+    questions = []
+    if len(method_sents) >= 3 and n > 0:
+        for _ in range(min(n, 1)):
+            steps = method_sents[:4]
+            correct_order = steps[:]
+            shuffled = steps[:]
+            random.shuffle(shuffled)
+            questions.append({
+                "id": len(questions) + 1,
+                "type": "ordering",
+                "question": "Arrange the following steps in the correct order.",
+                "options": [],
+                "answer": correct_order,
+                "explanation": "The correct sequence is as listed in the answer."
+            })
+    return questions
+
+def generate_fillmultiple_questions(sents, phrases, n):
+    """Generate fill-in-multiple-blanks questions."""
+    questions = []
+    for _ in range(n):
+        if not sents:
+            break
+        sent = random.choice(sents)
+        words_in_sent = WORD_PATTERN.findall(sent)
+        candidates = [w for w in words_in_sent if w.lower() not in STOP_WORDS and len(w) > 4]
+        if len(candidates) >= 2:
+            blanks = random.sample(candidates, 2)
+            blanked = sent
+            for w in blanks:
+                blanked = re.sub(r'\b' + re.escape(w) + r'\b', '________', blanked, count=1)
+            answers = {f"blank{i+1}": w for i, w in enumerate(blanks)}
+            questions.append({
+                "id": len(questions) + 1,
+                "type": "fillmultiple",
+                "question": f'Fill in the blanks: "{blanked}"',
+                "options": [],
+                "answer": answers,
+                "explanation": "Fill each blank with the correct word."
+            })
+    return questions
+
+# ------------------------------
+# AI Provider Functions
+# ------------------------------
+def call_gemini(prompt, key):
+    import urllib.request
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+    data = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"}
+    }).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=35) as r:
+        response = json.loads(r.read())
+        return json.loads(response["candidates"][0]["content"]["parts"][0]["text"])
+
+def call_deepseek(prompt, key):
+    import urllib.request
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": "Return JSON only."},
+            {"role": "user", "content": prompt}
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2
+    }
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=data, headers=headers)
+    with urllib.request.urlopen(req, timeout=40) as r:
+        response = json.loads(r.read())
+        return json.loads(response["choices"][0]["message"]["content"])
+
+# ------------------------------
+# Core Generation Function
+# ------------------------------
+def generate_reviewer_content(text, num_flashcards, quiz_types, use_internet=False):
+    """
+    Generate summary, flashcards, and quiz from provided text.
+    This function is synchronous; internet enrichment is handled separately.
+    """
+    if not text.strip():
+        raise ValueError("No text provided.")
+
+    start = time.time()
     sents = smart_sentences(text)
     phrases = extract_key_phrases(text, top_n=max(num_flashcards, 25))
 
-    # Internet enrichment (flashcards only)
-    wiki_defs = {}
-    if use_internet and phrases:
-        wiki_defs = await get_wikipedia_definitions(phrases)
-        # DO NOT append to text – keep quizzes source‑based
-
-    summary = sents[:5] if len(sents) >= 5 else sents
+    summary = summarize_text(text, max_sentences=5)
 
     # Flashcards
     flashcards = []
     used_defs = set()
-    # Prefer multi‑word phrases first
     multi = [p for p in phrases if len(p.split()) >= 2]
     single = [p for p in phrases if len(p.split()) == 1]
     for phrase in multi + single:
         if len(flashcards) >= num_flashcards:
             break
         def_sent = find_definition_sentence(text, phrase)
-        # Use Wikipedia if local definition is weak and wiki available
-        if def_sent.startswith("Related to") and phrase in wiki_defs:
-            def_sent = wiki_defs[phrase]
         if def_sent in used_defs:
             continue
         flashcards.append({
@@ -597,23 +686,24 @@ async def gen_local(
         })
         used_defs.add(def_sent)
 
-    # Quiz parsing
-    try:
-        qt = json.loads(quiz_types)
-    except:
-        qt = {"identification": 5}
+    # Quiz generation
     quiz = []
-
-    # True/False (negation‑based)
-    tf_count = qt.get("truefalse", 0)
+    tf_count = quiz_types.get("truefalse", 0)
     for i in range(tf_count):
         sent = random.choice(sents) if sents else ""
         if not sent:
             break
-        # Alternate true and false statements
-        if i % 2 == 0:
-            q_text = negate_sentence(sent)[:200]
-            correct = "False"
+        phrase_in = next((p for p in phrases if p.lower() in sent.lower()), None)
+        if phrase_in and len(phrases) > 1 and i < tf_count // 2:
+            other = [p for p in phrases if p.lower() != phrase_in.lower()]
+            if other:
+                false_phrase = random.choice(other)
+                false_sent = re.sub(re.escape(phrase_in), false_phrase, sent, flags=re.IGNORECASE)
+                q_text = false_sent[:200]
+                correct = "False"
+            else:
+                q_text = sent[:200]
+                correct = "True"
         else:
             q_text = sent[:200]
             correct = "True"
@@ -626,8 +716,8 @@ async def gen_local(
             "explanation": f"The statement is {correct.lower()}."
         })
 
-    # Identification (fill‑in‑the‑blank)
-    id_count = qt.get("identification", 0)
+    # Identification
+    id_count = quiz_types.get("identification", 0)
     for _ in range(id_count):
         sent = random.choice(sents) if sents else ""
         if not sent:
@@ -659,7 +749,7 @@ async def gen_local(
         })
 
     # Enumeration
-    enum_count = qt.get("enumeration", 0)
+    enum_count = quiz_types.get("enumeration", 0)
     if enum_count > 0:
         enum_concepts = [p for p in phrases if len(p.split()) >= 2] or phrases
         for _ in range(enum_count):
@@ -669,11 +759,10 @@ async def gen_local(
                 continue
             points = [s[:100] for s in related[:3]]
             answer = "; ".join(points)
-            question = (
-                f"List three key points about {concept}."
-                if len(points) >= 3
-                else f"List the key point(s) about {concept} (only {len(points)} found)."
-            )
+            if len(points) < 3:
+                question = f"List the key point(s) about {concept} (only {len(points)} found)."
+            else:
+                question = f"List three key points about {concept}."
             quiz.append({
                 "id": len(quiz) + 1,
                 "type": "enumeration",
@@ -683,8 +772,8 @@ async def gen_local(
                 "explanation": f"Points about {concept}."
             })
 
-    # Multiple choice (definition‑based)
-    mc_count = qt.get("multiplechoice", 0)
+    # Multiple Choice
+    mc_count = quiz_types.get("multiplechoice", 0)
     if mc_count > 0:
         for _ in range(mc_count):
             if not phrases:
@@ -705,70 +794,200 @@ async def gen_local(
                 "explanation": f"The definition of {phrase}."
             })
 
-    # Wh‑questions
+    # WH-questions
     persons = extract_persons(text)
     locations = extract_locations(text)
     dates = extract_dates(text)
     reason_sents = extract_reason_sentences(text)
     method_sents = extract_method_sentences(text)
 
-    quiz.extend(generate_what_questions(phrases, text, qt.get("what", 0)))
-    quiz.extend(generate_who_questions(persons, sents, qt.get("who", 0)))
-    quiz.extend(generate_where_questions(locations, sents, qt.get("where", 0)))
-    quiz.extend(generate_when_questions(dates, sents, qt.get("when", 0)))
-    quiz.extend(generate_why_questions(reason_sents, qt.get("why", 0)))
-    quiz.extend(generate_how_questions(method_sents, qt.get("how", 0)))
-    quiz.extend(generate_which_questions(phrases, text, qt.get("which", 0)))
+    quiz.extend(generate_what_questions(phrases, text, quiz_types.get("what", 0)))
+    quiz.extend(generate_who_questions(persons, sents, quiz_types.get("who", 0)))
+    quiz.extend(generate_where_questions(locations, sents, quiz_types.get("where", 0)))
+    quiz.extend(generate_when_questions(dates, sents, quiz_types.get("when", 0)))
+    quiz.extend(generate_why_questions(reason_sents, quiz_types.get("why", 0)))
+    quiz.extend(generate_how_questions(method_sents, quiz_types.get("how", 0)))
+    quiz.extend(generate_which_questions(phrases, text, quiz_types.get("which", 0)))
+    quiz.extend(generate_whose_questions(persons, sents, quiz_types.get("whose", 0)))
+    quiz.extend(generate_matching_questions(phrases, text, quiz_types.get("matching", 0)))
+    quiz.extend(generate_ordering_questions(method_sents, quiz_types.get("ordering", 0)))
+    quiz.extend(generate_fillmultiple_questions(sents, phrases, quiz_types.get("fillmultiple", 0)))
 
     elapsed = round(time.time() - start, 2)
-    return JSONResponse(content={
+    return {
         "summary": summary,
         "flashcards": flashcards,
         "quiz": quiz,
         "metadata": {
             "method": "accuracy_v5",
             "length": len(text),
-            "time": elapsed
+            "time": elapsed,
+            "num_sentences": len(sents),
+            "num_phrases": len(phrases)
         }
-    })
-
-# ---------- AI endpoints (unchanged) ----------
-def call_gemini(prompt, key):
-    import urllib.request, urllib.error
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-    data = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"}
-    }).encode()
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=35) as r:
-        return json.loads(json.loads(r.read())["candidates"][0]["content"]["parts"][0]["text"])
-
-def call_deepseek(prompt, key):
-    import urllib.request, urllib.error
-    url = "https://api.deepseek.com/chat/completions"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "system", "content": "Return JSON only."},
-            {"role": "user", "content": prompt}
-        ],
-        "response_format": {"type": "json_object"},
-        "temperature": 0.2
     }
-    data = json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req, timeout=40) as r:
-        return json.loads(json.loads(r.read())["choices"][0]["message"]["content"])
+
+# ------------------------------
+# Caching
+# ------------------------------
+cache = {}
+
+def get_cache_key(text):
+    return hashlib.md5(text.encode()).hexdigest()
+
+# ------------------------------
+# API Endpoints
+# ------------------------------
+@app.get("/")
+def root():
+    return {"status": "online", "system": "AcademicHub Core API"}
+
+@app.get("/api/health")
+def health():
+    return {"service": "AcademicHub Engine", "status": "healthy"}
+
+@app.post("/api/generate-reviewer-local")
+async def gen_local(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    num_flashcards: int = Form(12),
+    quiz_types: str = Form('{"identification":5}'),
+    use_internet: bool = Form(False),
+    enrich_count: int = Form(5)
+):
+    """
+    Generate review materials from text or file (form data).
+    """
+    text = notes.strip() if notes else ""
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_text_fast(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "Provide notes or a file.")
+
+    # Internet enrichment
+    if use_internet:
+        phrases = extract_key_phrases(text, top_n=25)
+        extra = await enrich_with_internet(phrases, enrich_count=enrich_count)
+        if extra:
+            text += "\n\n--- Additional Context from Wikipedia ---\n" + extra
+
+    # Check cache
+    cache_key = get_cache_key(text + json.dumps(quiz_types) + str(num_flashcards))
+    if cache_key in cache:
+        return JSONResponse(content=cache[cache_key])
+
+    try:
+        qt = json.loads(quiz_types)
+    except:
+        qt = {"identification": 5}
+
+    result = generate_reviewer_content(text, num_flashcards, qt, use_internet=False)
+    cache[cache_key] = result
+    return JSONResponse(content=result)
+
+@app.post("/api/reviewer")
+async def generate_reviewer_json(request: ReviewRequest):
+    """
+    Generate review materials using JSON body.
+    """
+    text = request.notes.strip()
+    if not text:
+        raise HTTPException(400, "No notes provided.")
+    if request.use_internet:
+        phrases = extract_key_phrases(text, top_n=25)
+        extra = await enrich_with_internet(phrases, enrich_count=request.enrich_count)
+        if extra:
+            text += "\n\n--- Additional Context from Wikipedia ---\n" + extra
+    result = generate_reviewer_content(text, request.num_flashcards, request.quiz_types)
+    return JSONResponse(content=result)
+
+@app.post("/api/summary")
+async def summary_endpoint(notes: str = Form(""), file: UploadFile = File(None)):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_text_fast(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+    summary = summarize_text(text)
+    return JSONResponse(content={"summary": summary})
+
+@app.post("/api/flashcards")
+async def flashcards_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    num_flashcards: int = Form(10)
+):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_text_fast(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+    phrases = extract_key_phrases(text, top_n=num_flashcards)
+    flashcards = []
+    used_defs = set()
+    for phrase in phrases:
+        if len(flashcards) >= num_flashcards:
+            break
+        def_sent = find_definition_sentence(text, phrase)
+        if def_sent in used_defs:
+            continue
+        flashcards.append({
+            "id": len(flashcards) + 1,
+            "term": phrase,
+            "definition": def_sent
+        })
+        used_defs.add(def_sent)
+    return JSONResponse(content={"flashcards": flashcards})
+
+@app.post("/api/quiz")
+async def quiz_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    quiz_types: str = Form('{"identification":5}')
+):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_text_fast(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+    try:
+        qt = json.loads(quiz_types)
+    except:
+        qt = {"identification": 5}
+    # We can reuse generate_reviewer_content but only return quiz
+    result = generate_reviewer_content(text, num_flashcards=0, quiz_types=qt)
+    return JSONResponse(content={"quiz": result["quiz"]})
+
+@app.post("/api/enrich")
+async def enrich_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    enrich_count: int = Form(5)
+):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_text_fast(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+
+    phrases = extract_key_phrases(text, top_n=25)
+    enriched = await enrich_with_internet(phrases, enrich_count=enrich_count)
+    if enriched:
+        combined = text + "\n\n--- Additional Context from Wikipedia ---\n" + enriched
+    else:
+        combined = text
+    return JSONResponse(content={"enriched_text": combined})
 
 @app.post("/api/generate-reviewer")
-def gen_ai(
-    api_key: str = Form(...),
-    provider: str = Form("gemini"),
-    notes: str = Form(""),
-    file: UploadFile = File(None)
-):
+def gen_ai(api_key: str = Form(...), provider: str = Form("gemini"), notes: str = Form(""), file: UploadFile = File(None)):
+    """
+    AI-based generation using Gemini or DeepSeek.
+    """
     if not api_key.strip():
         raise HTTPException(400, "API key required.")
     text = notes.strip() if notes else ""
@@ -777,11 +996,23 @@ def gen_ai(
         text += "\n" + extract_text_fast(fb, file.filename)
     if not text.strip():
         raise HTTPException(400, "Provide notes or file.")
+
     prompt = (
-        "Analyze and return JSON with summary (5 points), "
-        "flashcards (10 items with term/definition), "
-        f"quiz (7 questions with options/answer/explanation). Notes: {text[:6000]}"
+        f"Analyze the following notes and return JSON with: "
+        f"summary (5 points), flashcards (10 items with term/definition), "
+        f"quiz (7 questions with options/answer/explanation). "
+        f"Notes: {text[:6000]}"
     )
-    if provider == "deepseek":
-        return call_deepseek(prompt, api_key)
-    return call_gemini(prompt, api_key)
+    try:
+        if provider == "deepseek":
+            return call_deepseek(prompt, api_key)
+        return call_gemini(prompt, api_key)
+    except Exception as e:
+        raise HTTPException(500, f"AI provider error: {str(e)}")
+
+# ------------------------------
+# Run Instructions
+# ------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
