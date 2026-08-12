@@ -538,7 +538,7 @@
                             </div>
                         </div>
                     </div>
-                    <!-- accuracy info -->
+                    <!-- accuracy info (only supported types) -->
                     <div id="accuracyInfo" class="hidden col-span-full mt-2 text-xs bg-white/5 border border-white/10 rounded-xl p-3 overflow-x-auto">
                         <table class="w-full text-left">
                             <thead>
@@ -551,12 +551,12 @@
                             <tbody class="opacity-80">
                                 <tr class="border-b border-white/5"><td class="py-2 pr-2">True/False</td><td class="py-2 px-2">90% accurate</td><td class="py-2 pl-2">100% accurate</td></tr>
                                 <tr class="border-b border-white/5"><td class="py-2 pr-2">Identification</td><td class="py-2 px-2">95%</td><td class="py-2 pl-2">100%</td></tr>
-                                <tr class="border-b border-white/5"><td class="py-2 pr-2">Multiple Choice</td><td class="py-2 px-2">80%</td><td class="py-2 pl-2">100%</td></tr>
-                                <tr class="border-b border-white/5"><td class="py-2 pr-2">What / Who / Where</td><td class="py-2 px-2">85%</td><td class="py-2 pl-2">100%</td></tr>
-                                <tr><td class="py-2 pr-2">Enumeration</td><td class="py-2 px-2">80%</td><td class="py-2 pl-2">100%</td></tr>
+                                <tr class="border-b border-white/5"><td class="py-2 pr-2">Multiple Choice</td><td class="py-2 px-2">90%</td><td class="py-2 pl-2">100%</td></tr>
+                                <tr class="border-b border-white/5"><td class="py-2 pr-2">What / Who / Where / When</td><td class="py-2 px-2">92%</td><td class="py-2 pl-2">100%</td></tr>
+                                <tr><td class="py-2 pr-2">Enumeration</td><td class="py-2 px-2">85%</td><td class="py-2 pl-2">100%</td></tr>
                             </tbody>
                         </table>
-                        <p class="mt-2 opacity-50">Accuracy may vary with text complexity.</p>
+                        <p class="mt-2 opacity-50">Accuracy may vary with text complexity. Local accuracy improved with spaCy.</p>
                     </div>
 
                     <div>
@@ -566,8 +566,8 @@
                                 <i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-400"></i>
                             </div>
                             <p class="text-xs sm:text-sm" id="fileNameDisplay">Drop file or click to browse</p>
-                            <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
-                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateFileName(this)" />
+                            <p class="text-xs opacity-50">PDF, DOCX, TXT, MD, RTF, HTML</p>
+                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt,.md,.rtf,.html" onchange="updateFileName(this)" />
                         </label>
                     </div>
 
@@ -592,22 +592,15 @@
                             <div class="flex items-center gap-2"><input type="checkbox" id="useWho" class="accent-indigo-500" /><label class="text-xs">Who</label><input type="number" id="numWho" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
                             <div class="flex items-center gap-2"><input type="checkbox" id="useWhere" class="accent-indigo-500" /><label class="text-xs">Where</label><input type="number" id="numWhere" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
                             <div class="flex items-center gap-2"><input type="checkbox" id="useWhen" class="accent-indigo-500" /><label class="text-xs">When</label><input type="number" id="numWhen" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="useWhy" class="accent-indigo-500" /><label class="text-xs">Why</label><input type="number" id="numWhy" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="useWhich" class="accent-indigo-500" /><label class="text-xs">Which</label><input type="number" id="numWhich" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="useHow" class="accent-indigo-500" /><label class="text-xs">How</label><input type="number" id="numHow" value="2" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="useWhose" class="accent-indigo-500" /><label class="text-xs">Whose</label><input type="number" id="numWhose" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="useMatching" class="accent-indigo-500" /><label class="text-xs">Matching</label><input type="number" id="numMatching" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="useOrdering" class="accent-indigo-500" /><label class="text-xs">Ordering</label><input type="number" id="numOrdering" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="useFillmultiple" class="accent-indigo-500" /><label class="text-xs">Fill Multiple</label><input type="number" id="numFillmultiple" value="1" min="0" max="5" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2">
-    <input type="checkbox" id="useInternet" class="accent-indigo-500" />
-    <label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
-    <label class="text-xs opacity-70 ml-2">Enrich count:</label>
-    <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
-</div>
+                        <input type="checkbox" id="useInternet" class="accent-indigo-500" />
+                        <label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
+                        <label class="text-xs opacity-70 ml-2">Enrich count:</label>
+                        <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
+                    </div>
 
                     <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base">
                         <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
@@ -670,8 +663,8 @@
                             <i class="fa-solid fa-cloud-arrow-up text-lg sm:text-2xl text-indigo-400"></i>
                         </div>
                         <p class="text-xs sm:text-sm" id="testFileNameDisplay">Drop file or click to browse</p>
-                        <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
-                        <input id="testFileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateTestFileName(this)" />
+                        <p class="text-xs opacity-50">PDF, DOCX, TXT, MD, RTF, HTML</p>
+                        <input id="testFileInput" type="file" accept=".pdf,.docx,.txt,.md,.rtf,.html" onchange="updateTestFileName(this)" />
                     </label>
                 </div>
                 <div class="flex items-center gap-2 mb-3 sm:mb-4">
@@ -893,34 +886,34 @@
         }
 
         async function retryWakeUp() {
-    if (wakeUpPollingInterval) {
-        clearInterval(wakeUpPollingInterval);
-        wakeUpPollingInterval = null;
-    }
+            if (wakeUpPollingInterval) {
+                clearInterval(wakeUpPollingInterval);
+                wakeUpPollingInterval = null;
+            }
 
-    const statusEl = document.getElementById('wakeUpStatus');
-    const btn = document.getElementById('retryWakeBtn');
-    btn.disabled = true;
-    statusEl.textContent = 'Checking server…';
+            const statusEl = document.getElementById('wakeUpStatus');
+            const btn = document.getElementById('retryWakeBtn');
+            btn.disabled = true;
+            statusEl.textContent = 'Checking server…';
 
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/health`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(6000)
-        });
-        if (res.ok) {
-            document.getElementById('wakeUpOverlay').style.display = 'none';
-            return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/health`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(6000)
+                });
+                if (res.ok) {
+                    document.getElementById('wakeUpOverlay').style.display = 'none';
+                    return;
+                }
+            } catch (e) {}
+
+            statusEl.textContent = 'Still waking up… Auto‑retrying again.';
+            btn.disabled = false;
+
+            if (!wakeUpPollingInterval) {
+                wakeUpPollingInterval = setInterval(pingServer, 5000);
+            }
         }
-    } catch (e) {}
-
-    statusEl.textContent = 'Still waking up… Auto‑retrying again.';
-    btn.disabled = false;
-
-    if (!wakeUpPollingInterval) {
-        wakeUpPollingInterval = setInterval(pingServer, 5000);
-    }
-}
 
         window.addEventListener('DOMContentLoaded', () => {
             pingServer();
@@ -1329,33 +1322,15 @@
             const useInternet = document.getElementById('useInternet').checked;
 
             const quizTypes = {};
-            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById(
-                'numTrueFalse').value) || 0;
-            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document
-                .getElementById('numIdentification').value) || 0;
-            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById(
-                'numEnumeration').value) || 0;
-            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document
-                .getElementById('numMultipleChoice').value) || 0;
-            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat')
-                .value) || 0;
-            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho')
-            .value) || 0;
-            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere')
-                .value) || 0;
-            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen')
-                .value) || 0;
-            if (document.getElementById('useWhy').checked) quizTypes.why = parseInt(document.getElementById('numWhy')
-            .value) || 0;
-            if (document.getElementById('useWhich').checked) quizTypes.which = parseInt(document.getElementById('numWhich')
-                .value) || 0;
-            if (document.getElementById('useHow').checked) quizTypes.how = parseInt(document.getElementById('numHow')
-            .value) || 0;
-            if (document.getElementById('useWhose').checked) quizTypes.whose = parseInt(document.getElementById('numWhose')
-                .value) || 0;
-            if (document.getElementById('useMatching').checked) quizTypes.matching = parseInt(document.getElementById('numMatching').value) || 0;
-            if (document.getElementById('useOrdering').checked) quizTypes.ordering = parseInt(document.getElementById('numOrdering').value) || 0;
-            if (document.getElementById('useFillmultiple').checked) quizTypes.fillmultiple = parseInt(document.getElementById('numFillmultiple').value) || 0;
+            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById('numTrueFalse').value) || 0;
+            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document.getElementById('numIdentification').value) || 0;
+            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById('numEnumeration').value) || 0;
+            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document.getElementById('numMultipleChoice').value) || 0;
+            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat').value) || 0;
+            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho').value) || 0;
+            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere').value) || 0;
+            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen').value) || 0;
+
             if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
 
             btn.disabled = true;
@@ -1666,7 +1641,7 @@
                 medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15,
                     timePerQuestion: 20 },
                 hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2,
-                    which: 2, total: 26, timePerQuestion: 15 }
+                    total: 24, timePerQuestion: 15 }
             };
             const quizTypes = {};
             for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
