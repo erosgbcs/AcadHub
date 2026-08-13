@@ -18,7 +18,7 @@ async function pingServer() {
       wakeUpPollingInterval = null;
     }
   } catch (e) {
-    statusEl.textContent = 'Not ready yet. Auto‑retrying every 5 seconds…';
+    statusEl.innerHTML = '<i class="fa-solid fa-hourglass-half mr-1"></i>Not ready yet. Auto-retrying every 5 seconds…';
     if (!wakeUpPollingInterval) {
       wakeUpPollingInterval = setInterval(pingServer, 5000);
     }
@@ -33,7 +33,7 @@ async function retryWakeUp() {
   const statusEl = document.getElementById('wakeUpStatus');
   const btn = document.getElementById('retryWakeBtn');
   btn.disabled = true;
-  statusEl.textContent = 'Checking server…';
+  statusEl.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-1"></i>Checking server…';
   try {
     const res = await fetch(`${BACKEND_URL}/api/health`, {
       method: 'GET',
@@ -44,7 +44,7 @@ async function retryWakeUp() {
       return;
     }
   } catch (e) {}
-  statusEl.textContent = 'Still waking up… Auto‑retrying again.';
+  statusEl.innerHTML = '<i class="fa-solid fa-hourglass-half mr-1"></i>Still waking up… Auto-retrying again.';
   btn.disabled = false;
   if (!wakeUpPollingInterval) {
     wakeUpPollingInterval = setInterval(pingServer, 5000);
@@ -59,7 +59,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const statusEl = document.getElementById('wakeUpStatus');
       const btn = document.getElementById('retryWakeBtn');
       if (statusEl) {
-        statusEl.textContent = '⏳ Server is still waking up. You can try again or continue anyway.';
+        statusEl.innerHTML = '<i class="fa-solid fa-hourglass-half mr-1"></i>Server is still waking up. You can try again or continue anyway.';
         statusEl.style.color = '#fbbf24';
       }
       if (btn) {
@@ -982,11 +982,11 @@ function showTestQuestion(index) {
   if (timePerQuestion > 0) {
     testTimeLeft = timePerQuestion;
     document.getElementById('timerDisplay').classList.remove('hidden');
-    document.getElementById('timerDisplay').textContent = `⏱ ${testTimeLeft}s`;
+    document.getElementById('timerDisplay').innerHTML = `<i class="fa-solid fa-stopwatch mr-1"></i>${testTimeLeft}s`;
     clearInterval(testTimerInterval);
     testTimerInterval = setInterval(() => {
       testTimeLeft--;
-      document.getElementById('timerDisplay').textContent = `⏱ ${testTimeLeft}s`;
+      document.getElementById('timerDisplay').innerHTML = `<i class="fa-solid fa-stopwatch mr-1"></i>${testTimeLeft}s`;
       if (testTimeLeft <= 0) {
         clearInterval(testTimerInterval);
         testCurrentIndex++;
