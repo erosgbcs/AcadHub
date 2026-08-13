@@ -109,26 +109,34 @@ let testTimerInterval = null;
 let testTimeLeft = 0;
 let draggedSchedId = null;
 let draggedPlannerId = null;
+let testUserAnswers = []; // store user answers for review mode
 
 // ============================================================
-// THEME
+// THEME (moved to settings)
 // ============================================================
 function toggleTheme() {
   const html = document.documentElement;
-  const icon = document.getElementById('themeIcon');
+  const icon = document.getElementById('themeIcon'); // may not exist anymore
+  const settingsDot = document.getElementById('settingsThemeDot');
   if (html.classList.contains('dark')) {
     html.classList.remove('dark');
     html.classList.add('light');
-    icon.classList.remove('fa-sun');
-    icon.classList.add('fa-moon');
-    icon.style.color = '#6366f1';
+    if (icon) {
+      icon.classList.remove('fa-sun');
+      icon.classList.add('fa-moon');
+      icon.style.color = '#6366f1';
+    }
+    if (settingsDot) settingsDot.style.left = '50%';
     localStorage.setItem('theme', 'light');
   } else {
     html.classList.remove('light');
     html.classList.add('dark');
-    icon.classList.remove('fa-moon');
-    icon.classList.add('fa-sun');
-    icon.style.color = '#facc15';
+    if (icon) {
+      icon.classList.remove('fa-moon');
+      icon.classList.add('fa-sun');
+      icon.style.color = '#facc15';
+    }
+    if (settingsDot) settingsDot.style.left = '0.5rem';
     localStorage.setItem('theme', 'dark');
   }
 }
@@ -137,18 +145,36 @@ function toggleTheme() {
   if (localStorage.getItem('theme') === 'light') {
     document.documentElement.classList.remove('dark');
     document.documentElement.classList.add('light');
-    const icon = document.getElementById('themeIcon');
-    if (icon) {
-      icon.classList.remove('fa-sun');
-      icon.classList.add('fa-moon');
-      icon.style.color = '#6366f1';
-    }
+    const settingsDot = document.getElementById('settingsThemeDot');
+    if (settingsDot) settingsDot.style.left = '50%';
   }
 })();
 
 // ============================================================
-// ACCENT COLOUR
+// SETTINGS MODAL
 // ============================================================
+function toggleSettingsModal() {
+  document.getElementById('settingsModal').classList.toggle('hidden');
+}
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+// Tab position
+function changeTabPosition(pos) {
+  const wrapper = document.getElementById('mainWrapper');
+  wrapper.classList.remove('tab-position-top', 'tab-position-bottom', 'tab-position-left');
+  wrapper.classList.add('tab-position-' + pos);
+  localStorage.setItem('tabPosition', pos);
+}
+(function initTabPosition() {
+  const saved = localStorage.getItem('tabPosition') || 'top';
+  changeTabPosition(saved);
+  const select = document.getElementById('tabPositionSelect');
+  if (select) select.value = saved;
+})();
+
+// Accent color (in settings)
 (function() {
   const picker = document.getElementById('accentPicker');
   if (!picker) return;
@@ -227,10 +253,13 @@ function saveSched() {
 }
 
 function renderScheduler() {
+  // Kanban columns with counts
   ['todo', 'progress', 'done'].forEach(col => {
     const el = document.getElementById('sched-' + col);
     if (!el) return;
     const items = schedItems.filter(i => i.status === col);
+    const header = el.closest('.kanban-column')?.querySelector('.column-header .column-count');
+    if (header) header.textContent = items.length;
     if (items.length === 0) {
       el.innerHTML = '<p class="text-xs opacity-30 text-center py-4"><i class="fa-solid fa-inbox text-2xl mb-2"></i><br>Empty</p>';
       return;
@@ -239,12 +268,12 @@ function renderScheduler() {
       const priorityClass = `priority-${i.priority || 'medium'}`;
       const overdue = i.deadline && new Date(i.deadline) < new Date() && i.status !== 'done' ? 'overdue' : '';
       return `
-        <div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab ${overdue} transition hover:bg-white/10" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')">
+        <div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab ${overdue} transition hover:bg-white/10" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')" ondragend="this.classList.remove('dragging')">
           <div class="flex items-center justify-between">
             <p class="text-sm font-semibold">${i.title}</p>
             <div class="flex items-center gap-1">
-              <button onclick="editSchedItem('${i.id}')" data-tooltip="Edit" class="text-xs text-blue-400 hover:text-blue-300"><i class="fa-solid fa-pen"></i></button>
-              <button onclick="deleteSchedItem('${i.id}')" data-tooltip="Delete" class="text-xs text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
+              <button onclick="editSchedItem('${i.id}')" data-tooltip="Edit" class="text-xs text-blue-400 hover:text-blue-300 btn-hover"><i class="fa-solid fa-pen"></i></button>
+              <button onclick="deleteSchedItem('${i.id}')" data-tooltip="Delete" class="text-xs text-rose-400 hover:text-rose-300 btn-hover"><i class="fa-solid fa-trash"></i></button>
             </div>
           </div>
           ${i.deadline ? `<p class="text-xs opacity-50 mt-1"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}
@@ -258,26 +287,37 @@ function renderScheduler() {
     }).join('');
   });
 
-  // Gantt chart
+  // Gantt chart with bars
   const gantt = document.getElementById('ganttChart');
   if (gantt) {
     const items = schedItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
     if (items.length === 0) {
       gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
     } else {
+      const today = new Date();
+      const deadlines = items.map(i => new Date(i.deadline).getTime());
+      const minDeadline = Math.min(...deadlines);
+      const maxDeadline = Math.max(...deadlines);
+      const totalDays = Math.max(1, Math.ceil((maxDeadline - minDeadline) / (1000 * 60 * 60 * 24)));
       gantt.innerHTML = `<div class="space-y-2">` + items.map(i => {
-        const daysLeft = Math.ceil((new Date(i.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+        const deadline = new Date(i.deadline);
+        const daysUntil = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+        const totalDuration = Math.max(1, Math.ceil((deadline - new Date(minDeadline)) / (1000 * 60 * 60 * 24)) + 1);
+        const widthPercent = Math.max(5, Math.min(100, (totalDuration / totalDays) * 100));
         const barColor = i.type === 'milestone' ? 'bg-amber-400' : i.type === 'defense' ? 'bg-rose-400' : i.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400';
-        return `<div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
-          <div class="w-2 h-2 rounded-full ${barColor}"></div>
-          <span class="text-sm flex-1 truncate">${i.title}</span>
-          <span class="text-xs ${daysLeft < 0 ? 'text-rose-400' : 'opacity-70'}">${i.deadline}</span>
-        </div>`;
+        const overdue = daysUntil < 0;
+        return `
+          <div class="gantt-bar-container">
+            <div class="gantt-bar ${barColor}" style="width:${widthPercent}%;">
+              <span class="gantt-bar-label">${i.title}</span>
+              <span class="gantt-bar-deadline">${i.deadline}</span>
+            </div>
+          </div>`;
       }).join('') + `</div>`;
     }
   }
 
-  // Countdowns
+  // Countdowns with circular progress
   const countdowns = document.getElementById('countdowns');
   if (countdowns) {
     const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
@@ -289,17 +329,24 @@ function renderScheduler() {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const overdue = days < 0;
-        return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2">
-          <span class="text-sm">${d.title}</span>
-          <span class="text-sm font-bold ${overdue ? 'text-rose-400' : days <= 7 ? 'text-amber-400' : 'text-emerald-400'}">
-            ${overdue ? 'Passed' : `${days}d ${hours}h`}
-          </span>
-        </div>`;
+        const percent = overdue ? 100 : Math.min(100, Math.round((days / 365) * 100)); // rough
+        return `
+          <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2">
+            <span class="text-sm">${d.title}</span>
+            <div class="flex items-center gap-2">
+              <div class="circular-countdown" style="--percent:${percent}">
+                <div class="inner">${days}d</div>
+              </div>
+              <span class="text-sm font-bold ${overdue ? 'text-rose-400' : 'text-emerald-400'}">
+                ${overdue ? 'Passed' : `${days}d ${hours}h`}
+              </span>
+            </div>
+          </div>`;
       }).join('');
     }
   }
 
-  // Exam matrix
+  // Exam matrix (unchanged)
   const examMatrix = document.getElementById('examMatrix');
   if (examMatrix) {
     const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
@@ -375,6 +422,7 @@ function deleteSchedItem(id) {
 
 function dragSchedTask(e, id) {
   draggedSchedId = id;
+  e.target.closest('.cursor-grab')?.classList.add('dragging');
 }
 
 function dropSchedTask(e, newStatus) {
@@ -388,6 +436,7 @@ function dropSchedTask(e, newStatus) {
   }
   draggedSchedId = null;
   document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
 }
 
 document.addEventListener('dragover', (e) => {
@@ -411,6 +460,8 @@ function renderPlanner() {
     const el = document.getElementById('planner-' + col);
     if (!el) return;
     const items = plannerTasks.filter(i => i.status === col);
+    const header = el.closest('.kanban-column')?.querySelector('.column-header .column-count');
+    if (header) header.textContent = items.length;
     if (items.length === 0) {
       el.innerHTML = '<p class="text-xs opacity-30 text-center py-4"><i class="fa-solid fa-inbox text-2xl mb-2"></i><br>Empty</p>';
       return;
@@ -419,12 +470,12 @@ function renderPlanner() {
       const priorityClass = `priority-${i.priority || 'medium'}`;
       const overdue = i.deadline && new Date(i.deadline) < new Date() && i.status !== 'done' ? 'overdue' : '';
       return `
-        <div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab ${overdue} transition hover:bg-white/10" draggable="true" ondragstart="dragPlannerTask(event, '${i.id}')">
+        <div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab ${overdue} transition hover:bg-white/10" draggable="true" ondragstart="dragPlannerTask(event, '${i.id}')" ondragend="this.classList.remove('dragging')">
           <div class="flex items-center justify-between">
             <p class="text-sm font-semibold">${i.title}</p>
             <div class="flex items-center gap-1">
-              <button onclick="editPlannerTask('${i.id}')" data-tooltip="Edit" class="text-xs text-blue-400 hover:text-blue-300"><i class="fa-solid fa-pen"></i></button>
-              <button onclick="deletePlannerTask('${i.id}')" data-tooltip="Delete" class="text-xs text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
+              <button onclick="editPlannerTask('${i.id}')" data-tooltip="Edit" class="text-xs text-blue-400 hover:text-blue-300 btn-hover"><i class="fa-solid fa-pen"></i></button>
+              <button onclick="deletePlannerTask('${i.id}')" data-tooltip="Delete" class="text-xs text-rose-400 hover:text-rose-300 btn-hover"><i class="fa-solid fa-trash"></i></button>
             </div>
           </div>
           ${i.deadline ? `<p class="text-xs opacity-50 mt-1"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}
@@ -490,6 +541,7 @@ function deletePlannerTask(id) {
 
 function dragPlannerTask(e, id) {
   draggedPlannerId = id;
+  e.target.closest('.cursor-grab')?.classList.add('dragging');
 }
 
 function dropPlannerTask(e, newStatus) {
@@ -502,6 +554,7 @@ function dropPlannerTask(e, newStatus) {
   }
   draggedPlannerId = null;
   document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
 }
 
 function allowDrop(e) {
@@ -634,19 +687,32 @@ async function renderResultsOneByOne(data) {
   document.getElementById('flashcardGrid').innerHTML = '';
   document.getElementById('quizContainer').innerHTML = '';
 
+  // Summary
   const summaryItems = (data.summary || []).map(s => `<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-indigo-400 mt-0.5"></i>${s}</li>`);
   document.getElementById('summaryList').innerHTML = summaryItems.join('');
 
+  // Flashcards with flip
   const flashcardContainer = document.getElementById('flashcardGrid');
   for (let i = 0; i < (data.flashcards || []).length; i++) {
     const card = data.flashcards[i];
     const div = document.createElement('div');
-    div.className = 'reveal-item bg-white/5 border border-white/10 p-4 rounded-xl';
-    div.innerHTML = `<p class="text-sm font-bold">${card.term}</p><p class="text-xs opacity-70 mt-1">${card.definition}</p>`;
+    div.className = 'reveal-item';
+    div.innerHTML = `
+      <div class="flashcard" onclick="this.classList.toggle('flipped')">
+        <div class="flashcard-inner">
+          <div class="flashcard-front">
+            <p class="text-sm font-bold">${card.term}</p>
+          </div>
+          <div class="flashcard-back">
+            <p class="text-xs opacity-70">${card.definition}</p>
+          </div>
+        </div>
+      </div>`;
     flashcardContainer.appendChild(div);
     await new Promise(resolve => setTimeout(resolve, 150));
   }
 
+  // Quiz
   const quizContainer = document.getElementById('quizContainer');
   for (let i = 0; i < (data.quiz || []).length; i++) {
     const q = data.quiz[i];
@@ -714,8 +780,8 @@ function renderSavedList() {
         <p class="text-xs opacity-50 truncate">${entry.notes}</p>
       </div>
       <div class="flex gap-2">
-        <button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs hover:bg-indigo-500/30 transition"><i class="fa-solid fa-eye mr-1"></i>Load</button>
-        <button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition"><i class="fa-solid fa-trash"></i></button>
+        <button onclick="loadSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs hover:bg-indigo-500/30 transition btn-hover"><i class="fa-solid fa-eye mr-1"></i>Load</button>
+        <button onclick="deleteSaved(${entry.id})" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 text-xs hover:bg-rose-500/30 transition btn-hover"><i class="fa-solid fa-trash"></i></button>
       </div>
     </div>`).join('');
 }
@@ -748,6 +814,19 @@ function revealGCash() {
 // ============================================================
 // PROFILE MODAL (mandatory name capture)
 // ============================================================
+function closeProfileModal() {
+  document.getElementById('profileModal').classList.add('hidden');
+}
+
+function showProfileModal() {
+  if (localStorage.getItem('profile_saved') === 'true') {
+    document.getElementById('authModal').classList.remove('hidden');
+    updateAuthUI();
+    return;
+  }
+  document.getElementById('profileModal').classList.remove('hidden');
+}
+
 (function() {
   const firstName = document.getElementById('visitorFirstName');
   const lastName = document.getElementById('visitorLastName');
@@ -798,19 +877,10 @@ async function saveVisitorName() {
       console.log('Firebase save delayed, using local fallback.');
     }
   }
-  document.getElementById('profileModal').classList.add('hidden');
+  closeProfileModal();
   alert('Profile saved! You may now use the app.');
   saveBtn.disabled = false;
   saveBtn.innerHTML = 'Save';
-}
-
-function showProfileModal() {
-  if (localStorage.getItem('profile_saved') === 'true') {
-    document.getElementById('authModal').classList.remove('hidden');
-    updateAuthUI();
-    return;
-  }
-  document.getElementById('profileModal').classList.remove('hidden');
 }
 
 // ============================================================
@@ -877,179 +947,12 @@ async function submitEval() {
 }
 
 // ============================================================
-// TEST MY LIMITS
-// ============================================================
-function setDifficulty(level) {
-  testDifficulty = level;
-  ['easy', 'medium', 'hard'].forEach(d => {
-    const btn = document.getElementById('diff' + d.charAt(0).toUpperCase() + d.slice(1));
-    if (d === level) {
-      btn.classList.add('bg-indigo-600', 'text-white');
-      btn.classList.remove('bg-white/10');
-    } else {
-      btn.classList.remove('bg-indigo-600', 'text-white');
-      btn.classList.add('bg-white/10');
-    }
-  });
-}
-
-async function startTest() {
-  const notes = document.getElementById('testNotes').value.trim();
-  if (!notes) {
-    alert('Please enter some notes to generate questions.');
-    return;
-  }
-
-  const difficultyMap = {
-    easy: { truefalse: 3, identification: 3, multiplechoice: 2, total: 8, timePerQuestion: 0 },
-    medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15, timePerQuestion: 20 },
-    hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 5, where: 2, when: 2, total: 26, timePerQuestion: 15 }
-  };
-
-  const quizTypes = {};
-  for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
-    if (key !== 'total' && key !== 'timePerQuestion') quizTypes[key] = value;
-  }
-
-  document.getElementById('startTestBtn').disabled = true;
-  document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
-
-  const formData = new FormData();
-  formData.append('notes', notes);
-  formData.append('num_flashcards', 0);
-  formData.append('quiz_types', JSON.stringify(quizTypes));
-  formData.append('use_internet', document.getElementById('useTestInternet').checked);
-  const testFileInput = document.getElementById('testFileInput');
-  if (testFileInput.files[0]) formData.append('file', testFileInput.files[0]);
-
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/generate-reviewer-local`, {
-      method: 'POST',
-      body: formData
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || 'Generation failed');
-
-    testQuestions = data.quiz || [];
-    testCurrentIndex = 0;
-    testCorrectCount = 0;
-
-    if (testQuestions.length === 0) {
-      alert('No questions could be generated. Please provide more detailed notes.');
-      document.getElementById('startTestBtn').disabled = false;
-      document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
-      return;
-    }
-
-    document.getElementById('testQuizContainer').classList.remove('hidden');
-    document.getElementById('testResultsContainer').classList.add('hidden');
-    document.getElementById('startTestBtn').classList.add('hidden');
-    showTestQuestion(0);
-  } catch (err) {
-    alert('Error: ' + err.message);
-    document.getElementById('startTestBtn').disabled = false;
-    document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
-  }
-}
-
-function showTestQuestion(index) {
-  if (index >= testQuestions.length) {
-    finishTest();
-    return;
-  }
-
-  const q = testQuestions[index];
-  document.getElementById('questionCounter').textContent = `Question ${index + 1} / ${testQuestions.length}`;
-  document.getElementById('testQuestionText').textContent = q.question;
-
-  const optionsContainer = document.getElementById('testOptionsContainer');
-  optionsContainer.innerHTML = '';
-
-  if (q.options && q.options.length) {
-    q.options.forEach((opt, idx) => {
-      const btn = document.createElement('button');
-      btn.className = 'quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 hover:bg-indigo-500/10 transition';
-      btn.innerHTML = `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
-      btn.addEventListener('click', () => handleTestAnswer(btn, opt === q.answer, q.answer));
-      optionsContainer.appendChild(btn);
-    });
-  } else {
-    optionsContainer.innerHTML = `<p class="text-sm opacity-70">Answer: ${q.answer}</p>`;
-    document.getElementById('nextTestBtn').classList.remove('hidden');
-  }
-
-  const timePerQuestion = { easy: 0, medium: 20, hard: 15 }[testDifficulty];
-  if (timePerQuestion > 0) {
-    testTimeLeft = timePerQuestion;
-    document.getElementById('timerDisplay').classList.remove('hidden');
-    document.getElementById('timerDisplay').innerHTML = `<i class="fa-solid fa-stopwatch mr-1"></i>${testTimeLeft}s`;
-    clearInterval(testTimerInterval);
-    testTimerInterval = setInterval(() => {
-      testTimeLeft--;
-      document.getElementById('timerDisplay').innerHTML = `<i class="fa-solid fa-stopwatch mr-1"></i>${testTimeLeft}s`;
-      if (testTimeLeft <= 0) {
-        clearInterval(testTimerInterval);
-        testCurrentIndex++;
-        showTestQuestion(testCurrentIndex);
-      }
-    }, 1000);
-  } else {
-    document.getElementById('timerDisplay').classList.add('hidden');
-  }
-
-  document.getElementById('nextTestBtn').classList.add('hidden');
-}
-
-function handleTestAnswer(btn, isCorrect, correctAnswer) {
-  const parent = btn.parentElement;
-  Array.from(parent.children).forEach(child => {
-    child.style.pointerEvents = 'none';
-    if (child.textContent.includes(correctAnswer)) {
-      child.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
-    }
-  });
-
-  if (isCorrect) {
-    btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
-    testCorrectCount++;
-  } else {
-    btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
-  }
-
-  clearInterval(testTimerInterval);
-  document.getElementById('nextTestBtn').classList.remove('hidden');
-}
-
-function nextTestQuestion() {
-  clearInterval(testTimerInterval);
-  testCurrentIndex++;
-  showTestQuestion(testCurrentIndex);
-}
-
-function finishTest() {
-  clearInterval(testTimerInterval);
-  document.getElementById('testQuizContainer').classList.add('hidden');
-  document.getElementById('testResultsContainer').classList.remove('hidden');
-  document.getElementById('testCorrectCount').textContent = testCorrectCount;
-  document.getElementById('testTotalCount').textContent = testQuestions.length;
-  const percentage = Math.round((testCorrectCount / testQuestions.length) * 100);
-  document.getElementById('testPercentage').textContent = `${percentage}%`;
-}
-
-function resetTest() {
-  document.getElementById('testQuizContainer').classList.add('hidden');
-  document.getElementById('testResultsContainer').classList.add('hidden');
-  document.getElementById('startTestBtn').classList.remove('hidden');
-  document.getElementById('startTestBtn').disabled = false;
-  document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
-  testQuestions = [];
-  testCurrentIndex = 0;
-  testCorrectCount = 0;
-}
-
-// ============================================================
 // AUTH (Firebase)
 // ============================================================
+function closeAuthModal() {
+  document.getElementById('authModal').classList.add('hidden');
+}
+
 function updateAuthUI() {
   document.getElementById('authTitle').textContent = isSignUpMode ? 'Sign Up' : 'Login';
   document.getElementById('authBtnText').textContent = isSignUpMode ? 'Sign Up' : 'Login';
@@ -1096,7 +999,7 @@ async function handleAuth() {
     } else {
       await auth.signInWithEmailAndPassword(email, password);
     }
-    document.getElementById('authModal').classList.add('hidden');
+    closeAuthModal();
     document.getElementById('userIcon').classList.remove('fa-user');
     document.getElementById('userIcon').classList.add('fa-user-check');
     document.getElementById('profileButton').title = 'Logged in as ' + email;
@@ -1111,12 +1014,10 @@ auth && auth.onAuthStateChanged(user => {
     document.getElementById('userIcon').classList.remove('fa-user');
     document.getElementById('userIcon').classList.add('fa-user-check');
     document.getElementById('profileButton').title = 'Logged in as ' + user.email;
-    document.getElementById('authCloseBtn').style.display = 'block';
   } else {
     document.getElementById('userIcon').classList.remove('fa-user-check');
     document.getElementById('userIcon').classList.add('fa-user');
     document.getElementById('profileButton').title = 'Login / Sign Up';
-    document.getElementById('authCloseBtn').style.display = 'none';
   }
 });
 
@@ -1143,7 +1044,16 @@ setDifficulty('medium');
 })();
 
 document.getElementById('authModal').addEventListener('click', function(e) {
-  if (e.target === this) this.classList.add('hidden');
+  if (e.target === this) closeAuthModal();
+});
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettingsModal();
+});
+document.getElementById('profileModal').addEventListener('click', function(e) {
+  if (e.target === this) closeProfileModal();
+});
+document.getElementById('evalModal').addEventListener('click', function(e) {
+  if (e.target === this) toggleEvalModal();
 });
 
-console.log('AcadHub Suite loaded successfully.');
+console.log('AcadHub Suite loaded successfully with UI/UX improvements.');
