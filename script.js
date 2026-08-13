@@ -475,7 +475,7 @@ function addOrUpdateSchedItem() {
     type: typeInput ? typeInput.value : 'task',
     priority: priorityInput ? priorityInput.value : 'medium',
     category: categoryInput ? categoryInput.value : 'study',
-    dotColor: dotColorInput ? dotColorInput.value : '#6366f1',
+    dotColor: '#6366f1',
     status: 'todo',
     progress: 0
   };
@@ -495,7 +495,6 @@ function addOrUpdateSchedItem() {
   if (titleInput) titleInput.value = '';
   if (deadlineInput) deadlineInput.value = '';
   if (editIdInput) editIdInput.value = '';
-  if (dotColorInput) dotColorInput.value = '#6366f1';
   const addBtn = document.getElementById('schedAddBtn');
   if (addBtn) addBtn.innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
 
@@ -511,7 +510,6 @@ function editSchedItem(id) {
   document.getElementById('schedType').value = item.type;
   document.getElementById('schedPriority').value = item.priority || 'medium';
   document.getElementById('schedCategory').value = item.category || 'study';
-  document.getElementById('schedDotColor').value = item.dotColor || '#6366f1';
   document.getElementById('editSchedId').value = id;
   document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
 }

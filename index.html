@@ -12,6 +12,7 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="manifest" href="/AcadHub/manifest.json" />
+  <link rel="apple-touch-icon" href="/AcadHub/icon-192.png" />
   <!-- Google Font Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -354,11 +355,7 @@
               <option value="thesis">Thesis</option>
               <option value="exam">Exam</option>
               <option value="personal">Personal</option>
-            </select>
-<label class="flex items-center gap-2">
-  <span class="text-xs font-semibold">Dot</span>
-  <input type="color" id="schedDotColor" value="#6366f1" title="Task dot color" class="w-12 h-10 p-1 border border-white/20 rounded-lg cursor-pointer bg-white/5" />
-</label>           
+            </select>           
             <button onclick="addOrUpdateSchedItem()" id="schedAddBtn" class="btn-primary px-4 py-2 text-sm btn-hover"><i class="fa-solid fa-plus mr-1"></i> Add</button>
             <input type="hidden" id="editSchedId" value="" />
           </div>
