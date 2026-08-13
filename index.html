@@ -28,7 +28,7 @@
   <!-- Wake-up overlay -->
   <div id="wakeUpOverlay" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:flex;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;">
     <div>
-      <h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Server is waking up ☕</h1>
+      <h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Server is waking up <i class="fa-solid fa-mug-hot ml-2"></i></h1>
       <p style="margin-bottom:1.5rem;">The backend is cold‑starting. Please tap below once it's ready.</p>
       <button id="retryWakeBtn" onclick="retryWakeUp()" style="padding:0.8rem 2rem;background:#6366f1;border:none;color:#fff;border-radius:0.75rem;font-weight:600;font-size:1rem;cursor:pointer;">Check Again</button>
       <p id="wakeUpStatus" style="margin-top:1rem;font-size:0.85rem;opacity:0.6;"></p>
@@ -65,7 +65,9 @@
         <button onclick="toggleEvalModal()" id="evalButton" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition">
           <i class="fa-solid fa-star text-xs text-amber-400 mr-1"></i> Evaluate to improve
         </button>
-        <div id="backendStatus" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">🟢 ONLINE</div>
+        <div id="backendStatus" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <i class="fa-solid fa-circle mr-1"></i> ONLINE
+        </div>
       </div>
     </div>
 
@@ -85,9 +87,9 @@
         <form onsubmit="return false;" class="space-y-3 sm:space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs font-semibold mb-1">AI Engine</label>
+              <label class="block text-xs font-semibold mb-1"><i class="fa-solid fa-brain mr-1"></i>AI Engine</label>
               <select id="aiProvider" onchange="updateProviderUI()" class="w-full text-sm">
-                <option value="local" selected>🧠 Local NLP (No Key)</option>
+                <option value="local" selected>Local NLP (No Key)</option>
                 <option value="gemini">Google Gemini AI</option>
                 <option value="deepseek">DeepSeek AI</option>
               </select>
@@ -113,8 +115,8 @@
               <thead>
                 <tr class="border-b border-white/10">
                   <th class="py-2 pr-2 font-semibold">Question type</th>
-                  <th class="py-2 px-2 font-semibold">🧠 Local NLP</th>
-                  <th class="py-2 pl-2 font-semibold">🤖 Gemini / DeepSeek</th>
+                  <th class="py-2 px-2 font-semibold"><i class="fa-solid fa-brain mr-1"></i>Local NLP</th>
+                  <th class="py-2 pl-2 font-semibold"><i class="fa-solid fa-robot mr-1"></i>Gemini / DeepSeek</th>
                 </tr>
               </thead>
               <tbody class="opacity-80">
@@ -146,12 +148,12 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold mb-1">🃏 Number of Flashcards</label>
+            <label class="block text-xs font-semibold mb-1"><i class="fa-solid fa-clone mr-1"></i>Number of Flashcards</label>
             <input type="number" id="numFlashcards" value="10" min="1" max="20" class="text-sm" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold mb-2">❓ Quiz Types & Questions per Type</label>
+            <label class="block text-xs font-semibold mb-2"><i class="fa-solid fa-circle-question mr-1"></i>Quiz Types & Questions per Type</label>
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
               <div class="flex items-center gap-2"><input type="checkbox" id="useTrueFalse" checked class="accent-indigo-500" /><label class="text-xs">True/False</label><input type="number" id="numTrueFalse" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
               <div class="flex items-center gap-2"><input type="checkbox" id="useIdentification" checked class="accent-indigo-500" /><label class="text-xs">Identification</label><input type="number" id="numIdentification" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
@@ -166,7 +168,7 @@
 
           <div class="flex items-center gap-2">
             <input type="checkbox" id="useInternet" class="accent-indigo-500" />
-            <label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
+            <label for="useInternet" class="text-xs"><i class="fa-solid fa-globe mr-1"></i>Boost accuracy with Wikipedia</label>
             <label class="text-xs opacity-70 ml-2">Enrich count:</label>
             <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
           </div>
@@ -189,15 +191,15 @@
           </button>
         </div>
         <div class="glass-card border-l-4 border-l-indigo-500">
-          <h3 class="text-sm font-bold uppercase text-indigo-400 mb-3">📌 Key Concepts</h3>
+          <h3 class="text-sm font-bold uppercase text-indigo-400 mb-3"><i class="fa-solid fa-thumbtack mr-2"></i>Key Concepts</h3>
           <ul id="summaryList" class="space-y-2 text-sm"></ul>
         </div>
         <div class="glass-card border-l-4 border-l-cyan-500">
-          <h3 class="text-sm font-bold uppercase text-cyan-400 mb-3">🃏 Flashcards</h3>
+          <h3 class="text-sm font-bold uppercase text-cyan-400 mb-3"><i class="fa-solid fa-clone mr-2"></i>Flashcards</h3>
           <div id="flashcardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
         </div>
         <div class="glass-card border-l-4 border-l-teal-500">
-          <h3 class="text-sm font-bold uppercase text-teal-400 mb-3">❓ Practice Quiz</h3>
+          <h3 class="text-sm font-bold uppercase text-teal-400 mb-3"><i class="fa-solid fa-circle-question mr-2"></i>Practice Quiz</h3>
           <div id="quizContainer" class="space-y-3"></div>
         </div>
       </div>
@@ -206,7 +208,7 @@
     <!-- ===== VIEW: LIBRARY ===== -->
     <div id="viewLibrary" class="hidden space-y-4">
       <div class="glass-card">
-        <h2 class="text-lg sm:text-xl font-bold mb-4">📚 Saved Reviewers</h2>
+        <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-bookmark mr-2"></i>Saved Reviewers</h2>
         <div id="savedList" class="space-y-2"></div>
         <p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p>
       </div>
@@ -215,12 +217,18 @@
     <!-- ===== VIEW: TEST MY LIMITS ===== -->
     <div id="viewTest" class="hidden space-y-4 sm:space-y-6">
       <div class="glass-card">
-        <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">⚡ Test My Limits</h2>
+        <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4"><i class="fa-solid fa-bolt mr-2"></i>Test My Limits</h2>
         <p class="text-xs opacity-70 mb-3 sm:mb-4">Answer questions based on your notes. Choose difficulty and see how well you know the material.</p>
         <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
-          <button onclick="setDifficulty('easy')" id="diffEasy" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟢 Easy</button>
-          <button onclick="setDifficulty('medium')" id="diffMedium" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🟡 Medium</button>
-          <button onclick="setDifficulty('hard')" id="diffHard" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">🔴 Hard</button>
+          <button onclick="setDifficulty('easy')" id="diffEasy" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">
+            <i class="fa-solid fa-circle text-emerald-400 mr-1"></i>Easy
+          </button>
+          <button onclick="setDifficulty('medium')" id="diffMedium" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">
+            <i class="fa-solid fa-circle text-amber-400 mr-1"></i>Medium
+          </button>
+          <button onclick="setDifficulty('hard')" id="diffHard" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition">
+            <i class="fa-solid fa-circle text-rose-400 mr-1"></i>Hard
+          </button>
         </div>
         <div class="mb-3 sm:mb-4">
           <label class="block text-xs font-semibold mb-1">Notes</label>
@@ -239,7 +247,7 @@
         </div>
         <div class="flex items-center gap-2 mb-3 sm:mb-4">
           <input type="checkbox" id="useTestInternet" class="accent-indigo-500" />
-          <label for="useTestInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
+          <label for="useTestInternet" class="text-xs"><i class="fa-solid fa-globe mr-1"></i>Boost accuracy with Wikipedia</label>
         </div>
         <button id="startTestBtn" onclick="startTest()" class="btn-primary w-full text-sm sm:text-base">
           <i class="fa-solid fa-play mr-2"></i>Start Test
@@ -274,7 +282,7 @@
     <!-- ===== VIEW: STUDY PLANNER ===== -->
     <div id="viewPlanner" class="hidden space-y-4 sm:space-y-6">
       <div class="glass-card">
-        <h2 class="text-lg sm:text-xl font-bold mb-4">📋 Study Planner</h2>
+        <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-clipboard-list mr-2"></i>Study Planner</h2>
         <div class="flex flex-col sm:flex-row gap-2 mb-4">
           <input type="text" id="plannerTitle" placeholder="Task title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
           <input type="date" id="plannerDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
@@ -295,15 +303,15 @@
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'todo')" data-column="todo">
-            <h3 class="text-sm font-semibold mb-3 text-amber-400">📌 To Do</h3>
+            <h3 class="text-sm font-semibold mb-3 text-amber-400"><i class="fa-solid fa-thumbtack mr-1"></i>To Do</h3>
             <div id="planner-todo" class="space-y-2 min-h-[100px]"></div>
           </div>
           <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'progress')" data-column="progress">
-            <h3 class="text-sm font-semibold mb-3 text-blue-400">🔄 In Progress</h3>
+            <h3 class="text-sm font-semibold mb-3 text-blue-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>In Progress</h3>
             <div id="planner-progress" class="space-y-2 min-h-[100px]"></div>
           </div>
           <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'done')" data-column="done">
-            <h3 class="text-sm font-semibold mb-3 text-emerald-400">✅ Done</h3>
+            <h3 class="text-sm font-semibold mb-3 text-emerald-400"><i class="fa-solid fa-check mr-1"></i>Done</h3>
             <div id="planner-done" class="space-y-2 min-h-[100px]"></div>
           </div>
         </div>
@@ -313,7 +321,7 @@
     <!-- ===== VIEW: DEV & THESIS SCHEDULER ===== -->
     <div id="viewScheduler" class="hidden space-y-4 sm:space-y-6">
       <div class="glass-card">
-        <h2 class="text-lg sm:text-xl font-bold mb-4">📅 Dev & Thesis Scheduler</h2>
+        <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-calendar-days mr-2"></i>Dev & Thesis Scheduler</h2>
         <!-- Add / Edit Form -->
         <div class="flex flex-col sm:flex-row gap-2 mb-6">
           <input type="text" id="schedTitle" placeholder="Task / Milestone title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
@@ -341,36 +349,36 @@
         </div>
 
         <!-- Gantt Chart Roadmap -->
-        <h3 class="text-sm font-semibold mb-3 text-cyan-400">📊 Gantt Chart Roadmap</h3>
+        <h3 class="text-sm font-semibold mb-3 text-cyan-400"><i class="fa-solid fa-chart-bar mr-2"></i>Gantt Chart Roadmap</h3>
         <div id="ganttChart" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[150px]">
           <p class="text-xs opacity-50 text-center py-8">Add tasks to see your roadmap timeline</p>
         </div>
 
         <!-- Thesis Defense Countdowns -->
-        <h3 class="text-sm font-semibold mb-3 text-rose-400">🎓 Thesis Defense Countdowns</h3>
+        <h3 class="text-sm font-semibold mb-3 text-rose-400"><i class="fa-solid fa-graduation-cap mr-2"></i>Thesis Defense Countdowns</h3>
         <div id="countdowns" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
           <p class="text-xs opacity-50 text-center py-4">No defense dates set</p>
         </div>
 
         <!-- Exam Reminder Matrix -->
-        <h3 class="text-sm font-semibold mb-3 text-amber-400">📝 Exam Reminder Matrix</h3>
+        <h3 class="text-sm font-semibold mb-3 text-amber-400"><i class="fa-solid fa-file-pen mr-2"></i>Exam Reminder Matrix</h3>
         <div id="examMatrix" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
           <p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>
         </div>
 
         <!-- Kanban Task Board -->
-        <h3 class="text-sm font-semibold mb-3 text-blue-400">📋 Kanban Task Board</h3>
+        <h3 class="text-sm font-semibold mb-3 text-blue-400"><i class="fa-solid fa-clipboard-list mr-2"></i>Kanban Task Board</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'todo')" data-column="todo">
-            <h4 class="text-xs font-semibold mb-2 text-amber-400">📌 To Do</h4>
+            <h4 class="text-xs font-semibold mb-2 text-amber-400"><i class="fa-solid fa-thumbtack mr-1"></i>To Do</h4>
             <div id="sched-todo" class="space-y-2 min-h-[80px]"></div>
           </div>
           <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'progress')" data-column="progress">
-            <h4 class="text-xs font-semibold mb-2 text-blue-400">🔄 In Progress</h4>
+            <h4 class="text-xs font-semibold mb-2 text-blue-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>In Progress</h4>
             <div id="sched-progress" class="space-y-2 min-h-[80px]"></div>
           </div>
           <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'done')" data-column="done">
-            <h4 class="text-xs font-semibold mb-2 text-emerald-400">✅ Done</h4>
+            <h4 class="text-xs font-semibold mb-2 text-emerald-400"><i class="fa-solid fa-check mr-1"></i>Done</h4>
             <div id="sched-done" class="space-y-2 min-h-[80px]"></div>
           </div>
         </div>
@@ -391,7 +399,7 @@
         <p class="text-lg font-mono font-bold tracking-wider">09935917971</p>
         <p class="text-xs opacity-70 mt-1">Gabriel A.</p>
       </div>
-      <p class="text-xs opacity-50 mt-2">Thank you for your support! ❤️</p>
+      <p class="text-xs opacity-50 mt-2">Thank you for your support! <i class="fa-solid fa-heart text-rose-400"></i></p>
     </div>
   </div>
 
