@@ -92,18 +92,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
+
 // ============================================================
 // FIRESTORE DATA SYNC HELPERS
 // ============================================================
-
-// Get a reference to the current user's document in a collection
 function getUserDocRef(collectionName) {
   const user = auth.currentUser;
   if (!user) return null;
   return db.collection('users').doc(user.uid).collection(collectionName);
 }
 
-// Save array of items to Firestore (each item as a document)
 async function saveToFirestore(collectionName, items, idField = 'id') {
   const user = auth.currentUser;
   if (!user) return false;
@@ -119,7 +117,6 @@ async function saveToFirestore(collectionName, items, idField = 'id') {
   return true;
 }
 
-// Load all documents from a collection and return as array
 async function loadFromFirestore(collectionName) {
   const user = auth.currentUser;
   if (!user) return [];
@@ -127,6 +124,7 @@ async function loadFromFirestore(collectionName) {
   const snapshot = await colRef.get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
+
 // ============================================================
 // GLOBALS
 // ============================================================
@@ -143,45 +141,114 @@ let testTimerInterval = null;
 let testTimeLeft = 0;
 let draggedSchedId = null;
 let draggedPlannerId = null;
-let testUserAnswers = []; // store user answers for review mode
+let testUserAnswers = [];
 
 // ============================================================
-// THEME (moved to settings)
+// THEME & APPEARANCE
 // ============================================================
-function toggleTheme() {
+function applyTheme(theme) {
   const html = document.documentElement;
-  const icon = document.getElementById('themeIcon'); // may not exist anymore
   const settingsDot = document.getElementById('settingsThemeDot');
-  if (html.classList.contains('dark')) {
+  if (theme === 'light') {
     html.classList.remove('dark');
     html.classList.add('light');
-    if (icon) {
-      icon.classList.remove('fa-sun');
-      icon.classList.add('fa-moon');
-      icon.style.color = '#6366f1';
-    }
     if (settingsDot) settingsDot.style.left = '50%';
-    localStorage.setItem('theme', 'light');
   } else {
     html.classList.remove('light');
     html.classList.add('dark');
-    if (icon) {
+    if (settingsDot) settingsDot.style.left = '0.5rem';
+  }
+  const icon = document.getElementById('themeIcon');
+  if (icon) {
+    if (theme === 'light') {
+      icon.classList.remove('fa-sun');
+      icon.classList.add('fa-moon');
+      icon.style.color = '#6366f1';
+    } else {
       icon.classList.remove('fa-moon');
       icon.classList.add('fa-sun');
       icon.style.color = '#facc15';
     }
-    if (settingsDot) settingsDot.style.left = '0.5rem';
-    localStorage.setItem('theme', 'dark');
   }
 }
 
-(function() {
-  if (localStorage.getItem('theme') === 'light') {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
-    const settingsDot = document.getElementById('settingsThemeDot');
-    if (settingsDot) settingsDot.style.left = '50%';
+function toggleTheme() {
+  const html = document.documentElement;
+  const newTheme = html.classList.contains('dark') ? 'light' : 'dark';
+  localStorage.setItem('theme', newTheme);
+  applyTheme(newTheme);
+  saveSettingsToFirestore();
+}
+
+function applyAccentColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lighter = `rgb(${Math.min(r + 40, 255)}, ${Math.min(g + 40, 255)}, ${Math.min(b + 40, 255)})`;
+  document.documentElement.style.setProperty('--accent', hex);
+  document.documentElement.style.setProperty('--accent2', lighter);
+  const picker = document.getElementById('accentPicker');
+  if (picker && picker.value !== hex) picker.value = hex;
+}
+
+async function saveSettingsToFirestore() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const settings = {
+    theme: localStorage.getItem('theme') || 'dark',
+    accentColor: localStorage.getItem('accentColor') || '#6366f1',
+    tabPosition: localStorage.getItem('tabPosition') || 'top',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    await db.collection('user_settings').doc(user.uid).set(settings, { merge: true });
+  } catch (err) {
+    console.error('Error syncing settings:', err);
   }
+}
+
+async function loadSettingsFromFirestore(user) {
+  try {
+    const docRef = db.collection('user_settings').doc(user.uid);
+    const doc = await docRef.get();
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.theme) {
+        localStorage.setItem('theme', data.theme);
+        applyTheme(data.theme);
+      }
+      if (data.accentColor) {
+        localStorage.setItem('accentColor', data.accentColor);
+        applyAccentColor(data.accentColor);
+      }
+      if (data.tabPosition) {
+        localStorage.setItem('tabPosition', data.tabPosition);
+        changeTabPosition(data.tabPosition);
+      }
+    }
+  } catch (err) {
+    console.error('Error loading settings:', err);
+  }
+}
+
+// Accent color event
+(function() {
+  const picker = document.getElementById('accentPicker');
+  if (!picker) return;
+  const saved = localStorage.getItem('accentColor');
+  if (saved) applyAccentColor(saved);
+  picker.addEventListener('input', function() {
+    const color = this.value;
+    localStorage.setItem('accentColor', color);
+    applyAccentColor(color);
+    saveSettingsToFirestore();
+  });
+})();
+
+// Initial theme from localStorage
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  applyTheme(saved);
 })();
 
 // ============================================================
@@ -194,43 +261,19 @@ function closeSettingsModal() {
   document.getElementById('settingsModal').classList.add('hidden');
 }
 
-// Tab position
 function changeTabPosition(pos) {
   const wrapper = document.getElementById('mainWrapper');
   wrapper.classList.remove('tab-position-top', 'tab-position-bottom', 'tab-position-left');
   wrapper.classList.add('tab-position-' + pos);
   localStorage.setItem('tabPosition', pos);
+  const select = document.getElementById('tabPositionSelect');
+  if (select && select.value !== pos) select.value = pos;
+  saveSettingsToFirestore();
 }
+
 (function initTabPosition() {
   const saved = localStorage.getItem('tabPosition') || 'top';
   changeTabPosition(saved);
-  const select = document.getElementById('tabPositionSelect');
-  if (select) select.value = saved;
-})();
-
-// Accent color (in settings)
-(function() {
-  const picker = document.getElementById('accentPicker');
-  if (!picker) return;
-  const saved = localStorage.getItem('accentColor');
-  if (saved) {
-    picker.value = saved;
-    updateAccentColor(saved);
-  }
-  picker.addEventListener('input', function() {
-    const color = this.value;
-    localStorage.setItem('accentColor', color);
-    updateAccentColor(color);
-  });
-
-  function updateAccentColor(hex) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const lighter = `rgb(${Math.min(r + 40, 255)}, ${Math.min(g + 40, 255)}, ${Math.min(b + 40, 255)})`;
-    document.documentElement.style.setProperty('--accent', hex);
-    document.documentElement.style.setProperty('--accent2', lighter);
-  }
 })();
 
 // ============================================================
@@ -280,17 +323,16 @@ document.getElementById('tabPlanner').addEventListener('click', () => switchTab(
 document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
 
 // ============================================================
-// SCHEDULER (Dev & Thesis) - Enhanced
+// SCHEDULER (Dev & Thesis)
 // ============================================================
 function saveSched() {
-  localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); // keep local fallback
+  localStorage.setItem('acadhub_sched', JSON.stringify(schedItems));
   if (auth.currentUser) {
     saveToFirestore('scheduler', schedItems).catch(err => console.error('Firestore save error:', err));
   }
 }
 
 function renderScheduler() {
-  // Kanban columns with counts
   ['todo', 'progress', 'done'].forEach(col => {
     const el = document.getElementById('sched-' + col);
     if (!el) return;
@@ -324,7 +366,7 @@ function renderScheduler() {
     }).join('');
   });
 
-  // Gantt chart with bars
+  // Gantt chart
   const gantt = document.getElementById('ganttChart');
   if (gantt) {
     const items = schedItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
@@ -338,11 +380,9 @@ function renderScheduler() {
       const totalDays = Math.max(1, Math.ceil((maxDeadline - minDeadline) / (1000 * 60 * 60 * 24)));
       gantt.innerHTML = `<div class="space-y-2">` + items.map(i => {
         const deadline = new Date(i.deadline);
-        const daysUntil = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
         const totalDuration = Math.max(1, Math.ceil((deadline - new Date(minDeadline)) / (1000 * 60 * 60 * 24)) + 1);
         const widthPercent = Math.max(5, Math.min(100, (totalDuration / totalDays) * 100));
         const barColor = i.type === 'milestone' ? 'bg-amber-400' : i.type === 'defense' ? 'bg-rose-400' : i.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400';
-        const overdue = daysUntil < 0;
         return `
           <div class="gantt-bar-container">
             <div class="gantt-bar ${barColor}" style="width:${widthPercent}%;">
@@ -354,7 +394,7 @@ function renderScheduler() {
     }
   }
 
-  // Countdowns with circular progress
+  // Countdowns
   const countdowns = document.getElementById('countdowns');
   if (countdowns) {
     const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
@@ -366,7 +406,7 @@ function renderScheduler() {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const overdue = days < 0;
-        const percent = overdue ? 100 : Math.min(100, Math.round((days / 365) * 100)); // rough
+        const percent = overdue ? 100 : Math.min(100, Math.round((days / 365) * 100));
         return `
           <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2">
             <span class="text-sm">${d.title}</span>
@@ -383,7 +423,7 @@ function renderScheduler() {
     }
   }
 
-  // Exam matrix (unchanged)
+  // Exam matrix
   const examMatrix = document.getElementById('examMatrix');
   if (examMatrix) {
     const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
@@ -404,10 +444,7 @@ function renderScheduler() {
 
 function addOrUpdateSchedItem() {
   const title = document.getElementById('schedTitle').value.trim();
-  if (!title) {
-    alert('Please enter a title.');
-    return;
-  }
+  if (!title) { alert('Please enter a title.'); return; }
   const editId = document.getElementById('editSchedId').value;
   const newItem = {
     id: editId || Date.now().toString(),
@@ -486,7 +523,7 @@ document.addEventListener('dragleave', (e) => {
 });
 
 // ============================================================
-// PLANNER - Enhanced
+// PLANNER
 // ============================================================
 function savePlanner() {
   localStorage.setItem('acadhub_planner', JSON.stringify(plannerTasks));
@@ -530,10 +567,7 @@ function renderPlanner() {
 
 function addOrUpdatePlannerTask() {
   const title = document.getElementById('plannerTitle').value.trim();
-  if (!title) {
-    alert('Please enter a title.');
-    return;
-  }
+  if (!title) { alert('Please enter a title.'); return; }
   const editId = document.getElementById('editPlannerId').value;
   const newItem = {
     id: editId || Date.now().toString(),
@@ -727,11 +761,9 @@ async function renderResultsOneByOne(data) {
   document.getElementById('flashcardGrid').innerHTML = '';
   document.getElementById('quizContainer').innerHTML = '';
 
-  // Summary
   const summaryItems = (data.summary || []).map(s => `<li class="reveal-item flex items-start gap-2 p-3 rounded-xl bg-white/5"><i class="fa-solid fa-check text-indigo-400 mt-0.5"></i>${s}</li>`);
   document.getElementById('summaryList').innerHTML = summaryItems.join('');
 
-  // Flashcards with flip
   const flashcardContainer = document.getElementById('flashcardGrid');
   for (let i = 0; i < (data.flashcards || []).length; i++) {
     const card = data.flashcards[i];
@@ -752,7 +784,6 @@ async function renderResultsOneByOne(data) {
     await new Promise(resolve => setTimeout(resolve, 150));
   }
 
-  // Quiz
   const quizContainer = document.getElementById('quizContainer');
   for (let i = 0; i < (data.quiz || []).length; i++) {
     const q = data.quiz[i];
@@ -786,7 +817,7 @@ function checkAnswer(btn, isCorrect) {
 }
 
 // ============================================================
-// LIBRARY (Save / Load / Delete)
+// LIBRARY
 // ============================================================
 document.getElementById('saveToLibraryBtn').addEventListener('click', async () => {
   if (!lastGeneratedData) return;
@@ -800,7 +831,6 @@ document.getElementById('saveToLibraryBtn').addEventListener('click', async () =
   saved.unshift(entry);
   localStorage.setItem('acadhub_saved', JSON.stringify(saved));
   if (auth.currentUser) {
-    // Save just the new entry, or better: save all entries
     await saveToFirestore('library', saved, 'id').catch(err => console.error(err));
   }
   alert('Saved to Library!');
@@ -859,13 +889,18 @@ function revealGCash() {
 }
 
 // ============================================================
-// PROFILE MODAL (mandatory name capture)
+// PROFILE MODAL
 // ============================================================
 function closeProfileModal() {
   document.getElementById('profileModal').classList.add('hidden');
 }
 
 function showProfileModal() {
+  if (auth.currentUser) {
+    document.getElementById('authModal').classList.remove('hidden');
+    updateAuthUI();
+    return;
+  }
   if (localStorage.getItem('profile_saved') === 'true') {
     document.getElementById('authModal').classList.remove('hidden');
     updateAuthUI();
@@ -896,18 +931,11 @@ function showProfileModal() {
 async function saveVisitorName() {
   const firstName = document.getElementById('visitorFirstName').value.trim();
   const lastName = document.getElementById('visitorLastName').value.trim();
-  if (!firstName || !lastName) {
-    alert('Please enter both names.');
-    return;
-  }
+  if (!firstName || !lastName) { alert('Please enter both names.'); return; }
   const saveBtn = document.getElementById('saveProfileBtn');
-  if (!saveBtn) {
-    alert('Error: button not found. Please refresh.');
-    return;
-  }
+  if (!saveBtn) { alert('Error: button not found. Please refresh.'); return; }
   localStorage.setItem('profile_name', firstName + ' ' + lastName);
   localStorage.setItem('profile_saved', 'true');
-  document.getElementById('profileButton').style.display = 'none';
   saveBtn.disabled = true;
   saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Saving...';
   if (typeof db !== 'undefined' && typeof firebase !== 'undefined') {
@@ -960,10 +988,7 @@ function toggleEvalModal() {
 }
 
 async function submitEval() {
-  if (selectedRating === 0) {
-    alert('Please select a star rating.');
-    return;
-  }
+  if (selectedRating === 0) { alert('Please select a star rating.'); return; }
   const suggestions = document.getElementById('evalSuggestions').value.trim();
   const profileName = localStorage.getItem('profile_name') || 'Anonymous';
   const evalBtn = document.querySelector('#evalModal .btn-primary');
@@ -994,18 +1019,39 @@ async function submitEval() {
 }
 
 // ============================================================
-// AUTH (Firebase)
+// AUTH
 // ============================================================
 function closeAuthModal() {
   document.getElementById('authModal').classList.add('hidden');
 }
 
 function updateAuthUI() {
-  document.getElementById('authTitle').textContent = isSignUpMode ? 'Sign Up' : 'Login';
-  document.getElementById('authBtnText').textContent = isSignUpMode ? 'Sign Up' : 'Login';
-  document.getElementById('authToggleText').textContent = isSignUpMode ? 'Already have an account?' : "Don't have an account?";
-  document.getElementById('authToggleBtn').textContent = isSignUpMode ? 'Login' : 'Sign Up';
-  document.getElementById('authNameFields').classList.toggle('hidden', !isSignUpMode);
+  const user = auth.currentUser;
+  const emailInput = document.getElementById('authEmail');
+  const passInput = document.getElementById('authPassword');
+  const nameFields = document.getElementById('authNameFields');
+  const toggleWrap = document.getElementById('authToggleText')?.parentElement;
+  const btn = document.getElementById('authBtnText');
+  const title = document.getElementById('authTitle');
+  const subtitle = document.getElementById('authSubtitle');
+
+  if (user) {
+    title.textContent = 'Account';
+    subtitle.textContent = 'You are logged in as ' + user.email;
+    emailInput.classList.add('hidden');
+    passInput.classList.add('hidden');
+    nameFields.classList.add('hidden');
+    if (toggleWrap) toggleWrap.classList.add('hidden');
+    btn.textContent = 'Logout';
+  } else {
+    title.textContent = isSignUpMode ? 'Sign Up' : 'Login';
+    subtitle.textContent = 'Login to save your data and access all features.';
+    emailInput.classList.remove('hidden');
+    passInput.classList.remove('hidden');
+    nameFields.classList.toggle('hidden', !isSignUpMode);
+    if (toggleWrap) toggleWrap.classList.remove('hidden');
+    btn.textContent = isSignUpMode ? 'Sign Up' : 'Login';
+  }
   document.getElementById('authError').classList.add('hidden');
 }
 
@@ -1015,6 +1061,10 @@ function toggleAuthMode() {
 }
 
 async function handleAuth() {
+  if (auth.currentUser) {
+    await logout();
+    return;
+  }
   if (!auth) return alert('Auth service unavailable.');
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value.trim();
@@ -1036,7 +1086,7 @@ async function handleAuth() {
         errorEl.classList.remove('hidden');
         return;
       }
-      const cred = await auth.createUserWithEmailAndPassword(email, password);
+      await auth.createUserWithEmailAndPassword(email, password);
       await db.collection('visitors').add({
         firstName,
         lastName,
@@ -1047,119 +1097,23 @@ async function handleAuth() {
       await auth.signInWithEmailAndPassword(email, password);
     }
     closeAuthModal();
-    document.getElementById('userIcon').classList.remove('fa-user');
-    document.getElementById('userIcon').classList.add('fa-user-check');
-    document.getElementById('profileButton').title = 'Logged in as ' + email;
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove('hidden');
   }
 }
 
-auth && auth.onAuthStateChanged(async user => {
-  if (user) {
-    document.getElementById('userIcon').classList.remove('fa-user');
-    document.getElementById('userIcon').classList.add('fa-user-check');
-    document.getElementById('profileButton').title = 'Logged in as ' + user.email;
-
-    // Show logout button if it exists in HTML
-    const logoutBtn = document.getElementById('logoutButton');
-    if (logoutBtn) logoutBtn.classList.remove('hidden');
-
-    // Stop any old listeners
-    stopFirestoreListeners();
-
-    // Load data from Firestore and update local arrays
-    try {
-      // Load user settings (theme, accent, tab position)
-      await loadSettingsFromFirestore(user);
-
-      const [sched, planner, library] = await Promise.all([
-        loadFromFirestore('scheduler'),
-        loadFromFirestore('planner'),
-        loadFromFirestore('library')
-      ]);
-      schedItems = sched;
-      plannerTasks = planner;
-      localStorage.setItem('acadhub_sched', JSON.stringify(sched));
-      localStorage.setItem('acadhub_planner', JSON.stringify(planner));
-      localStorage.setItem('acadhub_saved', JSON.stringify(library));
-      renderScheduler();
-      renderPlanner();
-      renderSavedList();
-    } catch (err) {
-      console.error('Error loading Firestore data:', err);
-    }
-
-    // Start real-time listeners
-    startFirestoreListeners();
-
-    // Update auth modal UI if open
-    updateAuthUI();
-  } else {
-    // User logged out
-    document.getElementById('userIcon').classList.remove('fa-user-check');
-    document.getElementById('userIcon').classList.add('fa-user');
-    document.getElementById('profileButton').title = 'Login / Sign Up';
-
-    const logoutBtn = document.getElementById('logoutButton');
-    if (logoutBtn) logoutBtn.classList.add('hidden');
-
-    stopFirestoreListeners();
-    updateAuthUI();
-    // Keep local data for anonymous use; optionally clear it here
+async function logout() {
+  try {
+    await auth.signOut();
+    closeAuthModal();
+  } catch (err) {
+    console.error('Logout error:', err);
   }
-});
-let unsubscribers = [];
-
-function startFirestoreListeners() {
-  if (!auth.currentUser) return;
-  const user = auth.currentUser;
-
-  // Scheduler listener
-  const schedRef = db.collection('users').doc(user.uid).collection('scheduler');
-  unsubscribers.push(
-    schedRef.onSnapshot(snapshot => {
-      const items = [];
-      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-      schedItems = items;
-      // Only update localStorage if we are not the ones writing (avoid loops)
-      // Simple approach: update localStorage and render
-      localStorage.setItem('acadhub_sched', JSON.stringify(items));
-      renderScheduler();
-    })
-  );
-
-  // Planner listener
-  const plannerRef = db.collection('users').doc(user.uid).collection('planner');
-  unsubscribers.push(
-    plannerRef.onSnapshot(snapshot => {
-      const items = [];
-      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-      plannerTasks = items;
-      localStorage.setItem('acadhub_planner', JSON.stringify(items));
-      renderPlanner();
-    })
-  );
-
-  // Library listener
-  const libraryRef = db.collection('users').doc(user.uid).collection('library');
-  unsubscribers.push(
-    libraryRef.onSnapshot(snapshot => {
-      const items = [];
-      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-      localStorage.setItem('acadhub_saved', JSON.stringify(items));
-      renderSavedList();
-    })
-  );
 }
 
-function stopFirestoreListeners() {
-  unsubscribers.forEach(unsub => unsub());
-  unsubscribers = [];
-}
 // ============================================================
-// SERVICE WORKER (PWA)
+// SERVICE WORKER
 // ============================================================
 if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
   navigator.serviceWorker.register('/AcadHub/sw.js').catch(() => {});
@@ -1191,6 +1145,99 @@ document.getElementById('profileModal').addEventListener('click', function(e) {
 });
 document.getElementById('evalModal').addEventListener('click', function(e) {
   if (e.target === this) toggleEvalModal();
+});
+
+// ============================================================
+// FIREBASE AUTH STATE LISTENER & DATA SYNC
+// ============================================================
+let unsubscribers = [];
+
+function startFirestoreListeners() {
+  if (!auth.currentUser) return;
+  const user = auth.currentUser;
+
+  const schedRef = db.collection('users').doc(user.uid).collection('scheduler');
+  unsubscribers.push(
+    schedRef.onSnapshot(snapshot => {
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      schedItems = items;
+      localStorage.setItem('acadhub_sched', JSON.stringify(items));
+      renderScheduler();
+    })
+  );
+
+  const plannerRef = db.collection('users').doc(user.uid).collection('planner');
+  unsubscribers.push(
+    plannerRef.onSnapshot(snapshot => {
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      plannerTasks = items;
+      localStorage.setItem('acadhub_planner', JSON.stringify(items));
+      renderPlanner();
+    })
+  );
+
+  const libraryRef = db.collection('users').doc(user.uid).collection('library');
+  unsubscribers.push(
+    libraryRef.onSnapshot(snapshot => {
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      localStorage.setItem('acadhub_saved', JSON.stringify(items));
+      renderSavedList();
+    })
+  );
+}
+
+function stopFirestoreListeners() {
+  unsubscribers.forEach(unsub => unsub());
+  unsubscribers = [];
+}
+
+auth && auth.onAuthStateChanged(async user => {
+  if (user) {
+    document.getElementById('userIcon').classList.remove('fa-user');
+    document.getElementById('userIcon').classList.add('fa-user-check');
+    document.getElementById('profileButton').title = 'Logged in as ' + user.email;
+
+    const logoutBtn = document.getElementById('logoutButton');
+    if (logoutBtn) logoutBtn.classList.remove('hidden');
+
+    stopFirestoreListeners();
+
+    try {
+      await loadSettingsFromFirestore(user);
+
+      const [sched, planner, library] = await Promise.all([
+        loadFromFirestore('scheduler'),
+        loadFromFirestore('planner'),
+        loadFromFirestore('library')
+      ]);
+      schedItems = sched;
+      plannerTasks = planner;
+      localStorage.setItem('acadhub_sched', JSON.stringify(sched));
+      localStorage.setItem('acadhub_planner', JSON.stringify(planner));
+      localStorage.setItem('acadhub_saved', JSON.stringify(library));
+      renderScheduler();
+      renderPlanner();
+      renderSavedList();
+    } catch (err) {
+      console.error('Error loading Firestore data:', err);
+    }
+
+    startFirestoreListeners();
+    updateAuthUI();
+  } else {
+    document.getElementById('userIcon').classList.remove('fa-user-check');
+    document.getElementById('userIcon').classList.add('fa-user');
+    document.getElementById('profileButton').title = 'Login / Sign Up';
+
+    const logoutBtn = document.getElementById('logoutButton');
+    if (logoutBtn) logoutBtn.classList.add('hidden');
+
+    stopFirestoreListeners();
+    updateAuthUI();
+  }
 });
 
 console.log('AcadHub Suite loaded successfully with UI/UX improvements.');
