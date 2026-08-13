@@ -451,7 +451,7 @@ function renderScheduler() {
           </div>
           ${i.deadline ? `<p class="text-xs opacity-50 mt-1"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}
           <div class="flex items-center gap-2 mt-2">
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type || 'task'}</span>
             <span class="text-[10px] px-2 py-0.5 rounded-full ${priorityClass}">${i.priority || 'medium'}</span>
             ${i.category ? `<span class="category-tag">${i.category}</span>` : ''}
           </div>
@@ -460,7 +460,7 @@ function renderScheduler() {
     }).join('');
   });
 
-  // Gantt chart
+  // Gantt chart (with guards for i.type)
   const gantt = document.getElementById('ganttChart');
   if (gantt) {
     const items = filteredItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
@@ -470,23 +470,23 @@ function renderScheduler() {
       gantt.innerHTML = '<div class="space-y-2">' + items.map(i => {
         let dotColor = i.dotColor;
         if (!dotColor) {
-          if (i.type.includes('defense')) dotColor = '#f87171';
-          else if (i.type.includes('milestone')) dotColor = '#fbbf24';
-          else if (i.type.includes('exam')) dotColor = '#22d3ee';
-          else if (i.type.includes('dev')) dotColor = '#a78bfa';
-          else if (i.type.includes('thesis')) dotColor = '#f472b6';
+          if (i.type && i.type.includes('defense')) dotColor = '#f87171';
+          else if (i.type && i.type.includes('milestone')) dotColor = '#fbbf24';
+          else if (i.type && i.type.includes('exam')) dotColor = '#22d3ee';
+          else if (i.type && i.type.includes('dev')) dotColor = '#a78bfa';
+          else if (i.type && i.type.includes('thesis')) dotColor = '#f472b6';
           else dotColor = '#60a5fa';
         }
         let typeBadgeClass = 'type-task';
-        if (i.type.includes('milestone')) typeBadgeClass = 'type-milestone';
-        else if (i.type.includes('defense')) typeBadgeClass = 'type-defense';
-        else if (i.type.includes('exam')) typeBadgeClass = 'type-exam';
+        if (i.type && i.type.includes('milestone')) typeBadgeClass = 'type-milestone';
+        else if (i.type && i.type.includes('defense')) typeBadgeClass = 'type-defense';
+        else if (i.type && i.type.includes('exam')) typeBadgeClass = 'type-exam';
         
         return `
           <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
             <button onclick="editDotColor('${i.id}')" class="w-5 h-5 rounded-full cursor-pointer border-2 border-white/20 hover:scale-110 transition transform" style="background-color:${dotColor};" title="Click to change color"></button>
             <span class="text-sm flex-1 truncate">${i.title}</span>
-            <span class="type-badge ${typeBadgeClass}">${i.type}</span>
+            <span class="type-badge ${typeBadgeClass}">${i.type || 'task'}</span>
             <span class="text-xs opacity-70">${i.deadline}</span>
           </div>`;
       }).join('') + '</div>';
@@ -1507,11 +1507,11 @@ function initializeScheduler() {
   renderScheduler();
 }
 
+initializeScheduler();
 renderScheduler();
 renderPlanner();
 renderSavedList();
 updateProviderUI();
-initializeScheduler();
 
 (function() {
   if (localStorage.getItem('profile_saved') !== 'true') {
