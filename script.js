@@ -163,7 +163,7 @@ function safeLocalStorageSet(key, value) {
     return false;
   }
 }
-
+let testDifficulty = 'medium';
 let schedItems = safeLocalStorageGet('acadhub_sched', []);
 let plannerTasks = safeLocalStorageGet('acadhub_planner', []);
 let testDifficulty = 'medium';
