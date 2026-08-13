@@ -92,7 +92,41 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
+// ============================================================
+// FIRESTORE DATA SYNC HELPERS
+// ============================================================
 
+// Get a reference to the current user's document in a collection
+function getUserDocRef(collectionName) {
+  const user = auth.currentUser;
+  if (!user) return null;
+  return db.collection('users').doc(user.uid).collection(collectionName);
+}
+
+// Save array of items to Firestore (each item as a document)
+async function saveToFirestore(collectionName, items, idField = 'id') {
+  const user = auth.currentUser;
+  if (!user) return false;
+  const colRef = db.collection('users').doc(user.uid).collection(collectionName);
+  const batch = db.batch();
+  const existingDocs = await colRef.get();
+  existingDocs.forEach(doc => batch.delete(doc.ref));
+  items.forEach(item => {
+    const docRef = colRef.doc(item[idField] || docRef.id);
+    batch.set(docRef, item);
+  });
+  await batch.commit();
+  return true;
+}
+
+// Load all documents from a collection and return as array
+async function loadFromFirestore(collectionName) {
+  const user = auth.currentUser;
+  if (!user) return [];
+  const colRef = db.collection('users').doc(user.uid).collection(collectionName);
+  const snapshot = await colRef.get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
 // ============================================================
 // GLOBALS
 // ============================================================
@@ -249,7 +283,10 @@ document.getElementById('tabScheduler').addEventListener('click', () => switchTa
 // SCHEDULER (Dev & Thesis) - Enhanced
 // ============================================================
 function saveSched() {
-  localStorage.setItem('acadhub_sched', JSON.stringify(schedItems));
+  localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); // keep local fallback
+  if (auth.currentUser) {
+    saveToFirestore('scheduler', schedItems).catch(err => console.error('Firestore save error:', err));
+  }
 }
 
 function renderScheduler() {
@@ -453,6 +490,9 @@ document.addEventListener('dragleave', (e) => {
 // ============================================================
 function savePlanner() {
   localStorage.setItem('acadhub_planner', JSON.stringify(plannerTasks));
+  if (auth.currentUser) {
+    saveToFirestore('planner', plannerTasks).catch(err => console.error('Firestore save error:', err));
+  }
 }
 
 function renderPlanner() {
@@ -748,7 +788,7 @@ function checkAnswer(btn, isCorrect) {
 // ============================================================
 // LIBRARY (Save / Load / Delete)
 // ============================================================
-document.getElementById('saveToLibraryBtn').addEventListener('click', () => {
+document.getElementById('saveToLibraryBtn').addEventListener('click', async () => {
   if (!lastGeneratedData) return;
   const entry = {
     id: Date.now(),
@@ -759,6 +799,10 @@ document.getElementById('saveToLibraryBtn').addEventListener('click', () => {
   let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
   saved.unshift(entry);
   localStorage.setItem('acadhub_saved', JSON.stringify(saved));
+  if (auth.currentUser) {
+    // Save just the new entry, or better: save all entries
+    await saveToFirestore('library', saved, 'id').catch(err => console.error(err));
+  }
   alert('Saved to Library!');
   renderSavedList();
 });
@@ -800,6 +844,9 @@ function deleteSaved(id) {
   let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
   saved = saved.filter(e => e.id !== id);
   localStorage.setItem('acadhub_saved', JSON.stringify(saved));
+  if (auth.currentUser) {
+    saveToFirestore('library', saved, 'id').catch(err => console.error(err));
+  }
   renderSavedList();
 }
 
@@ -1009,18 +1056,93 @@ async function handleAuth() {
   }
 }
 
-auth && auth.onAuthStateChanged(user => {
+auth && auth.onAuthStateChanged(async user => {
   if (user) {
     document.getElementById('userIcon').classList.remove('fa-user');
     document.getElementById('userIcon').classList.add('fa-user-check');
     document.getElementById('profileButton').title = 'Logged in as ' + user.email;
+
+    // Stop any old listeners
+    stopFirestoreListeners();
+
+    // Load data from Firestore and update local arrays
+    try {
+      const [sched, planner, library] = await Promise.all([
+        loadFromFirestore('scheduler'),
+        loadFromFirestore('planner'),
+        loadFromFirestore('library')
+      ]);
+      schedItems = sched;
+      plannerTasks = planner;
+      localStorage.setItem('acadhub_sched', JSON.stringify(sched));
+      localStorage.setItem('acadhub_planner', JSON.stringify(planner));
+      localStorage.setItem('acadhub_saved', JSON.stringify(library));
+      renderScheduler();
+      renderPlanner();
+      renderSavedList();
+    } catch (err) {
+      console.error('Error loading Firestore data:', err);
+    }
+
+    // Start real-time listeners
+    startFirestoreListeners();
   } else {
+    // User logged out
     document.getElementById('userIcon').classList.remove('fa-user-check');
     document.getElementById('userIcon').classList.add('fa-user');
     document.getElementById('profileButton').title = 'Login / Sign Up';
+    stopFirestoreListeners();
+    // Optionally clear sensitive data, but keep local copies for anonymous use
   }
 });
+let unsubscribers = [];
 
+function startFirestoreListeners() {
+  if (!auth.currentUser) return;
+  const user = auth.currentUser;
+
+  // Scheduler listener
+  const schedRef = db.collection('users').doc(user.uid).collection('scheduler');
+  unsubscribers.push(
+    schedRef.onSnapshot(snapshot => {
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      schedItems = items;
+      // Only update localStorage if we are not the ones writing (avoid loops)
+      // Simple approach: update localStorage and render
+      localStorage.setItem('acadhub_sched', JSON.stringify(items));
+      renderScheduler();
+    })
+  );
+
+  // Planner listener
+  const plannerRef = db.collection('users').doc(user.uid).collection('planner');
+  unsubscribers.push(
+    plannerRef.onSnapshot(snapshot => {
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      plannerTasks = items;
+      localStorage.setItem('acadhub_planner', JSON.stringify(items));
+      renderPlanner();
+    })
+  );
+
+  // Library listener
+  const libraryRef = db.collection('users').doc(user.uid).collection('library');
+  unsubscribers.push(
+    libraryRef.onSnapshot(snapshot => {
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      localStorage.setItem('acadhub_saved', JSON.stringify(items));
+      renderSavedList();
+    })
+  );
+}
+
+function stopFirestoreListeners() {
+  unsubscribers.forEach(unsub => unsub());
+  unsubscribers = [];
+}
 // ============================================================
 // SERVICE WORKER (PWA)
 // ============================================================
