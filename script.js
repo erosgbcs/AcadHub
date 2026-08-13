@@ -105,24 +105,35 @@ function getUserDocRef(collectionName) {
 async function saveToFirestore(collectionName, items, idField = 'id') {
   const user = auth.currentUser;
   if (!user) return false;
-  const colRef = db.collection('users').doc(user.uid).collection(collectionName);
-  const batch = db.batch();
-  const existingDocs = await colRef.get();
-  existingDocs.forEach(doc => batch.delete(doc.ref));
-  items.forEach(item => {
-    const docRef = colRef.doc(item[idField] || docRef.id);
-    batch.set(docRef, item);
-  });
-  await batch.commit();
-  return true;
+  try {
+    const colRef = db.collection('users').doc(user.uid).collection(collectionName);
+    const batch = db.batch();
+    const existingDocs = await colRef.get();
+    existingDocs.forEach(doc => batch.delete(doc.ref));
+    items.forEach(item => {
+      const docId = item[idField] || colRef.doc().id;
+      const docRef = colRef.doc(docId);
+      batch.set(docRef, item);
+    });
+    await batch.commit();
+    return true;
+  } catch (err) {
+    console.error(`Error saving to Firestore (${collectionName}):`, err);
+    return false;
+  }
 }
 
 async function loadFromFirestore(collectionName) {
   const user = auth.currentUser;
   if (!user) return [];
-  const colRef = db.collection('users').doc(user.uid).collection(collectionName);
-  const snapshot = await colRef.get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const colRef = db.collection('users').doc(user.uid).collection(collectionName);
+    const snapshot = await colRef.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.error(`Error loading from Firestore (${collectionName}):`, err);
+    return [];
+  }
 }
 
 // ============================================================
@@ -131,21 +142,30 @@ async function loadFromFirestore(collectionName) {
 const BACKEND_URL = "https://acadhub-no6m.onrender.com";
 let lastGeneratedData = null;
 let isSignUpMode = false;
-let schedItems = [];
-try {
-  schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-} catch (e) {
-  console.warn('Invalid scheduler data in localStorage. Resetting.');
-  schedItems = [];
+
+// Safe localStorage helpers
+function safeLocalStorageGet(key, defaultValue) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : defaultValue;
+  } catch (e) {
+    console.warn(`Error parsing ${key} from localStorage:`, e);
+    return defaultValue;
+  }
 }
 
-let plannerTasks = [];
-try {
-  plannerTasks = JSON.parse(localStorage.getItem('acadhub_planner') || '[]');
-} catch (e) {
-  console.warn('Invalid planner data in localStorage. Resetting.');
-  plannerTasks = [];
+function safeLocalStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    console.error(`Error saving ${key} to localStorage:`, e);
+    return false;
+  }
 }
+
+let schedItems = safeLocalStorageGet('acadhub_sched', []);
+let plannerTasks = safeLocalStorageGet('acadhub_planner', []);
 let testDifficulty = 'medium';
 let testQuestions = [];
 let testCurrentIndex = 0;
@@ -155,6 +175,7 @@ let testTimeLeft = 0;
 let draggedSchedId = null;
 let draggedPlannerId = null;
 let testUserAnswers = [];
+let schedulerFilter = 'all'; // New filter variable
 
 // ============================================================
 // THEME & APPEARANCE
@@ -339,17 +360,83 @@ document.getElementById('tabScheduler').addEventListener('click', () => switchTa
 // SCHEDULER (Dev & Thesis)
 // ============================================================
 function saveSched() {
-  localStorage.setItem('acadhub_sched', JSON.stringify(schedItems));
+  safeLocalStorageSet('acadhub_sched', schedItems);
   if (auth.currentUser) {
     saveToFirestore('scheduler', schedItems).catch(err => console.error('Firestore save error:', err));
   }
 }
 
+// New function: update category based on type
+function updateCategoryFromType() {
+  const typeSelect = document.getElementById('schedType');
+  const categorySelect = document.getElementById('schedCategory');
+  if (!typeSelect || !categorySelect) return;
+  const type = typeSelect.value;
+  let category = 'study';
+  if (type.includes('dev')) category = 'development';
+  else if (type.includes('thesis')) category = 'thesis';
+  else if (type.includes('exam')) category = 'exam';
+  categorySelect.value = category;
+}
+
+// Attach event listener if elements exist
+document.addEventListener('DOMContentLoaded', () => {
+  const typeSelect = document.getElementById('schedType');
+  if (typeSelect) {
+    typeSelect.addEventListener('change', updateCategoryFromType);
+  }
+});
+
+// New filter function
+function filterSchedulerTasks(filter) {
+  schedulerFilter = filter;
+  // Update filter chips UI if they exist
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.classList.remove('active');
+    if (chip.dataset.filter === filter) {
+      chip.classList.add('active');
+    }
+  });
+  renderScheduler();
+}
+
+// Dynamically create filter chips if not present
+function ensureSchedulerFilterChips() {
+  const container = document.querySelector('#viewScheduler .filter-chips');
+  if (!container) return;
+  if (container.children.length > 0) return; // already have chips
+  const filters = [
+    { value: 'all', label: 'All' },
+    { value: 'study', label: '📚 Study' },
+    { value: 'dev', label: '💻 Dev' },
+    { value: 'thesis', label: '🎓 Thesis' },
+    { value: 'exam', label: '📝 Exams' }
+  ];
+  filters.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-chip' + (f.value === 'all' ? ' active' : '');
+    btn.dataset.filter = f.value;
+    btn.textContent = f.label;
+    btn.onclick = () => filterSchedulerTasks(f.value);
+    container.appendChild(btn);
+  });
+}
+
 function renderScheduler() {
+  ensureSchedulerFilterChips();
+
+  // Apply filter
+  const filteredItems = schedItems.filter(item => {
+    if (schedulerFilter === 'all') return true;
+    const type = item.type || '';
+    const category = item.category || '';
+    return category === schedulerFilter || type.includes(schedulerFilter);
+  });
+
   ['todo', 'progress', 'done'].forEach(col => {
     const el = document.getElementById('sched-' + col);
     if (!el) return;
-    const items = schedItems.filter(i => i.status === col);
+    const items = filteredItems.filter(i => i.status === col);
     const header = el.closest('.kanban-column')?.querySelector('.column-header .column-count');
     if (header) header.textContent = items.length;
     if (items.length === 0) {
@@ -379,30 +466,45 @@ function renderScheduler() {
     }).join('');
   });
 
-  // Gantt chart
-  // Gantt chart (dot + title design)
-const gantt = document.getElementById('ganttChart');
-if (gantt) {
-  const items = schedItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-  if (items.length === 0) {
-    gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-  } else {
-    gantt.innerHTML = '<div class="space-y-2">' + items.map(i => {
-  const dotColor = i.dotColor || (i.type === 'milestone' ? '#fbbf24' : i.type === 'defense' ? '#f87171' : i.type === 'exam' ? '#22d3ee' : '#60a5fa');
-  return `
-    <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
-      <button onclick="editDotColor('${i.id}')" class="w-5 h-5 rounded-full cursor-pointer border-2 border-white/20 hover:scale-110 transition transform" style="background-color:${dotColor};" title="Click to change color"></button>
-      <span class="text-sm flex-1 truncate">${i.title}</span>
-      <span class="text-xs opacity-70">${i.deadline}</span>
-    </div>`;
-}).join('') + '</div>';
+  // Gantt chart (filtered)
+  const gantt = document.getElementById('ganttChart');
+  if (gantt) {
+    const items = filteredItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+    if (items.length === 0) {
+      gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
+    } else {
+      gantt.innerHTML = '<div class="space-y-2">' + items.map(i => {
+        // Auto-assign colors based on type if not set
+        let dotColor = i.dotColor;
+        if (!dotColor) {
+          if (i.type.includes('defense')) dotColor = '#f87171';
+          else if (i.type.includes('milestone')) dotColor = '#fbbf24';
+          else if (i.type.includes('exam')) dotColor = '#22d3ee';
+          else if (i.type.includes('dev')) dotColor = '#a78bfa';
+          else if (i.type.includes('thesis')) dotColor = '#f472b6';
+          else dotColor = '#60a5fa';
+        }
+        // Type badge class
+        let typeBadgeClass = 'type-task';
+        if (i.type.includes('milestone')) typeBadgeClass = 'type-milestone';
+        else if (i.type.includes('defense')) typeBadgeClass = 'type-defense';
+        else if (i.type.includes('exam')) typeBadgeClass = 'type-exam';
+        
+        return `
+          <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+            <button onclick="editDotColor('${i.id}')" class="w-5 h-5 rounded-full cursor-pointer border-2 border-white/20 hover:scale-110 transition transform" style="background-color:${dotColor};" title="Click to change color"></button>
+            <span class="text-sm flex-1 truncate">${i.title}</span>
+            <span class="type-badge ${typeBadgeClass}">${i.type}</span>
+            <span class="text-xs opacity-70">${i.deadline}</span>
+          </div>`;
+      }).join('') + '</div>';
+    }
   }
-}
 
   // Countdowns
   const countdowns = document.getElementById('countdowns');
   if (countdowns) {
-    const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
+    const defenses = filteredItems.filter(i => i.type === 'defense' && i.deadline);
     if (defenses.length === 0) {
       countdowns.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
     } else {
@@ -431,7 +533,7 @@ if (gantt) {
   // Exam matrix
   const examMatrix = document.getElementById('examMatrix');
   if (examMatrix) {
-    const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
+    const exams = filteredItems.filter(i => i.type === 'exam' && i.deadline);
     if (exams.length === 0) {
       examMatrix.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
     } else {
@@ -466,7 +568,17 @@ function addOrUpdateSchedItem() {
   const typeInput = document.getElementById('schedType');
   const priorityInput = document.getElementById('schedPriority');
   const categoryInput = document.getElementById('schedCategory');
-  const dotColorInput = document.getElementById('schedDotColor');
+
+  // If category input exists, use it; otherwise derive from type
+  let category = 'study';
+  if (categoryInput) {
+    category = categoryInput.value;
+  } else if (typeInput) {
+    const type = typeInput.value;
+    if (type.includes('dev')) category = 'development';
+    else if (type.includes('thesis')) category = 'thesis';
+    else if (type.includes('exam')) category = 'exam';
+  }
 
   const newItem = {
     id: editId || Date.now().toString(),
@@ -474,7 +586,7 @@ function addOrUpdateSchedItem() {
     deadline: deadlineInput ? deadlineInput.value : '',
     type: typeInput ? typeInput.value : 'task',
     priority: priorityInput ? priorityInput.value : 'medium',
-    category: categoryInput ? categoryInput.value : 'study',
+    category: category,
     dotColor: '#6366f1',
     status: 'todo',
     progress: 0
@@ -495,6 +607,7 @@ function addOrUpdateSchedItem() {
   if (titleInput) titleInput.value = '';
   if (deadlineInput) deadlineInput.value = '';
   if (editIdInput) editIdInput.value = '';
+  if (categoryInput) categoryInput.value = 'study';
   const addBtn = document.getElementById('schedAddBtn');
   if (addBtn) addBtn.innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
 
@@ -509,10 +622,14 @@ function editSchedItem(id) {
   document.getElementById('schedDeadline').value = item.deadline || '';
   document.getElementById('schedType').value = item.type;
   document.getElementById('schedPriority').value = item.priority || 'medium';
-  document.getElementById('schedCategory').value = item.category || 'study';
+  const categoryInput = document.getElementById('schedCategory');
+  if (categoryInput) {
+    categoryInput.value = item.category || 'study';
+  }
   document.getElementById('editSchedId').value = id;
   document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
 }
+
 function editDotColor(id) {
   const item = schedItems.find(i => i.id === id);
   if (!item) return;
@@ -530,7 +647,7 @@ function editDotColor(id) {
       <input type="color" id="dotColorPicker" value="${item.dotColor || '#6366f1'}" class="w-20 h-12 mx-auto mb-3 cursor-pointer" />
       <div class="flex justify-center gap-2">
         <button class="btn-primary px-4 py-2 text-sm" onclick="saveDotColor('${id}')">Save</button>
-        <button class="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-lg" onclick="document.body.removeChild(this.closest('.dot-color-popup'))">Cancel</button>
+        <button class="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-lg" onclick="closeDotColorPopup()">Cancel</button>
       </div>
     </div>`;
   document.body.appendChild(popup);
@@ -546,9 +663,14 @@ function saveDotColor(id) {
     saveSched();
     renderScheduler();
   }
-  const popup = colorInput.closest('.dot-color-popup');
+  closeDotColorPopup();
+}
+
+function closeDotColorPopup() {
+  const popup = document.querySelector('.dot-color-popup');
   if (popup) popup.remove();
 }
+
 function deleteSchedItem(id) {
   if (confirm('Delete this task?')) {
     schedItems = schedItems.filter(i => i.id !== id);
@@ -589,7 +711,7 @@ document.addEventListener('dragleave', (e) => {
 // PLANNER
 // ============================================================
 function savePlanner() {
-  localStorage.setItem('acadhub_planner', JSON.stringify(plannerTasks));
+  safeLocalStorageSet('acadhub_planner', plannerTasks);
   if (auth.currentUser) {
     saveToFirestore('planner', plannerTasks).catch(err => console.error('Firestore save error:', err));
   }
@@ -855,7 +977,7 @@ async function renderResultsOneByOne(data) {
     let optionsHTML = '';
     if (q.options && q.options.length) {
       optionsHTML = q.options.map((opt, idx) => `
-        <button onclick="checkAnswer(this, '${opt === q.answer}')" class="quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-indigo-500/10 transition">
+        <button onclick="checkAnswer(this, ${opt === q.answer})" class="quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-indigo-500/10 transition">
           <span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}
         </button>`).join('');
     } else {
@@ -870,9 +992,10 @@ async function renderResultsOneByOne(data) {
 function checkAnswer(btn, isCorrect) {
   const parent = btn.parentElement;
   Array.from(parent.children).forEach(child => {
-    child.classList.remove('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300', 'bg-rose-500/20', 'border-rose-500', 'text-rose-300');
+    child.classList.remove('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300', 
+                          'bg-rose-500/20', 'border-rose-500', 'text-rose-300');
   });
-  if (isCorrect === 'true') {
+  if (isCorrect === true || isCorrect === 'true') {
     btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
   } else {
     btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
@@ -890,9 +1013,9 @@ document.getElementById('saveToLibraryBtn').addEventListener('click', async () =
     notes: document.getElementById('studyNotes').value.slice(0, 100) + '...',
     data: lastGeneratedData
   };
-  let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+  let saved = safeLocalStorageGet('acadhub_saved', []);
   saved.unshift(entry);
-  localStorage.setItem('acadhub_saved', JSON.stringify(saved));
+  safeLocalStorageSet('acadhub_saved', saved);
   if (auth.currentUser) {
     await saveToFirestore('library', saved, 'id').catch(err => console.error(err));
   }
@@ -903,7 +1026,7 @@ document.getElementById('saveToLibraryBtn').addEventListener('click', async () =
 function renderSavedList() {
   const list = document.getElementById('savedList');
   const empty = document.getElementById('emptyLibrary');
-  let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+  let saved = safeLocalStorageGet('acadhub_saved', []);
   if (saved.length === 0) {
     empty.classList.remove('hidden');
     list.innerHTML = '';
@@ -924,7 +1047,7 @@ function renderSavedList() {
 }
 
 function loadSaved(id) {
-  let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+  let saved = safeLocalStorageGet('acadhub_saved', []);
   const entry = saved.find(e => e.id === id);
   if (!entry) return;
   lastGeneratedData = entry.data;
@@ -934,9 +1057,9 @@ function loadSaved(id) {
 }
 
 function deleteSaved(id) {
-  let saved = JSON.parse(localStorage.getItem('acadhub_saved') || '[]');
+  let saved = safeLocalStorageGet('acadhub_saved', []);
   saved = saved.filter(e => e.id !== id);
-  localStorage.setItem('acadhub_saved', JSON.stringify(saved));
+  safeLocalStorageSet('acadhub_saved', saved);
   if (auth.currentUser) {
     saveToFirestore('library', saved, 'id').catch(err => console.error(err));
   }
@@ -1176,12 +1299,11 @@ async function logout() {
 }
 
 // ============================================================
-// SERVICE WORKER REGISTRATION
+// SERVICE WORKER REGISTRATION (fixed)
 // ============================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/AcadHub/sw.js')
-      .register('/AcadHub/sw.js')
       .then((registration) => {
         console.log('Service Worker registered:', registration.scope);
       })
@@ -1194,10 +1316,26 @@ if ('serviceWorker' in navigator) {
 // ============================================================
 // INIT
 // ============================================================
+function initializeScheduler() {
+  // Ensure all scheduler items have required fields
+  schedItems = schedItems.map(item => ({
+    ...item,
+    type: item.type || 'task',
+    priority: item.priority || 'medium',
+    category: item.category || 'study',
+    status: item.status || 'todo',
+    progress: item.progress || 0,
+    dotColor: item.dotColor || '#6366f1'
+  }));
+  saveSched();
+  renderScheduler();
+}
+
 renderScheduler();
 renderPlanner();
 renderSavedList();
 updateProviderUI();
+initializeScheduler();
 
 (function() {
   if (localStorage.getItem('profile_saved') !== 'true') {
@@ -1233,7 +1371,7 @@ function startFirestoreListeners() {
       const items = [];
       snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
       schedItems = items;
-      localStorage.setItem('acadhub_sched', JSON.stringify(items));
+      safeLocalStorageSet('acadhub_sched', items);
       renderScheduler();
     })
   );
@@ -1244,7 +1382,7 @@ function startFirestoreListeners() {
       const items = [];
       snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
       plannerTasks = items;
-      localStorage.setItem('acadhub_planner', JSON.stringify(items));
+      safeLocalStorageSet('acadhub_planner', items);
       renderPlanner();
     })
   );
@@ -1254,7 +1392,7 @@ function startFirestoreListeners() {
     libraryRef.onSnapshot(snapshot => {
       const items = [];
       snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-      localStorage.setItem('acadhub_saved', JSON.stringify(items));
+      safeLocalStorageSet('acadhub_saved', items);
       renderSavedList();
     })
   );
@@ -1286,9 +1424,9 @@ auth && auth.onAuthStateChanged(async user => {
       ]);
       schedItems = sched;
       plannerTasks = planner;
-      localStorage.setItem('acadhub_sched', JSON.stringify(sched));
-      localStorage.setItem('acadhub_planner', JSON.stringify(planner));
-      localStorage.setItem('acadhub_saved', JSON.stringify(library));
+      safeLocalStorageSet('acadhub_sched', sched);
+      safeLocalStorageSet('acadhub_planner', planner);
+      safeLocalStorageSet('acadhub_saved', library);
       renderScheduler();
       renderPlanner();
       renderSavedList();
@@ -1311,4 +1449,4 @@ auth && auth.onAuthStateChanged(async user => {
   }
 });
 
-console.log('AcadHub Suite loaded successfully with UI/UX improvements.');
+console.log('AcadHub Suite loaded successfully with strict fixes applied.');
