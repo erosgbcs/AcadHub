@@ -622,7 +622,56 @@ html.light #testResultsContainer .text-2xl {
 .flashcard-back {
   transform: rotateY(180deg);
 }
+/* Filter chips */
+.filter-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.filter-chip {
+  padding: 0.4rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-chip:hover {
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+.filter-chip.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--accent);
+  color: #a5b4fc;
+}
+html.light .filter-chip.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
 
+/* Type badges */
+.type-badge {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.type-task { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.type-milestone { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+.type-defense { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.type-exam { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+html.light .type-task { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+html.light .type-milestone { background: rgba(168, 85, 247, 0.1); color: #9333ea; }
+html.light .type-defense { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+html.light .type-exam { background: rgba(245, 158, 11, 0.1); color: #d97706; }
 /* Review mode */
 .review-item {
   border-left: 3px solid transparent;

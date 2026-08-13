@@ -175,7 +175,7 @@ let testTimeLeft = 0;
 let draggedSchedId = null;
 let draggedPlannerId = null;
 let testUserAnswers = [];
-let schedulerFilter = 'all'; // New filter variable
+let schedulerFilter = 'all';
 
 // ============================================================
 // THEME & APPEARANCE
@@ -366,7 +366,6 @@ function saveSched() {
   }
 }
 
-// New function: update category based on type
 function updateCategoryFromType() {
   const typeSelect = document.getElementById('schedType');
   const categorySelect = document.getElementById('schedCategory');
@@ -379,7 +378,6 @@ function updateCategoryFromType() {
   categorySelect.value = category;
 }
 
-// Attach event listener if elements exist
 document.addEventListener('DOMContentLoaded', () => {
   const typeSelect = document.getElementById('schedType');
   if (typeSelect) {
@@ -387,10 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// New filter function
 function filterSchedulerTasks(filter) {
   schedulerFilter = filter;
-  // Update filter chips UI if they exist
   document.querySelectorAll('.filter-chip').forEach(chip => {
     chip.classList.remove('active');
     if (chip.dataset.filter === filter) {
@@ -400,11 +396,10 @@ function filterSchedulerTasks(filter) {
   renderScheduler();
 }
 
-// Dynamically create filter chips if not present
 function ensureSchedulerFilterChips() {
   const container = document.querySelector('#viewScheduler .filter-chips');
   if (!container) return;
-  if (container.children.length > 0) return; // already have chips
+  if (container.children.length > 0) return;
   const filters = [
     { value: 'all', label: 'All' },
     { value: 'study', label: '📚 Study' },
@@ -425,7 +420,6 @@ function ensureSchedulerFilterChips() {
 function renderScheduler() {
   ensureSchedulerFilterChips();
 
-  // Apply filter
   const filteredItems = schedItems.filter(item => {
     if (schedulerFilter === 'all') return true;
     const type = item.type || '';
@@ -466,7 +460,7 @@ function renderScheduler() {
     }).join('');
   });
 
-  // Gantt chart (filtered)
+  // Gantt chart
   const gantt = document.getElementById('ganttChart');
   if (gantt) {
     const items = filteredItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
@@ -474,7 +468,6 @@ function renderScheduler() {
       gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
     } else {
       gantt.innerHTML = '<div class="space-y-2">' + items.map(i => {
-        // Auto-assign colors based on type if not set
         let dotColor = i.dotColor;
         if (!dotColor) {
           if (i.type.includes('defense')) dotColor = '#f87171';
@@ -484,7 +477,6 @@ function renderScheduler() {
           else if (i.type.includes('thesis')) dotColor = '#f472b6';
           else dotColor = '#60a5fa';
         }
-        // Type badge class
         let typeBadgeClass = 'type-task';
         if (i.type.includes('milestone')) typeBadgeClass = 'type-milestone';
         else if (i.type.includes('defense')) typeBadgeClass = 'type-defense';
@@ -569,7 +561,6 @@ function addOrUpdateSchedItem() {
   const priorityInput = document.getElementById('schedPriority');
   const categoryInput = document.getElementById('schedCategory');
 
-  // If category input exists, use it; otherwise derive from type
   let category = 'study';
   if (categoryInput) {
     category = categoryInput.value;
@@ -603,7 +594,6 @@ function addOrUpdateSchedItem() {
     schedItems.push(newItem);
   }
 
-  // Clear form
   if (titleInput) titleInput.value = '';
   if (deadlineInput) deadlineInput.value = '';
   if (editIdInput) editIdInput.value = '';
@@ -634,11 +624,9 @@ function editDotColor(id) {
   const item = schedItems.find(i => i.id === id);
   if (!item) return;
 
-  // Remove any existing popup
   const existingPopup = document.querySelector('.dot-color-popup');
   if (existingPopup) existingPopup.remove();
 
-  // Create popup overlay
   const popup = document.createElement('div');
   popup.className = 'dot-color-popup fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm';
   popup.innerHTML = `
@@ -818,6 +806,195 @@ function dropPlannerTask(e, newStatus) {
 
 function allowDrop(e) {
   e.preventDefault();
+}
+
+// ============================================================
+// TEST MY LIMITS (reconstructed)
+// ============================================================
+function setDifficulty(difficulty) {
+  testDifficulty = difficulty;
+  const easy = document.getElementById('diffEasy');
+  const medium = document.getElementById('diffMedium');
+  const hard = document.getElementById('diffHard');
+  [easy, medium, hard].forEach(btn => {
+    btn.classList.remove('bg-indigo-600', 'text-white');
+    btn.classList.add('bg-white/10');
+  });
+  const selected = document.getElementById('diff' + difficulty.charAt(0).toUpperCase() + difficulty.slice(1));
+  if (selected) {
+    selected.classList.remove('bg-white/10');
+    selected.classList.add('bg-indigo-600', 'text-white');
+  }
+}
+
+async function startTest() {
+  const notes = document.getElementById('testNotes').value.trim();
+  const fileInput = document.getElementById('testFileInput');
+  const useInternet = document.getElementById('useTestInternet').checked;
+  if (!notes && !fileInput.files[0]) {
+    alert('Please provide notes or upload a document.');
+    return;
+  }
+
+  const btn = document.getElementById('startTestBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+
+  const formData = new FormData();
+  formData.append('notes', notes);
+  formData.append('difficulty', testDifficulty);
+  formData.append('use_internet', useInternet);
+  if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/generate-test`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Test generation failed');
+    testQuestions = data.questions || [];
+    testCurrentIndex = 0;
+    testCorrectCount = 0;
+    testUserAnswers = [];
+    if (testQuestions.length === 0) {
+      alert('No questions generated. Please try again.');
+      return;
+    }
+    document.getElementById('testQuizContainer').classList.remove('hidden');
+    document.getElementById('testResultsContainer').classList.add('hidden');
+    document.getElementById('reviewContainer').classList.add('hidden');
+    displayTestQuestion();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+  }
+}
+
+function displayTestQuestion() {
+  const q = testQuestions[testCurrentIndex];
+  document.getElementById('questionCounter').textContent = `Question ${testCurrentIndex + 1} / ${testQuestions.length}`;
+  document.getElementById('testQuestionText').textContent = q.question;
+  const optionsContainer = document.getElementById('testOptionsContainer');
+  optionsContainer.innerHTML = '';
+  if (q.options && q.options.length) {
+    q.options.forEach((opt, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-option w-full text-left p-3 rounded-lg bg-white/5 text-sm border border-white/10 mt-1 hover:bg-indigo-500/10 transition';
+      btn.innerHTML = `<span class="w-6 h-6 rounded-full bg-white/10 inline-flex items-center justify-center text-xs font-bold mr-2">${String.fromCharCode(65 + idx)}</span>${opt}`;
+      btn.onclick = () => answerTestQuestion(btn, opt, q.answer);
+      optionsContainer.appendChild(btn);
+    });
+  } else {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Type your answer...';
+    input.className = 'w-full p-3 bg-white/5 border border-white/10 rounded-lg text-sm';
+    input.id = 'testTextAnswer';
+    optionsContainer.appendChild(input);
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'btn-primary mt-2';
+    submitBtn.textContent = 'Submit Answer';
+    submitBtn.onclick = () => {
+      const userAnswer = input.value.trim();
+      answerTestQuestion(null, userAnswer, q.answer);
+    };
+    optionsContainer.appendChild(submitBtn);
+  }
+  document.getElementById('nextTestBtn').classList.add('hidden');
+  document.getElementById('timerDisplay').classList.add('hidden');
+  // Timer for medium/hard
+  if (testDifficulty !== 'easy') {
+    testTimeLeft = testDifficulty === 'medium' ? 20 : 15;
+    document.getElementById('timerDisplay').classList.remove('hidden');
+    updateTimerDisplay();
+    clearInterval(testTimerInterval);
+    testTimerInterval = setInterval(() => {
+      testTimeLeft--;
+      updateTimerDisplay();
+      if (testTimeLeft <= 0) {
+        clearInterval(testTimerInterval);
+        answerTestQuestion(null, '', q.answer);
+      }
+    }, 1000);
+  }
+}
+
+function updateTimerDisplay() {
+  const timerEl = document.getElementById('timerDisplay');
+  if (timerEl) timerEl.textContent = `⏱ ${testTimeLeft}s`;
+}
+
+function answerTestQuestion(btn, userAnswer, correctAnswer) {
+  clearInterval(testTimerInterval);
+  const isCorrect = userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
+  if (isCorrect) testCorrectCount++;
+  testUserAnswers.push({
+    question: testQuestions[testCurrentIndex].question,
+    userAnswer,
+    correctAnswer,
+    isCorrect
+  });
+  // Highlight if multiple choice
+  if (btn) {
+    Array.from(btn.parentElement.children).forEach(child => {
+      child.disabled = true;
+      if (child === btn) {
+        child.classList.add(isCorrect ? 'bg-emerald-500/20' : 'bg-rose-500/20');
+      }
+    });
+  }
+  document.getElementById('nextTestBtn').classList.remove('hidden');
+  if (testCurrentIndex === testQuestions.length - 1) {
+    document.getElementById('nextTestBtn').textContent = 'Finish <i class="fa-solid fa-flag-checkered ml-2"></i>';
+  }
+}
+
+function nextTestQuestion() {
+  testCurrentIndex++;
+  if (testCurrentIndex >= testQuestions.length) {
+    finishTest();
+  } else {
+    displayTestQuestion();
+  }
+}
+
+function finishTest() {
+  clearInterval(testTimerInterval);
+  document.getElementById('testQuizContainer').classList.add('hidden');
+  document.getElementById('testResultsContainer').classList.remove('hidden');
+  document.getElementById('testCorrectCount').textContent = testCorrectCount;
+  document.getElementById('testTotalCount').textContent = testQuestions.length;
+  const percent = Math.round((testCorrectCount / testQuestions.length) * 100);
+  document.getElementById('testPercentage').textContent = `${percent}%`;
+  document.getElementById('reviewBtn').classList.remove('hidden');
+}
+
+function resetTest() {
+  testQuestions = [];
+  testCurrentIndex = 0;
+  testCorrectCount = 0;
+  testUserAnswers = [];
+  clearInterval(testTimerInterval);
+  document.getElementById('testQuizContainer').classList.add('hidden');
+  document.getElementById('testResultsContainer').classList.add('hidden');
+  document.getElementById('reviewContainer').classList.add('hidden');
+  document.getElementById('startTestBtn').disabled = false;
+  document.getElementById('startTestBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>Start Test';
+}
+
+function showReview() {
+  const container = document.getElementById('reviewContainer');
+  container.classList.remove('hidden');
+  container.innerHTML = testUserAnswers.map((ans, idx) => `
+    <div class="review-item ${ans.isCorrect ? 'correct' : 'incorrect'}">
+      <p class="text-sm font-semibold">${idx + 1}. ${ans.question}</p>
+      <p class="text-xs mt-1">Your answer: <span class="font-bold">${ans.userAnswer || '(empty)'}</span></p>
+      <p class="text-xs">Correct answer: <span class="font-bold">${ans.correctAnswer}</span></p>
+    </div>
+  `).join('');
 }
 
 // ============================================================
@@ -1299,7 +1476,7 @@ async function logout() {
 }
 
 // ============================================================
-// SERVICE WORKER REGISTRATION (fixed)
+// SERVICE WORKER REGISTRATION
 // ============================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -1317,7 +1494,6 @@ if ('serviceWorker' in navigator) {
 // INIT
 // ============================================================
 function initializeScheduler() {
-  // Ensure all scheduler items have required fields
   schedItems = schedItems.map(item => ({
     ...item,
     type: item.type || 'task',
@@ -1449,4 +1625,4 @@ auth && auth.onAuthStateChanged(async user => {
   }
 });
 
-console.log('AcadHub Suite loaded successfully with strict fixes applied.');
+console.log('AcadHub Suite loaded successfully with all features intact.');
