@@ -518,6 +518,26 @@ function editSchedItem(id) {
 function editDotColor(id) {
   const item = schedItems.find(i => i.id === id);
   if (!item) return;
+
+  // Remove any existing popup
+  const existingPopup = document.querySelector('.dot-color-popup');
+  if (existingPopup) existingPopup.remove();
+
+  // Create popup overlay
+  const popup = document.createElement('div');
+  popup.className = 'dot-color-popup fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm';
+  popup.innerHTML = `
+    <div class="glass-card p-6 text-center">
+      <h4 class="text-sm font-semibold mb-3">Change Dot Color</h4>
+      <input type="color" id="dotColorPicker" value="${item.dotColor || '#6366f1'}" class="w-20 h-12 mx-auto mb-3 cursor-pointer" />
+      <div class="flex justify-center gap-2">
+        <button class="btn-primary px-4 py-2 text-sm" onclick="saveDotColor('${id}')">Save</button>
+        <button class="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-lg" onclick="document.body.removeChild(this.closest('.dot-color-popup'))">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+}
+
 function saveDotColor(id) {
   const colorInput = document.getElementById('dotColorPicker');
   if (!colorInput) return;
@@ -528,23 +548,8 @@ function saveDotColor(id) {
     saveSched();
     renderScheduler();
   }
-  // Remove the popup
-  const popup = colorInput.closest('.fixed');
-  if (popup) document.body.removeChild(popup);
-}
-  // Create a small popup with a color input
-  const popup = document.createElement('div');
-  popup.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm';
-  popup.innerHTML = `
-    <div class="glass-card p-6 text-center">
-      <h4 class="text-sm font-semibold mb-3">Change Dot Color</h4>
-      <input type="color" id="dotColorPicker" value="${item.dotColor || '#6366f1'}" class="w-20 h-12 mx-auto mb-3 cursor-pointer" />
-      <div class="flex justify-center gap-2">
-        <button class="btn-primary px-4 py-2 text-sm" onclick="saveDotColor('${id}')">Save</button>
-        <button class="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-lg" onclick="document.body.removeChild(this.closest('.fixed'))">Cancel</button>
-      </div>
-    </div>`;
-  document.body.appendChild(popup);
+  const popup = colorInput.closest('.dot-color-popup');
+  if (popup) popup.remove();
 }
 function deleteSchedItem(id) {
   if (confirm('Delete this task?')) {
