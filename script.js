@@ -388,14 +388,14 @@ if (gantt) {
     gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
   } else {
     gantt.innerHTML = '<div class="space-y-2">' + items.map(i => {
-      const dotColor = i.dotColor || (i.type === 'milestone' ? '#fbbf24' : i.type === 'defense' ? '#f87171' : i.type === 'exam' ? '#22d3ee' : '#60a5fa');
-      return `
-        <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
-          <span class="w-3 h-3 rounded-full" style="background-color:${dotColor};"></span>
-          <span class="text-sm flex-1 truncate">${i.title}</span>
-          <span class="text-xs opacity-70">${i.deadline}</span>
-        </div>`;
-    }).join('') + '</div>';
+  const dotColor = i.dotColor || (i.type === 'milestone' ? '#fbbf24' : i.type === 'defense' ? '#f87171' : i.type === 'exam' ? '#22d3ee' : '#60a5fa');
+  return `
+    <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+      <button onclick="editDotColor('${i.id}')" class="w-5 h-5 rounded-full cursor-pointer border-2 border-white/20 hover:scale-110 transition transform" style="background-color:${dotColor};" title="Click to change color"></button>
+      <span class="text-sm flex-1 truncate">${i.title}</span>
+      <span class="text-xs opacity-70">${i.deadline}</span>
+    </div>`;
+}).join('') + '</div>';
   }
 }
 
@@ -515,7 +515,37 @@ function editSchedItem(id) {
   document.getElementById('editSchedId').value = id;
   document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
 }
-
+function editDotColor(id) {
+  const item = schedItems.find(i => i.id === id);
+  if (!item) return;
+function saveDotColor(id) {
+  const colorInput = document.getElementById('dotColorPicker');
+  if (!colorInput) return;
+  const newColor = colorInput.value;
+  const item = schedItems.find(i => i.id === id);
+  if (item) {
+    item.dotColor = newColor;
+    saveSched();
+    renderScheduler();
+  }
+  // Remove the popup
+  const popup = colorInput.closest('.fixed');
+  if (popup) document.body.removeChild(popup);
+}
+  // Create a small popup with a color input
+  const popup = document.createElement('div');
+  popup.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm';
+  popup.innerHTML = `
+    <div class="glass-card p-6 text-center">
+      <h4 class="text-sm font-semibold mb-3">Change Dot Color</h4>
+      <input type="color" id="dotColorPicker" value="${item.dotColor || '#6366f1'}" class="w-20 h-12 mx-auto mb-3 cursor-pointer" />
+      <div class="flex justify-center gap-2">
+        <button class="btn-primary px-4 py-2 text-sm" onclick="saveDotColor('${id}')">Save</button>
+        <button class="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-lg" onclick="document.body.removeChild(this.closest('.fixed'))">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+}
 function deleteSchedItem(id) {
   if (confirm('Delete this task?')) {
     schedItems = schedItems.filter(i => i.id !== id);
