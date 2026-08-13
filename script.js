@@ -879,6 +879,12 @@ function displayTestQuestion() {
   document.getElementById('testQuestionText').textContent = q.question;
   const optionsContainer = document.getElementById('testOptionsContainer');
   optionsContainer.innerHTML = '';
+
+  // ✅ Reset the Next button to its normal state
+  const nextBtn = document.getElementById('nextTestBtn');
+  nextBtn.innerHTML = 'Next <i class="fa-solid fa-arrow-right ml-2"></i>';
+  nextBtn.classList.add('hidden');
+
   if (q.options && q.options.length) {
     q.options.forEach((opt, idx) => {
       const btn = document.createElement('button');
@@ -903,6 +909,7 @@ function displayTestQuestion() {
     };
     optionsContainer.appendChild(submitBtn);
   }
+
   document.getElementById('nextTestBtn').classList.add('hidden');
   document.getElementById('timerDisplay').classList.add('hidden');
   // Timer for medium/hard
@@ -919,6 +926,32 @@ function displayTestQuestion() {
         answerTestQuestion(null, '', q.answer);
       }
     }, 1000);
+  }
+}
+
+function answerTestQuestion(btn, userAnswer, correctAnswer) {
+  clearInterval(testTimerInterval);
+  const isCorrect = userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
+  if (isCorrect) testCorrectCount++;
+  testUserAnswers.push({
+    question: testQuestions[testCurrentIndex].question,
+    userAnswer,
+    correctAnswer,
+    isCorrect
+  });
+  // Highlight if multiple choice
+  if (btn) {
+    Array.from(btn.parentElement.children).forEach(child => {
+      child.disabled = true;
+      if (child === btn) {
+        child.classList.add(isCorrect ? 'bg-emerald-500/20' : 'bg-rose-500/20');
+      }
+    });
+  }
+  document.getElementById('nextTestBtn').classList.remove('hidden');
+  if (testCurrentIndex === testQuestions.length - 1) {
+    // ✅ Use innerHTML to render the icon properly
+    document.getElementById('nextTestBtn').innerHTML = 'Finish <i class="fa-solid fa-flag-checkered ml-2"></i>';
   }
 }
 
@@ -948,8 +981,7 @@ function answerTestQuestion(btn, userAnswer, correctAnswer) {
   }
   document.getElementById('nextTestBtn').classList.remove('hidden');
   if (testCurrentIndex === testQuestions.length - 1) {
-    document.getElementById('nextTestBtn').textContent = 'Finish <i class="fa-solid fa-flag-checkered ml-2"></i>';
-  }
+document.getElementById('nextTestBtn').innerHTML = 'Finish <i class="fa-solid fa-flag-checkered ml-2"></i>';  }
 }
 
 function nextTestQuestion() {
