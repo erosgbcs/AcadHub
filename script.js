@@ -131,8 +131,21 @@ async function loadFromFirestore(collectionName) {
 const BACKEND_URL = "https://acadhub-no6m.onrender.com";
 let lastGeneratedData = null;
 let isSignUpMode = false;
-let schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
-let plannerTasks = JSON.parse(localStorage.getItem('acadhub_planner') || '[]');
+let schedItems = [];
+try {
+  schedItems = JSON.parse(localStorage.getItem('acadhub_sched') || '[]');
+} catch (e) {
+  console.warn('Invalid scheduler data in localStorage. Resetting.');
+  schedItems = [];
+}
+
+let plannerTasks = [];
+try {
+  plannerTasks = JSON.parse(localStorage.getItem('acadhub_planner') || '[]');
+} catch (e) {
+  console.warn('Invalid planner data in localStorage. Resetting.');
+  plannerTasks = [];
+}
 let testDifficulty = 'medium';
 let testQuestions = [];
 let testCurrentIndex = 0;
@@ -435,23 +448,38 @@ if (gantt) {
 }
 
 function addOrUpdateSchedItem() {
-  const title = document.getElementById('schedTitle').value.trim();
+  const titleInput = document.getElementById('schedTitle');
+  if (!titleInput) {
+    alert('Scheduler title input not found.');
+    return;
+  }
+  const title = titleInput.value.trim();
   if (!title) {
     alert('Please enter a title.');
     return;
   }
-  const editId = document.getElementById('editSchedId').value;
+
+  const editIdInput = document.getElementById('editSchedId');
+  const editId = editIdInput ? editIdInput.value : '';
+
+  const deadlineInput = document.getElementById('schedDeadline');
+  const typeInput = document.getElementById('schedType');
+  const priorityInput = document.getElementById('schedPriority');
+  const categoryInput = document.getElementById('schedCategory');
+  const dotColorInput = document.getElementById('schedDotColor');
+
   const newItem = {
     id: editId || Date.now().toString(),
     title,
-    deadline: document.getElementById('schedDeadline').value,
-    type: document.getElementById('schedType').value,
-    priority: document.getElementById('schedPriority').value,
-    category: document.getElementById('schedCategory').value,
-    dotColor: document.getElementById('schedDotColor').value || '#6366f1',
+    deadline: deadlineInput ? deadlineInput.value : '',
+    type: typeInput ? typeInput.value : 'task',
+    priority: priorityInput ? priorityInput.value : 'medium',
+    category: categoryInput ? categoryInput.value : 'study',
+    dotColor: dotColorInput ? dotColorInput.value : '#6366f1',
     status: 'todo',
     progress: 0
   };
+
   if (editId) {
     const index = schedItems.findIndex(i => i.id === editId);
     if (index !== -1) {
@@ -462,11 +490,15 @@ function addOrUpdateSchedItem() {
   } else {
     schedItems.push(newItem);
   }
-  document.getElementById('schedTitle').value = '';
-  document.getElementById('schedDeadline').value = '';
-  document.getElementById('editSchedId').value = '';
-  document.getElementById('schedDotColor').value = '#6366f1';
-  document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
+
+  // Clear form
+  if (titleInput) titleInput.value = '';
+  if (deadlineInput) deadlineInput.value = '';
+  if (editIdInput) editIdInput.value = '';
+  if (dotColorInput) dotColorInput.value = '#6366f1';
+  const addBtn = document.getElementById('schedAddBtn');
+  if (addBtn) addBtn.innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
+
   saveSched();
   renderScheduler();
 }
@@ -1124,7 +1156,6 @@ renderScheduler();
 renderPlanner();
 renderSavedList();
 updateProviderUI();
-setDifficulty('medium');
 
 (function() {
   if (localStorage.getItem('profile_saved') !== 'true') {
