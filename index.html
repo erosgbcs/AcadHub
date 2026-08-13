@@ -372,7 +372,51 @@
         html.light .cursor-grab:hover {
             background: rgba(0, 0, 0, 0.06) !important;
         }
+        /* Priority badges */
+.priority-high { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.priority-medium { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.priority-low { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+html.light .priority-high { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+html.light .priority-medium { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+html.light .priority-low { background: rgba(16, 185, 129, 0.1); color: #059669; }
 
+/* Category tag */
+.category-tag { font-size: 0.65rem; padding: 0.2rem 0.5rem; border-radius: 9999px; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
+html.light .category-tag { background: rgba(99, 102, 241, 0.1); color: #4338ca; }
+
+/* Overdue */
+.overdue { border-left: 3px solid #ef4444 !important; }
+
+/* Drag over effect */
+.drag-over { background: rgba(99, 102, 241, 0.15) !important; border-color: #6366f1 !important; }
+
+/* Progress bar */
+.progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 9999px; overflow: hidden; }
+.progress-fill { height: 100%; background: #6366f1; border-radius: 9999px; transition: width 0.3s; }
+
+/* Tooltip */
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a2e;
+    color: #e2e8f0;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+html.light [data-tooltip]:hover::after {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: rgba(0,0,0,0.1);
+}
         /* Gantt chart, countdowns, exam matrix */
         html.light #ganttChart,
         html.light #countdowns,
@@ -538,7 +582,7 @@
                             </div>
                         </div>
                     </div>
-                    <!-- accuracy info (only supported types) -->
+                    <!-- accuracy info -->
                     <div id="accuracyInfo" class="hidden col-span-full mt-2 text-xs bg-white/5 border border-white/10 rounded-xl p-3 overflow-x-auto">
                         <table class="w-full text-left">
                             <thead>
@@ -551,12 +595,12 @@
                             <tbody class="opacity-80">
                                 <tr class="border-b border-white/5"><td class="py-2 pr-2">True/False</td><td class="py-2 px-2">90% accurate</td><td class="py-2 pl-2">100% accurate</td></tr>
                                 <tr class="border-b border-white/5"><td class="py-2 pr-2">Identification</td><td class="py-2 px-2">95%</td><td class="py-2 pl-2">100%</td></tr>
-                                <tr class="border-b border-white/5"><td class="py-2 pr-2">Multiple Choice</td><td class="py-2 px-2">90%</td><td class="py-2 pl-2">100%</td></tr>
-                                <tr class="border-b border-white/5"><td class="py-2 pr-2">What / Who / Where / When</td><td class="py-2 px-2">92%</td><td class="py-2 pl-2">100%</td></tr>
-                                <tr><td class="py-2 pr-2">Enumeration</td><td class="py-2 px-2">85%</td><td class="py-2 pl-2">100%</td></tr>
+                                <tr class="border-b border-white/5"><td class="py-2 pr-2">Multiple Choice</td><td class="py-2 px-2">80%</td><td class="py-2 pl-2">100%</td></tr>
+                                <tr class="border-b border-white/5"><td class="py-2 pr-2">What / Who / Where</td><td class="py-2 px-2">85%</td><td class="py-2 pl-2">100%</td></tr>
+                                <tr><td class="py-2 pr-2">Enumeration</td><td class="py-2 px-2">80%</td><td class="py-2 pl-2">100%</td></tr>
                             </tbody>
                         </table>
-                        <p class="mt-2 opacity-50">Accuracy may vary with text complexity. Local accuracy improved with spaCy.</p>
+                        <p class="mt-2 opacity-50">Accuracy may vary with text complexity.</p>
                     </div>
 
                     <div>
@@ -566,8 +610,8 @@
                                 <i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-400"></i>
                             </div>
                             <p class="text-xs sm:text-sm" id="fileNameDisplay">Drop file or click to browse</p>
-                            <p class="text-xs opacity-50">PDF, DOCX, TXT, MD, RTF, HTML</p>
-                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt,.md,.rtf,.html" onchange="updateFileName(this)" />
+                            <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
+                            <input id="fileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateFileName(this)" />
                         </label>
                     </div>
 
@@ -596,11 +640,11 @@
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <input type="checkbox" id="useInternet" class="accent-indigo-500" />
-                        <label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
-                        <label class="text-xs opacity-70 ml-2">Enrich count:</label>
-                        <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
-                    </div>
+    <input type="checkbox" id="useInternet" class="accent-indigo-500" />
+    <label for="useInternet" class="text-xs">🌐 Boost accuracy with Wikipedia</label>
+    <label class="text-xs opacity-70 ml-2">Enrich count:</label>
+    <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
+</div>
 
                     <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base">
                         <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
@@ -663,8 +707,8 @@
                             <i class="fa-solid fa-cloud-arrow-up text-lg sm:text-2xl text-indigo-400"></i>
                         </div>
                         <p class="text-xs sm:text-sm" id="testFileNameDisplay">Drop file or click to browse</p>
-                        <p class="text-xs opacity-50">PDF, DOCX, TXT, MD, RTF, HTML</p>
-                        <input id="testFileInput" type="file" accept=".pdf,.docx,.txt,.md,.rtf,.html" onchange="updateTestFileName(this)" />
+                        <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
+                        <input id="testFileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateTestFileName(this)" />
                     </label>
                 </div>
                 <div class="flex items-center gap-2 mb-3 sm:mb-4">
@@ -699,70 +743,111 @@
             </div>
         </div>
 
-        <!-- ===== VIEW: STUDY PLANNER ===== -->
-        <div id="viewPlanner" class="hidden space-y-4 sm:space-y-6">
-            <div class="glass-card">
-                <h2 class="text-lg sm:text-xl font-bold mb-4">📋 Study Planner</h2>
-                <div class="flex flex-col sm:flex-row gap-2 mb-4">
-                    <input type="text" id="plannerTitle" placeholder="Task title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                    <input type="date" id="plannerDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                    <button onclick="addPlannerTask()" class="btn-primary px-4 py-2 text-sm"><i class="fa-solid fa-plus mr-1"></i> Add</button>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'todo')">
-                        <h3 class="text-sm font-semibold mb-3 text-amber-400">📌 To Do</h3>
-                        <div id="planner-todo" class="space-y-2 min-h-[100px]"></div>
-                    </div>
-                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'progress')">
-                        <h3 class="text-sm font-semibold mb-3 text-blue-400">🔄 In Progress</h3>
-                        <div id="planner-progress" class="space-y-2 min-h-[100px]"></div>
-                    </div>
-                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'done')">
-                        <h3 class="text-sm font-semibold mb-3 text-emerald-400">✅ Done</h3>
-                        <div id="planner-done" class="space-y-2 min-h-[100px]"></div>
-                    </div>
-                </div>
+        <<!-- ===== VIEW: STUDY PLANNER ===== -->
+<div id="viewPlanner" class="hidden space-y-4 sm:space-y-6">
+    <div class="glass-card">
+        <h2 class="text-lg sm:text-xl font-bold mb-4">📋 Study Planner</h2>
+        <div class="flex flex-col sm:flex-row gap-2 mb-4">
+            <input type="text" id="plannerTitle" placeholder="Task title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
+            <input type="date" id="plannerDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
+            <select id="plannerPriority" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <option value="low">Low Priority</option>
+                <option value="medium" selected>Medium Priority</option>
+                <option value="high">High Priority</option>
+            </select>
+            <select id="plannerCategory" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <option value="study">Study</option>
+                <option value="dev">Development</option>
+                <option value="thesis">Thesis</option>
+                <option value="exam">Exam</option>
+                <option value="personal">Personal</option>
+            </select>
+            <button onclick="addOrUpdatePlannerTask()" id="plannerAddBtn" class="btn-primary px-4 py-2 text-sm"><i class="fa-solid fa-plus mr-1"></i> Add</button>
+            <input type="hidden" id="editPlannerId" value="" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'todo')" data-column="todo">
+                <h3 class="text-sm font-semibold mb-3 text-amber-400">📌 To Do</h3>
+                <div id="planner-todo" class="space-y-2 min-h-[100px]"></div>
+            </div>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'progress')" data-column="progress">
+                <h3 class="text-sm font-semibold mb-3 text-blue-400">🔄 In Progress</h3>
+                <div id="planner-progress" class="space-y-2 min-h-[100px]"></div>
+            </div>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'done')" data-column="done">
+                <h3 class="text-sm font-semibold mb-3 text-emerald-400">✅ Done</h3>
+                <div id="planner-done" class="space-y-2 min-h-[100px]"></div>
             </div>
         </div>
+    </div>
+</div>
 
         <!-- ===== VIEW: DEV & THESIS SCHEDULER ===== -->
-        <div id="viewScheduler" class="hidden space-y-4 sm:space-y-6">
-            <div class="glass-card">
-                <h2 class="text-lg sm:text-xl font-bold mb-4">📅 Dev & Thesis Scheduler</h2>
-                <div class="flex flex-col sm:flex-row gap-2 mb-6">
-                    <input type="text" id="schedTitle" placeholder="Task / Milestone title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                    <input type="date" id="schedDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-                    <select id="schedType" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-                        <option value="task">Task</option>
-                        <option value="milestone">Milestone</option>
-                        <option value="defense">Thesis Defense</option>
-                        <option value="exam">Exam</option>
-                    </select>
-                    <button onclick="addSchedItem()" class="btn-primary px-4 py-2 text-sm"><i class="fa-solid fa-plus mr-1"></i> Add</button>
-                </div>
-                <h3 class="text-sm font-semibold mb-3 text-cyan-400">📊 Gantt Chart Roadmap</h3>
-                <div id="ganttChart" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[150px]"><p class="text-xs opacity-50 text-center py-8">Add tasks to see your roadmap timeline</p></div>
-                <h3 class="text-sm font-semibold mb-3 text-rose-400">🎓 Thesis Defense Countdowns</h3>
-                <div id="countdowns" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]"><p class="text-xs opacity-50 text-center py-4">No defense dates set</p></div>
-                <h3 class="text-sm font-semibold mb-3 text-amber-400">📝 Exam Reminder Matrix</h3>
-                <div id="examMatrix" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]"><p class="text-xs opacity-50 text-center py-4">No exams scheduled</p></div>
-                <h3 class="text-sm font-semibold mb-3 text-blue-400">📋 Kanban Task Board</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'todo')">
-                        <h4 class="text-xs font-semibold mb-2 text-amber-400">📌 To Do</h4>
-                        <div id="sched-todo" class="space-y-2 min-h-[80px]"></div>
-                    </div>
-                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'progress')">
-                        <h4 class="text-xs font-semibold mb-2 text-blue-400">🔄 In Progress</h4>
-                        <div id="sched-progress" class="space-y-2 min-h-[80px]"></div>
-                    </div>
-                    <div class="bg-white/5 border border-white/10 rounded-xl p-4" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'done')">
-                        <h4 class="text-xs font-semibold mb-2 text-emerald-400">✅ Done</h4>
-                        <div id="sched-done" class="space-y-2 min-h-[80px]"></div>
-                    </div>
-                </div>
+<div id="viewScheduler" class="hidden space-y-4 sm:space-y-6">
+    <div class="glass-card">
+        <h2 class="text-lg sm:text-xl font-bold mb-4">📅 Dev & Thesis Scheduler</h2>
+        <!-- Add / Edit Form -->
+        <div class="flex flex-col sm:flex-row gap-2 mb-6">
+            <input type="text" id="schedTitle" placeholder="Task / Milestone title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
+            <input type="date" id="schedDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
+            <select id="schedType" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <option value="task">Task</option>
+                <option value="milestone">Milestone</option>
+                <option value="defense">Thesis Defense</option>
+                <option value="exam">Exam</option>
+            </select>
+            <select id="schedPriority" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <option value="low">Low Priority</option>
+                <option value="medium" selected>Medium Priority</option>
+                <option value="high">High Priority</option>
+            </select>
+            <select id="schedCategory" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+                <option value="study">Study</option>
+                <option value="dev">Development</option>
+                <option value="thesis">Thesis</option>
+                <option value="exam">Exam</option>
+                <option value="personal">Personal</option>
+            </select>
+            <button onclick="addOrUpdateSchedItem()" id="schedAddBtn" class="btn-primary px-4 py-2 text-sm"><i class="fa-solid fa-plus mr-1"></i> Add</button>
+            <input type="hidden" id="editSchedId" value="" />
+        </div>
+
+        <!-- Gantt Chart Roadmap -->
+        <h3 class="text-sm font-semibold mb-3 text-cyan-400">📊 Gantt Chart Roadmap</h3>
+        <div id="ganttChart" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[150px]">
+            <p class="text-xs opacity-50 text-center py-8">Add tasks to see your roadmap timeline</p>
+        </div>
+
+        <!-- Thesis Defense Countdowns -->
+        <h3 class="text-sm font-semibold mb-3 text-rose-400">🎓 Thesis Defense Countdowns</h3>
+        <div id="countdowns" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
+            <p class="text-xs opacity-50 text-center py-4">No defense dates set</p>
+        </div>
+
+        <!-- Exam Reminder Matrix -->
+        <h3 class="text-sm font-semibold mb-3 text-amber-400">📝 Exam Reminder Matrix</h3>
+        <div id="examMatrix" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
+            <p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>
+        </div>
+
+        <!-- Kanban Task Board -->
+        <h3 class="text-sm font-semibold mb-3 text-blue-400">📋 Kanban Task Board</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'todo')" data-column="todo">
+                <h4 class="text-xs font-semibold mb-2 text-amber-400">📌 To Do</h4>
+                <div id="sched-todo" class="space-y-2 min-h-[80px]"></div>
+            </div>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'progress')" data-column="progress">
+                <h4 class="text-xs font-semibold mb-2 text-blue-400">🔄 In Progress</h4>
+                <div id="sched-progress" class="space-y-2 min-h-[80px]"></div>
+            </div>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'done')" data-column="done">
+                <h4 class="text-xs font-semibold mb-2 text-emerald-400">✅ Done</h4>
+                <div id="sched-done" class="space-y-2 min-h-[80px]"></div>
             </div>
         </div>
+    </div>
+</div>
 
         <!-- ===== DONATION CARD ===== -->
         <div class="glass-card mt-6 text-center">
@@ -886,34 +971,34 @@
         }
 
         async function retryWakeUp() {
-            if (wakeUpPollingInterval) {
-                clearInterval(wakeUpPollingInterval);
-                wakeUpPollingInterval = null;
-            }
+    if (wakeUpPollingInterval) {
+        clearInterval(wakeUpPollingInterval);
+        wakeUpPollingInterval = null;
+    }
 
-            const statusEl = document.getElementById('wakeUpStatus');
-            const btn = document.getElementById('retryWakeBtn');
-            btn.disabled = true;
-            statusEl.textContent = 'Checking server…';
+    const statusEl = document.getElementById('wakeUpStatus');
+    const btn = document.getElementById('retryWakeBtn');
+    btn.disabled = true;
+    statusEl.textContent = 'Checking server…';
 
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/health`, {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(6000)
-                });
-                if (res.ok) {
-                    document.getElementById('wakeUpOverlay').style.display = 'none';
-                    return;
-                }
-            } catch (e) {}
-
-            statusEl.textContent = 'Still waking up… Auto‑retrying again.';
-            btn.disabled = false;
-
-            if (!wakeUpPollingInterval) {
-                wakeUpPollingInterval = setInterval(pingServer, 5000);
-            }
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/health`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(6000)
+        });
+        if (res.ok) {
+            document.getElementById('wakeUpOverlay').style.display = 'none';
+            return;
         }
+    } catch (e) {}
+
+    statusEl.textContent = 'Still waking up… Auto‑retrying again.';
+    btn.disabled = false;
+
+    if (!wakeUpPollingInterval) {
+        wakeUpPollingInterval = setInterval(pingServer, 5000);
+    }
+}
 
         window.addEventListener('DOMContentLoaded', () => {
             pingServer();
@@ -1154,101 +1239,286 @@
                     '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
             }
         }
+// ============================================================
+//  SCHEDULER (Dev & Thesis) - Enhanced
+// ============================================================
+function saveSched() { localStorage.setItem('acadhub_sched', JSON.stringify(schedItems)); }
 
-        function addSchedItem() {
-            const title = document.getElementById('schedTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            schedItems.push({
-                id: Date.now().toString(),
-                title,
-                deadline: document.getElementById('schedDeadline').value,
-                type: document.getElementById('schedType').value,
-                status: 'todo'
-            });
-            document.getElementById('schedTitle').value = '';
-            document.getElementById('schedDeadline').value = '';
-            saveSched();
-            renderScheduler();
+function renderScheduler() {
+    ['todo', 'progress', 'done'].forEach(col => {
+        const el = document.getElementById('sched-' + col);
+        if (!el) return;
+        const items = schedItems.filter(i => i.status === col);
+        if (items.length === 0) {
+            el.innerHTML = `<p class="text-xs opacity-30 text-center py-4"><i class="fa-solid fa-inbox text-2xl mb-2"></i><br>Empty</p>`;
+            return;
         }
+        el.innerHTML = items.map(i => {
+            const priorityClass = `priority-${i.priority || 'medium'}`;
+            const overdue = i.deadline && new Date(i.deadline) < new Date() && i.status !== 'done' ? 'overdue' : '';
+            return `
+            <div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab ${overdue} transition hover:bg-white/10" draggable="true" ondragstart="dragSchedTask(event, '${i.id}')">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-semibold">${i.title}</p>
+                    <div class="flex items-center gap-1">
+                        <button onclick="editSchedItem('${i.id}')" data-tooltip="Edit" class="text-xs text-blue-400 hover:text-blue-300"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteSchedItem('${i.id}')" data-tooltip="Delete" class="text-xs text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                ${i.deadline ? `<p class="text-xs opacity-50 mt-1"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10">${i.type}</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full ${priorityClass}">${i.priority || 'medium'}</span>
+                    ${i.category ? `<span class="category-tag">${i.category}</span>` : ''}
+                </div>
+                <div class="progress-bar mt-2"><div class="progress-fill" style="width:${i.progress || 0}%"></div></div>
+            </div>`;
+        }).join('');
+    });
 
-        function dragSchedTask(e, id) { draggedSchedId = id; }
-
-        function dropSchedTask(e, newStatus) {
-            e.preventDefault();
-            const item = schedItems.find(i => i.id === draggedSchedId);
-            if (item) {
-                item.status = newStatus;
-                saveSched();
-                renderScheduler();
-            }
-            draggedSchedId = null;
+    // Gantt chart
+    const gantt = document.getElementById('ganttChart');
+    if (gantt) {
+        const items = schedItems.filter(i => i.deadline).sort((a,b) => new Date(a.deadline) - new Date(b.deadline));
+        if (items.length === 0) {
+            gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
+        } else {
+            gantt.innerHTML = `<div class="space-y-2">` + items.map(i => {
+                const daysLeft = Math.ceil((new Date(i.deadline) - new Date()) / (1000*60*60*24));
+                const barColor = i.type === 'milestone' ? 'bg-amber-400' : i.type === 'defense' ? 'bg-rose-400' : i.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400';
+                return `<div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+                    <div class="w-2 h-2 rounded-full ${barColor}"></div>
+                    <span class="text-sm flex-1 truncate">${i.title}</span>
+                    <span class="text-xs ${daysLeft < 0 ? 'text-rose-400' : 'opacity-70'}">${i.deadline}</span>
+                </div>`;
+            }).join('') + `</div>`;
         }
+    }
 
-        function deleteSchedItem(id) {
-            schedItems = schedItems.filter(i => i.id !== id);
-            saveSched();
-            renderScheduler();
+    // Countdowns
+    const countdowns = document.getElementById('countdowns');
+    if (countdowns) {
+        const defenses = schedItems.filter(i => i.type === 'defense' && i.deadline);
+        if (defenses.length === 0) {
+            countdowns.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
+        } else {
+            countdowns.innerHTML = defenses.map(d => {
+                const diff = new Date(d.deadline) - new Date();
+                const days = Math.floor(diff / (1000*60*60*24));
+                const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+                const overdue = days < 0;
+                return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2">
+                    <span class="text-sm">${d.title}</span>
+                    <span class="text-sm font-bold ${overdue ? 'text-rose-400' : days <= 7 ? 'text-amber-400' : 'text-emerald-400'}">
+                        ${overdue ? 'Passed' : `${days}d ${hours}h`}
+                    </span>
+                </div>`;
+            }).join('');
         }
+    }
 
-        // ============================================================
-        //  PLANNER
-        // ============================================================
-        function savePlanner() { localStorage.setItem('acadhub_planner', JSON.stringify(plannerTasks)); }
-
-        function renderPlanner() {
-            ['todo', 'progress', 'done'].forEach(col => {
-                const el = document.getElementById('planner-' + col);
-                if (!el) return;
-                const items = plannerTasks.filter(i => i.status === col);
-                el.innerHTML = items.length ?
-                    items.map(i =>
-                        `<div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab" draggable="true" ondragstart="dragPlannerTask(event, '${i.id}')">
-                            <div class="flex items-center justify-between">
-                                <p class="text-sm font-semibold">${i.title}</p>
-                                <button onclick="deletePlannerTask('${i.id}')" class="text-xs text-rose-400"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                            ${i.deadline ? `<p class="text-xs opacity-50"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}
-                        </div>`
-                    ).join('') :
-                    '<p class="text-xs opacity-30 text-center py-4">Empty</p>';
-            });
+    // Exam matrix
+    const examMatrix = document.getElementById('examMatrix');
+    if (examMatrix) {
+        const exams = schedItems.filter(i => i.type === 'exam' && i.deadline);
+        if (exams.length === 0) {
+            examMatrix.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
+        } else {
+            examMatrix.innerHTML = exams.map(e => {
+                const daysLeft = Math.ceil((new Date(e.deadline) - new Date()) / (1000*60*60*24));
+                const urgency = daysLeft <= 3 ? 'bg-rose-500/20 text-rose-400' : daysLeft <= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400';
+                return `<div class="flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2">
+                    <span class="text-sm">${e.title}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${urgency}">${daysLeft > 0 ? daysLeft + 'd' : 'Today'}</span>
+                </div>`;
+            }).join('');
         }
+    }
+}
 
-        function addPlannerTask() {
-            const title = document.getElementById('plannerTitle').value.trim();
-            if (!title) { alert('Please enter a title.'); return; }
-            plannerTasks.push({
-                id: Date.now().toString(),
-                title,
-                deadline: document.getElementById('plannerDeadline').value,
-                status: 'todo'
-            });
-            document.getElementById('plannerTitle').value = '';
-            document.getElementById('plannerDeadline').value = '';
-            savePlanner();
-            renderPlanner();
+function addOrUpdateSchedItem() {
+    const title = document.getElementById('schedTitle').value.trim();
+    if (!title) { alert('Please enter a title.'); return; }
+    const editId = document.getElementById('editSchedId').value;
+    const newItem = {
+        id: editId || Date.now().toString(),
+        title,
+        deadline: document.getElementById('schedDeadline').value,
+        type: document.getElementById('schedType').value,
+        priority: document.getElementById('schedPriority').value,
+        category: document.getElementById('schedCategory').value,
+        status: 'todo',
+        progress: 0
+    };
+    if (editId) {
+        const index = schedItems.findIndex(i => i.id === editId);
+        if (index !== -1) {
+            newItem.status = schedItems[index].status;
+            newItem.progress = schedItems[index].progress;
+            schedItems[index] = newItem;
         }
+    } else {
+        schedItems.push(newItem);
+    }
+    // Clear form
+    document.getElementById('schedTitle').value = '';
+    document.getElementById('schedDeadline').value = '';
+    document.getElementById('editSchedId').value = '';
+    document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
+    saveSched();
+    renderScheduler();
+}
 
-        function dragPlannerTask(e, id) { draggedPlannerId = id; }
+function editSchedItem(id) {
+    const item = schedItems.find(i => i.id === id);
+    if (!item) return;
+    document.getElementById('schedTitle').value = item.title;
+    document.getElementById('schedDeadline').value = item.deadline || '';
+    document.getElementById('schedType').value = item.type;
+    document.getElementById('schedPriority').value = item.priority || 'medium';
+    document.getElementById('schedCategory').value = item.category || 'study';
+    document.getElementById('editSchedId').value = id;
+    document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
+}
 
-        function dropPlannerTask(e, newStatus) {
-            e.preventDefault();
-            const item = plannerTasks.find(i => i.id === draggedPlannerId);
-            if (item) {
-                item.status = newStatus;
-                savePlanner();
-                renderPlanner();
-            }
-            draggedPlannerId = null;
+function deleteSchedItem(id) {
+    if (confirm('Delete this task?')) {
+        schedItems = schedItems.filter(i => i.id !== id);
+        saveSched();
+        renderScheduler();
+    }
+}
+
+function dragSchedTask(e, id) { draggedSchedId = id; }
+
+function dropSchedTask(e, newStatus) {
+    e.preventDefault();
+    const item = schedItems.find(i => i.id === draggedSchedId);
+    if (item) {
+        item.status = newStatus;
+        if (newStatus === 'done') item.progress = 100;
+        saveSched();
+        renderScheduler();
+    }
+    draggedSchedId = null;
+    // Remove drag-over class
+    document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
+}
+
+// Add drag-over effect
+document.addEventListener('dragover', (e) => {
+    const column = e.target.closest('.kanban-column');
+    if (column) {
+        column.classList.add('drag-over');
+    }
+});
+document.addEventListener('dragleave', (e) => {
+    const column = e.target.closest('.kanban-column');
+    if (column) {
+        column.classList.remove('drag-over');
+    }
+});
+
+// ============================================================
+//  PLANNER - Enhanced
+// ============================================================
+function savePlanner() { localStorage.setItem('acadhub_planner', JSON.stringify(plannerTasks)); }
+
+function renderPlanner() {
+    ['todo', 'progress', 'done'].forEach(col => {
+        const el = document.getElementById('planner-' + col);
+        if (!el) return;
+        const items = plannerTasks.filter(i => i.status === col);
+        if (items.length === 0) {
+            el.innerHTML = `<p class="text-xs opacity-30 text-center py-4"><i class="fa-solid fa-inbox text-2xl mb-2"></i><br>Empty</p>`;
+            return;
         }
+        el.innerHTML = items.map(i => {
+            const priorityClass = `priority-${i.priority || 'medium'}`;
+            const overdue = i.deadline && new Date(i.deadline) < new Date() && i.status !== 'done' ? 'overdue' : '';
+            return `
+            <div class="bg-white/5 border border-white/10 p-3 rounded-lg cursor-grab ${overdue} transition hover:bg-white/10" draggable="true" ondragstart="dragPlannerTask(event, '${i.id}')">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-semibold">${i.title}</p>
+                    <div class="flex items-center gap-1">
+                        <button onclick="editPlannerTask('${i.id}')" data-tooltip="Edit" class="text-xs text-blue-400 hover:text-blue-300"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deletePlannerTask('${i.id}')" data-tooltip="Delete" class="text-xs text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                ${i.deadline ? `<p class="text-xs opacity-50 mt-1"><i class="fa-regular fa-clock mr-1"></i>${i.deadline}</p>` : ''}
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="text-[10px] px-2 py-0.5 rounded-full ${priorityClass}">${i.priority || 'medium'}</span>
+                    ${i.category ? `<span class="category-tag">${i.category}</span>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    });
+}
 
-        function deletePlannerTask(id) {
-            plannerTasks = plannerTasks.filter(i => i.id !== id);
-            savePlanner();
-            renderPlanner();
+function addOrUpdatePlannerTask() {
+    const title = document.getElementById('plannerTitle').value.trim();
+    if (!title) { alert('Please enter a title.'); return; }
+    const editId = document.getElementById('editPlannerId').value;
+    const newItem = {
+        id: editId || Date.now().toString(),
+        title,
+        deadline: document.getElementById('plannerDeadline').value,
+        priority: document.getElementById('plannerPriority').value,
+        category: document.getElementById('plannerCategory').value,
+        status: 'todo'
+    };
+    if (editId) {
+        const index = plannerTasks.findIndex(i => i.id === editId);
+        if (index !== -1) {
+            newItem.status = plannerTasks[index].status;
+            plannerTasks[index] = newItem;
         }
+    } else {
+        plannerTasks.push(newItem);
+    }
+    document.getElementById('plannerTitle').value = '';
+    document.getElementById('plannerDeadline').value = '';
+    document.getElementById('editPlannerId').value = '';
+    document.getElementById('plannerAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
+    savePlanner();
+    renderPlanner();
+}
 
-        function allowDrop(e) { e.preventDefault(); }
+function editPlannerTask(id) {
+    const item = plannerTasks.find(i => i.id === id);
+    if (!item) return;
+    document.getElementById('plannerTitle').value = item.title;
+    document.getElementById('plannerDeadline').value = item.deadline || '';
+    document.getElementById('plannerPriority').value = item.priority || 'medium';
+    document.getElementById('plannerCategory').value = item.category || 'study';
+    document.getElementById('editPlannerId').value = id;
+    document.getElementById('plannerAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
+}
+
+function deletePlannerTask(id) {
+    if (confirm('Delete this task?')) {
+        plannerTasks = plannerTasks.filter(i => i.id !== id);
+        savePlanner();
+        renderPlanner();
+    }
+}
+
+function dragPlannerTask(e, id) { draggedPlannerId = id; }
+
+function dropPlannerTask(e, newStatus) {
+    e.preventDefault();
+    const item = plannerTasks.find(i => i.id === draggedPlannerId);
+    if (item) {
+        item.status = newStatus;
+        savePlanner();
+        renderPlanner();
+    }
+    draggedPlannerId = null;
+    document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
+}
+
+function allowDrop(e) { e.preventDefault(); }
+
 
         // ============================================================
         //  AI PROVIDER UI
@@ -1322,15 +1592,22 @@
             const useInternet = document.getElementById('useInternet').checked;
 
             const quizTypes = {};
-            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById('numTrueFalse').value) || 0;
-            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document.getElementById('numIdentification').value) || 0;
-            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById('numEnumeration').value) || 0;
-            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document.getElementById('numMultipleChoice').value) || 0;
-            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat').value) || 0;
-            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho').value) || 0;
-            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere').value) || 0;
-            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen').value) || 0;
-
+            if (document.getElementById('useTrueFalse').checked) quizTypes.truefalse = parseInt(document.getElementById(
+                'numTrueFalse').value) || 0;
+            if (document.getElementById('useIdentification').checked) quizTypes.identification = parseInt(document
+                .getElementById('numIdentification').value) || 0;
+            if (document.getElementById('useEnumeration').checked) quizTypes.enumeration = parseInt(document.getElementById(
+                'numEnumeration').value) || 0;
+            if (document.getElementById('useMultipleChoice').checked) quizTypes.multiplechoice = parseInt(document
+                .getElementById('numMultipleChoice').value) || 0;
+            if (document.getElementById('useWhat').checked) quizTypes.what = parseInt(document.getElementById('numWhat')
+                .value) || 0;
+            if (document.getElementById('useWho').checked) quizTypes.who = parseInt(document.getElementById('numWho')
+            .value) || 0;
+            if (document.getElementById('useWhere').checked) quizTypes.where = parseInt(document.getElementById('numWhere')
+                .value) || 0;
+            if (document.getElementById('useWhen').checked) quizTypes.when = parseInt(document.getElementById('numWhen')
+                .value) || 0;
             if (provider !== 'local' && !apiKey.trim()) { alert('Please enter your API key'); return; }
 
             btn.disabled = true;
@@ -1640,8 +1917,8 @@
                 easy: { truefalse: 3, identification: 3, multiplechoice: 2, total: 8, timePerQuestion: 0 },
                 medium: { truefalse: 4, identification: 4, multiplechoice: 3, what: 2, who: 2, total: 15,
                     timePerQuestion: 20 },
-                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 3, where: 2, when: 2,
-                    total: 24, timePerQuestion: 15 }
+                hard: { truefalse: 5, identification: 5, multiplechoice: 4, what: 3, who: 5, where: 2, when: 2,
+                    total: 26, timePerQuestion: 15 }
             };
             const quizTypes = {};
             for (const [key, value] of Object.entries(difficultyMap[testDifficulty])) {
