@@ -367,32 +367,24 @@ function renderScheduler() {
   });
 
   // Gantt chart
-  const gantt = document.getElementById('ganttChart');
-  if (gantt) {
-    const items = schedItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-    if (items.length === 0) {
-      gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
-    } else {
-      const today = new Date();
-      const deadlines = items.map(i => new Date(i.deadline).getTime());
-      const minDeadline = Math.min(...deadlines);
-      const maxDeadline = Math.max(...deadlines);
-      const totalDays = Math.max(1, Math.ceil((maxDeadline - minDeadline) / (1000 * 60 * 60 * 24)));
-      gantt.innerHTML = `<div class="space-y-2">` + items.map(i => {
-        const deadline = new Date(i.deadline);
-        const totalDuration = Math.max(1, Math.ceil((deadline - new Date(minDeadline)) / (1000 * 60 * 60 * 24)) + 1);
-        const widthPercent = Math.max(5, Math.min(100, (totalDuration / totalDays) * 100));
-        const barColor = i.type === 'milestone' ? 'bg-amber-400' : i.type === 'defense' ? 'bg-rose-400' : i.type === 'exam' ? 'bg-cyan-400' : 'bg-blue-400';
-        return `
-          <div class="gantt-bar-container">
-            <div class="gantt-bar ${barColor}" style="width:${widthPercent}%;">
-              <span class="gantt-bar-label">${i.title}</span>
-              <span class="gantt-bar-deadline">${i.deadline}</span>
-            </div>
-          </div>`;
-      }).join('') + `</div>`;
-    }
+  // Gantt chart (dot + title design)
+const gantt = document.getElementById('ganttChart');
+if (gantt) {
+  const items = schedItems.filter(i => i.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  if (items.length === 0) {
+    gantt.innerHTML = '<p class="text-xs opacity-50 text-center py-8">Add tasks with deadlines to see your roadmap</p>';
+  } else {
+    gantt.innerHTML = '<div class="space-y-2">' + items.map(i => {
+      const dotColor = i.dotColor || (i.type === 'milestone' ? '#fbbf24' : i.type === 'defense' ? '#f87171' : i.type === 'exam' ? '#22d3ee' : '#60a5fa');
+      return `
+        <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+          <span class="w-3 h-3 rounded-full" style="background-color:${dotColor};"></span>
+          <span class="text-sm flex-1 truncate">${i.title}</span>
+          <span class="text-xs opacity-70">${i.deadline}</span>
+        </div>`;
+    }).join('') + '</div>';
   }
+}
 
   // Countdowns
   const countdowns = document.getElementById('countdowns');
@@ -444,7 +436,10 @@ function renderScheduler() {
 
 function addOrUpdateSchedItem() {
   const title = document.getElementById('schedTitle').value.trim();
-  if (!title) { alert('Please enter a title.'); return; }
+  if (!title) {
+    alert('Please enter a title.');
+    return;
+  }
   const editId = document.getElementById('editSchedId').value;
   const newItem = {
     id: editId || Date.now().toString(),
@@ -453,6 +448,7 @@ function addOrUpdateSchedItem() {
     type: document.getElementById('schedType').value,
     priority: document.getElementById('schedPriority').value,
     category: document.getElementById('schedCategory').value,
+    dotColor: document.getElementById('schedDotColor').value || '#6366f1',
     status: 'todo',
     progress: 0
   };
@@ -469,6 +465,7 @@ function addOrUpdateSchedItem() {
   document.getElementById('schedTitle').value = '';
   document.getElementById('schedDeadline').value = '';
   document.getElementById('editSchedId').value = '';
+  document.getElementById('schedDotColor').value = '#6366f1';
   document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
   saveSched();
   renderScheduler();
@@ -482,6 +479,7 @@ function editSchedItem(id) {
   document.getElementById('schedType').value = item.type;
   document.getElementById('schedPriority').value = item.priority || 'medium';
   document.getElementById('schedCategory').value = item.category || 'study';
+  document.getElementById('schedDotColor').value = item.dotColor || '#6366f1';
   document.getElementById('editSchedId').value = id;
   document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
 }
