@@ -1178,10 +1178,19 @@ async function logout() {
 }
 
 // ============================================================
-// SERVICE WORKER
+// SERVICE WORKER REGISTRATION
 // ============================================================
-if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
-  navigator.serviceWorker.register('/AcadHub/sw.js').catch(() => {});
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/AcadHub/sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered with scope:', registration.scope);
+      })
+      .catch((err) => {
+        console.error('Service Worker registration failed:', err);
+      });
+  });
 }
 
 // ============================================================
