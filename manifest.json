@@ -2,22 +2,27 @@
   "name": "AcadHub Suite",
   "short_name": "AcadHub",
   "description": "Smart Academic Workspace – generate flashcards, quizzes, and study materials with local NLP or AI.",
+  "id": "/AcadHub/",
   "start_url": "/AcadHub/",
+  "scope": "/AcadHub/",
   "display": "standalone",
-  "background_color": "#0b0f19",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a12",
   "theme_color": "#6366f1",
+  "lang": "en",
   "icons": [
-  {
-    "src": "/AcadHub/icon-192.png",
-    "sizes": "192x192",
-    "type": "image/png",
-    "purpose": "any"
-  },
-  {
-    "src": "/AcadHub/icon-512.png",
-    "sizes": "512x512",
-    "type": "image/png",
-    "purpose": "any maskable"
-  }
+    {
+      "src": "/AcadHub/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/AcadHub/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

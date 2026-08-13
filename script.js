@@ -1182,10 +1182,10 @@ async function logout() {
 // ============================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker
+    navigator.serviceWorker.register('/AcadHub/sw.js')
       .register('/AcadHub/sw.js')
       .then((registration) => {
-        console.log('Service Worker registered with scope:', registration.scope);
+        console.log('Service Worker registered:', registration.scope);
       })
       .catch((err) => {
         console.error('Service Worker registration failed:', err);
