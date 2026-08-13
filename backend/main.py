@@ -882,6 +882,71 @@ def gen_ai(api_key: str = Form(...), provider: str = Form("gemini"), notes: str 
         return call_gemini(prompt, api_key)
     except Exception as e:
         raise HTTPException(500, f"AI provider error: {str(e)}")
+@app.post("/api/generate-test")
+async def generate_test_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    difficulty: str = Form("medium"),
+    use_internet: bool = Form(False)
+):
+    text = notes.strip() if notes else ""
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_text_fast(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "Provide notes or a file.")
+
+    # Optional: enrich with Wikipedia (same as reviewer)
+    if use_internet:
+        phrases = extract_key_phrases(text, top_n=25)
+        extra = await enrich_with_internet(phrases, enrich_count=5)
+        if extra:
+            text += "\n\n--- Additional Context from Wikipedia ---\n" + extra
+
+    # Define question counts and types based on difficulty
+    if difficulty == "easy":
+        question_count = 8
+        quiz_types = {
+            "truefalse": 3,
+            "identification": 2,
+            "multiplechoice": 3
+        }
+    elif difficulty == "hard":
+        question_count = 26
+        quiz_types = {
+            "truefalse": 5,
+            "identification": 8,
+            "multiplechoice": 8,
+            "what": 3,
+            "who": 1,
+            "where": 1
+        }
+    else:  # medium (default)
+        question_count = 15
+        quiz_types = {
+            "truefalse": 4,
+            "identification": 4,
+            "multiplechoice": 4,
+            "what": 2,
+            "who": 1
+        }
+
+    # Generate a pool of questions using the existing content generator
+    result = generate_reviewer_content(
+        text,
+        num_flashcards=0,
+        quiz_types=quiz_types,
+        use_internet=False  # already enriched above
+    )
+
+    questions = result.get("quiz", [])
+
+    # If we generated more than needed, randomly select the required number
+    if len(questions) > question_count:
+        questions = random.sample(questions, question_count)
+
+    return JSONResponse(content={"questions": questions})
+
 
 # ------------------------------
 # Run Instructions
