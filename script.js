@@ -1062,11 +1062,18 @@ auth && auth.onAuthStateChanged(async user => {
     document.getElementById('userIcon').classList.add('fa-user-check');
     document.getElementById('profileButton').title = 'Logged in as ' + user.email;
 
+    // Show logout button if it exists in HTML
+    const logoutBtn = document.getElementById('logoutButton');
+    if (logoutBtn) logoutBtn.classList.remove('hidden');
+
     // Stop any old listeners
     stopFirestoreListeners();
 
     // Load data from Firestore and update local arrays
     try {
+      // Load user settings (theme, accent, tab position)
+      await loadSettingsFromFirestore(user);
+
       const [sched, planner, library] = await Promise.all([
         loadFromFirestore('scheduler'),
         loadFromFirestore('planner'),
@@ -1086,13 +1093,21 @@ auth && auth.onAuthStateChanged(async user => {
 
     // Start real-time listeners
     startFirestoreListeners();
+
+    // Update auth modal UI if open
+    updateAuthUI();
   } else {
     // User logged out
     document.getElementById('userIcon').classList.remove('fa-user-check');
     document.getElementById('userIcon').classList.add('fa-user');
     document.getElementById('profileButton').title = 'Login / Sign Up';
+
+    const logoutBtn = document.getElementById('logoutButton');
+    if (logoutBtn) logoutBtn.classList.add('hidden');
+
     stopFirestoreListeners();
-    // Optionally clear sensitive data, but keep local copies for anonymous use
+    updateAuthUI();
+    // Keep local data for anonymous use; optionally clear it here
   }
 });
 let unsubscribers = [];
