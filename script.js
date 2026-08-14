@@ -370,7 +370,40 @@ function skipToDashboard() {
     console.log('📴 Continuing to dashboard');
   }, 500);
 }
+function getDaysUntil(dateStr) {
+  const now = new Date();
+  const target = new Date(dateStr + 'T00:00:00');
+  const diffTime = target - now;
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
 
+function createCircularCountdown(daysLeft) {
+  const maxDays = 30; // reference period for ring percentage
+  const percent = Math.max(0, Math.min(100, (daysLeft / maxDays) * 100));
+
+  let color = '#6366f1'; // default indigo
+  if (daysLeft < 0) {
+    color = '#ef4444';
+  } else if (daysLeft <= 7) {
+    color = '#ef4444';
+  } else if (daysLeft <= 14) {
+    color = '#f59e0b';
+  } else {
+    color = '#10b981';
+  }
+
+  const bgColor = 'rgba(255,255,255,0.1)';
+  const circleStyle = `background: conic-gradient(${color} ${percent}%, ${bgColor} 0);`;
+  const displayDays = daysLeft < 0 ? '0' : daysLeft;
+
+  return `
+    <div class="circular-countdown" style="${circleStyle}">
+      <div class="inner" style="color:${color}; font-size:0.8rem; font-weight:bold;">
+        ${displayDays}d
+      </div>
+    </div>
+  `;
+}
 // ============================================================
 // TAB MANAGEMENT - FIXED VERSION
 // ============================================================
@@ -1664,17 +1697,18 @@ function renderCountdowns(items) {
 
   container.innerHTML = '';
   defenses.forEach(def => {
-    const now = new Date();
-    const deadline = new Date(def.deadline);
-    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+    const daysLeft = getDaysUntil(def.deadline);
+    const circleHTML = createCircularCountdown(daysLeft);
     const div = document.createElement('div');
     div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
     div.innerHTML = `
-      <div>
-        <p class="text-sm font-medium">${def.title}</p>
-        <p class="text-xs opacity-60">${formatDate(def.deadline)}</p>
+      <div class="flex items-center gap-3">
+        ${circleHTML}
+        <div>
+          <p class="text-sm font-medium">${def.title}</p>
+          <p class="text-xs opacity-60">${formatDate(def.deadline)}</p>
+        </div>
       </div>
-      <span class="text-sm font-bold ${daysLeft < 7 ? 'text-rose-400' : 'text-emerald-400'}">${daysLeft} days</span>
     `;
     container.appendChild(div);
   });
@@ -1688,13 +1722,21 @@ function renderExamMatrix(items) {
     container.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
     return;
   }
+
   container.innerHTML = '';
   exams.forEach(ex => {
+    const daysLeft = getDaysUntil(ex.deadline);
+    const circleHTML = createCircularCountdown(daysLeft);
     const div = document.createElement('div');
     div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
     div.innerHTML = `
-      <p class="text-sm font-medium">${ex.title}</p>
-      <p class="text-xs text-amber-400">${formatDate(ex.deadline)}</p>
+      <div class="flex items-center gap-3">
+        ${circleHTML}
+        <div>
+          <p class="text-sm font-medium">${ex.title}</p>
+          <p class="text-xs opacity-60">${formatDate(ex.deadline)}</p>
+        </div>
+      </div>
     `;
     container.appendChild(div);
   });
