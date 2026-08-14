@@ -547,8 +547,7 @@
         </div>
         <div>
           <label class="block text-xs font-semibold mb-1">Accent Color</label>
-          <input type="color" id="accentPicker" value="#6366f1" class="w-full h-10 rounded-lg cursor-pointer" />
-        </div>
+<input type="color" id="accentPicker" value="#6366f1" onchange="updateAccentColor(this.value)" class="w-full h-10 rounded-lg cursor-pointer" />        </div>
         <div>
           <label class="block text-xs font-semibold mb-1">Tab Position</label>
           <select id="tabPositionSelect" onchange="changeTabPosition(this.value)" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
@@ -578,7 +577,7 @@
       </div>
       <div>
         <label class="block text-xs font-semibold mb-1">Custom Color</label>
-        <input type="color" id="ganttColorPicker" value="#f59e0b" class="w-full h-10 rounded-lg cursor-pointer" />
+        <input type="color" id="ganttColorPicker" value="#f59e0b" />
       </div>
       <button onclick="saveGanttCustomization()" class="btn-primary w-full text-base py-3 btn-hover">Save</button>
     </div>

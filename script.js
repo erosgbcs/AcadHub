@@ -495,9 +495,7 @@ function initTabListeners() {
   });
 }
 
-// ============================================================
 // PROFILE MANAGEMENT
-// ============================================================
 function showProfileModal() {
   // If Firebase is available and user is logged in, show auth modal
   if (firebaseAvailable && auth && auth.currentUser) {
@@ -606,9 +604,7 @@ function getTaskDotColor(item) {
   };
   return priorityColors[item.priority] || '#6366f1';
 }
-// ============================================================
 // SETTINGS MANAGEMENT
-// ============================================================
 function toggleSettingsModal() {
   const modal = document.getElementById('settingsModal');
   modal.classList.toggle('hidden');
@@ -668,9 +664,7 @@ function updateSettingsUI() {
   }
 }
 
-// ============================================================
 // AI PROVIDER UI
-// ============================================================
 function updateProviderUI() {
   const provider = document.getElementById('aiProvider').value;
   const apiKeyContainer = document.getElementById('apiKeyContainer');
@@ -704,9 +698,7 @@ function toggleApiKeyVisibility() {
   }
 }
 
-// ============================================================
 // FILE HANDLING
-// ============================================================
 function updateFileName(input) {
   const file = input.files[0];
   const display = document.getElementById('fileNameDisplay');
@@ -763,9 +755,7 @@ function updateTestFileName(input) {
   }
 }
 
-// ============================================================
 // AI REVIEWER - MAIN GENERATION FUNCTION
-// ============================================================
 async function handleGenerate() {
   const submitBtn = document.getElementById('submitBtn');
   const btnContent = document.getElementById('btnContent');
@@ -851,9 +841,7 @@ async function handleGenerate() {
   }
 }
 
-// ============================================================
 // TRANSFORM BACKEND RESPONSE
-// ============================================================
 function transformBackendResponse(backendData) {
   const summary = backendData.summary || [];
   
@@ -907,9 +895,7 @@ function transformBackendResponse(backendData) {
   return { summary, flashcards, quiz };
 }
 
-// ============================================================
 // RENDER FUNCTIONS
-// ============================================================
 function renderSummary(summary) {
   const list = document.getElementById('summaryList');
   list.innerHTML = '';
@@ -1025,9 +1011,7 @@ function renderQuiz(quiz) {
   });
 }
 
-// ============================================================
 // QUIZ INTERACTION
-// ============================================================
 function checkAnswer(btn, correctAnswer, userAnswer) {
   const parent = btn.parentElement;
   const buttons = parent.querySelectorAll('.quiz-option');
@@ -1101,7 +1085,7 @@ async function saveToLibrary() {
 
 if (firebaseAvailable && auth && auth.currentUser) {
   try {
-    await db.collection('users').doc(auth.currentUser.uid).collection('library').add(saveItem);
+    await db.collection('users').doc(auth.currentUser.uid).collection('library').doc(saveItem.id).set(saveItem);
   } catch (err) {
     console.error('Error saving to Firebase:', err);
   }
@@ -1111,9 +1095,7 @@ if (firebaseAvailable && auth && auth.currentUser) {
   renderSavedList();
 }
 
-// ============================================================
 // TEST MY LIMITS
-// ============================================================
 function setDifficulty(difficulty) {
   testDifficulty = difficulty;
 
@@ -1448,7 +1430,8 @@ function addOrUpdatePlannerTask() {
   if (editId) {
     plannerRef.doc(editId).update({ title, deadline, priority, category });
   } else {
-    plannerRef.add({ title, deadline, priority, category, status: 'todo' });
+    const newTaskId = plannerTasks[plannerTasks.length - 1].id; // last pushed
+    plannerRef.doc(newTaskId).set(plannerTasks[plannerTasks.length - 1]);
   }
 }
 
@@ -1530,12 +1513,7 @@ function updateColumnCounts() {
   });
 }
 
-// ============================================================
 // SCHEDULER FUNCTIONS
-// ============================================================
-// ============================================================
-// SCHEDULER FUNCTIONS
-// ============================================================
 function renderScheduler() {
   const todoCol = document.getElementById('sched-todo');
   const progressCol = document.getElementById('sched-progress');
@@ -1741,6 +1719,29 @@ function renderExamMatrix(items) {
     container.appendChild(div);
   });
 }
+function mergeById(remoteItems, localItems) {
+  const remoteMap = new Map(remoteItems.map(item => [item.id, item]));
+  const merged = [...remoteItems];
+  localItems.forEach(localItem => {
+    if (!remoteMap.has(localItem.id)) {
+      merged.push(localItem);
+    }
+  });
+  return merged;
+}
+
+function dedupeByIdentifier(items) {
+  const seen = new Map();
+  const result = [];
+  for (const item of items) {
+    const key = `${(item.title || '').trim().toLowerCase()}__${(item.deadline || '')}`;
+    if (!seen.has(key)) {
+      seen.set(key, true);
+      result.push(item);
+    }
+  }
+  return result;
+}
 
 function renderSchedFilterChips() {
   const container = document.querySelector('#viewScheduler .filter-chips');
@@ -1795,10 +1796,14 @@ function addOrUpdateSchedItem() {
 
   safeLocalStorageSet('acadhub_sched', schedItems);
   if (firebaseAvailable && auth && auth.currentUser) {
-    const ref = db.collection('users').doc(auth.currentUser.uid).collection('scheduler');
-    if (editId) ref.doc(editId).update({ title, deadline, type, priority, category });
-    else ref.add({ title, deadline, type, priority, category, status: 'todo' });
+  const ref = db.collection('users').doc(auth.currentUser.uid).collection('scheduler');
+  if (editId) {
+    ref.doc(editId).update({ title, deadline, type, priority, category });
+  } else {
+    const newSchedId = schedItems[schedItems.length - 1].id; // last pushed
+    ref.doc(newSchedId).set(schedItems[schedItems.length - 1]);
   }
+}
 
   document.getElementById('schedTitle').value = '';
   document.getElementById('schedDeadline').value = '';
@@ -2137,7 +2142,36 @@ async function logout() {
   closeAuthModal();
   showNotification('Logged out successfully.', 'info');
 }
+async function migrateFirestoreData(user) {
+  if (!firebaseAvailable || !db || !user) return;
+  const collections = ['scheduler', 'planner', 'library'];
+  for (const col of collections) {
+    const snapshot = await db.collection('users').doc(user.uid).collection(col).get();
+    const batch = db.batch();
+    let needsCommit = false;
 
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      // If the document has an `id` field that does not match its Firestore doc ID,
+      // we need to move the data to a new document whose ID is the old `id`.
+      if (data.id && data.id !== doc.id) {
+        const newDocRef = db.collection('users').doc(user.uid).collection(col).doc(data.id);
+        // Write data to the new document with the correct ID
+        batch.set(newDocRef, { ...data, id: data.id });
+        // Delete the old document
+        batch.delete(doc.ref);
+        needsCommit = true;
+      }
+      // If the document has no `id` field, set it to the Firestore doc ID
+      else if (!data.id) {
+        batch.set(doc.ref, { ...data, id: doc.id }, { merge: true });
+        needsCommit = true;
+      }
+    });
+
+    if (needsCommit) await batch.commit();
+  }
+}
 // ============================================================
 // FIREBASE AUTH STATE LISTENER
 // ============================================================
@@ -2150,31 +2184,75 @@ if (firebaseAvailable && auth) {
       document.getElementById('logoutButton').classList.remove('hidden');
 
       try {
-        const [sched, planner, library] = await Promise.all([
-          loadFromFirestore('scheduler'),
-          loadFromFirestore('planner'),
-          loadFromFirestore('library')
-        ]);
+  // 🔥 Run migration to fix old Firestore document IDs
+  await migrateFirestoreData(user);
 
-        if (sched.length > 0) {
-          schedItems = sched;
-          safeLocalStorageSet('acadhub_sched', sched);
+  // Load collections from Firestore
+  const [firestoreSched, firestorePlanner, firestoreLibrary] = await Promise.all([
+    loadFromFirestore('scheduler'),
+    loadFromFirestore('planner'),
+    loadFromFirestore('library')
+  ]);
+
+  // ---- Merge scheduler ----
+const localSched = safeLocalStorageGet('acadhub_sched', []);
+schedItems = mergeById(firestoreSched, localSched);
+safeLocalStorageSet('acadhub_sched', schedItems);
+
+// ---- Merge planner ----
+const localPlanner = safeLocalStorageGet('acadhub_planner', []);
+plannerTasks = mergeById(firestorePlanner, localPlanner);
+safeLocalStorageSet('acadhub_planner', plannerTasks);
+
+        // ---- Library (just replace with Firestore if available) ----
+        if (firestoreLibrary.length > 0) {
+          safeLocalStorageSet('acadhub_saved', firestoreLibrary);
         }
 
-        if (planner.length > 0) {
-          plannerTasks = planner;
-          safeLocalStorageSet('acadhub_planner', planner);
+        // ---- Load user document (settings & profile) ----
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+
+          if (userData.theme) {
+            document.documentElement.classList.remove('dark', 'light');
+            document.documentElement.classList.add(userData.theme);
+            safeLocalStorageSet('theme', userData.theme);
+          }
+
+          if (userData.tabPosition) {
+            changeTabPosition(userData.tabPosition);
+          }
+
+          if (userData.accentColor) {
+            document.documentElement.style.setProperty('--accent', userData.accentColor);
+            safeLocalStorageSet('accent_color', userData.accentColor);
+            // Optionally update the color input value
+            const accentPicker = document.getElementById('accentPicker');
+            if (accentPicker) accentPicker.value = userData.accentColor;
+          }
+
+          if (userData.firstName && userData.lastName) {
+            const fullName = `${userData.firstName} ${userData.lastName}`;
+            safeLocalStorageSet('profile_name', fullName);
+            safeLocalStorageSet('profile_saved', 'true');
+          }
         }
 
-        if (library.length > 0) {
-          safeLocalStorageSet('acadhub_saved', library);
-        }
-
+        // Re-render UI
         renderScheduler();
         renderPlanner();
         renderSavedList();
+        renderCalendar();
+        updateSettingsUI();
       } catch (err) {
         console.error('Error loading Firestore data:', err);
+        // Fall back to local data on error
+        schedItems = safeLocalStorageGet('acadhub_sched', []);
+        plannerTasks = safeLocalStorageGet('acadhub_planner', []);
+        renderScheduler();
+        renderPlanner();
+        renderSavedList();
       }
     } else {
       document.getElementById('userIcon').classList.remove('fa-user-check');
@@ -2202,7 +2280,15 @@ async function loadFromFirestore(collectionName) {
     return [];
   }
 }
-
+function updateAccentColor(color) {
+  document.documentElement.style.setProperty('--accent', color);
+  safeLocalStorageSet('accent_color', color);
+  if (firebaseAvailable && auth && auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid).set({
+      accentColor: color
+    }, { merge: true }).catch(err => console.error('Error saving accent color:', err));
+  }
+}
 // ============================================================
 // EVALUATION FUNCTIONS
 // ============================================================
@@ -2272,7 +2358,11 @@ function initializeApp() {
   const savedTheme = safeLocalStorageGet('theme', 'dark');
   document.documentElement.classList.remove('dark', 'light');
   document.documentElement.classList.add(savedTheme);
-
+  // Load saved accent color
+const savedAccent = safeLocalStorageGet('accent_color', '#6366f1');
+document.documentElement.style.setProperty('--accent', savedAccent);
+const accentPicker = document.getElementById('accentPicker');
+if (accentPicker) accentPicker.value = savedAccent;
   // Load saved data
   schedItems = safeLocalStorageGet('acadhub_sched', []);
   plannerTasks = safeLocalStorageGet('acadhub_planner', []);
@@ -2369,5 +2459,8 @@ window.renderScheduler = renderScheduler;
 window.customizeGanttItem = customizeGanttItem;
 window.closeGanttCustomizeModal = closeGanttCustomizeModal;
 window.saveGanttCustomization = saveGanttCustomization;
+window.updateAccentColor = updateAccentColor;
+
+
 console.log('✅ All functions exported and ready');
 console.log('✅ Backend integration complete');
