@@ -472,8 +472,11 @@
           <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500" />
           <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly.</span>
         </label>
-        <button id="saveProfileBtn" onclick="saveVisitorName()" class="btn-primary w-full text-base py-3 btn-hover" disabled>Save</button>
-      </div>
+<button id="saveProfileBtn" onclick="saveVisitorName()" 
+        class="btn-primary w-full text-base py-3 btn-hover opacity-50 cursor-not-allowed" 
+        disabled title="Fill in all fields to enable">
+  Save
+</button>      </div>
     </div>
   </div>
 

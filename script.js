@@ -896,7 +896,107 @@ function showReview() {
     container.appendChild(div);
   });
 }
+// ============================================================
+// PROFILE MODAL - SAFE DYNAMIC VALIDATION
+// ============================================================
+function initProfileModal() {
+  const firstNameInput = document.getElementById('visitorFirstName');
+  const lastNameInput = document.getElementById('visitorLastName');
+  const agreeTerms = document.getElementById('agreeTerms');
+  const saveBtn = document.getElementById('saveProfileBtn');
+  
+  if (!firstNameInput || !lastNameInput || !agreeTerms || !saveBtn) return;
+  
+  function validateProfileForm() {
+    const firstName = firstNameInput.value.trim();
+    const lastName = lastNameInput.value.trim();
+    
+    if (firstName.length >= 2 && lastName.length >= 2 && agreeTerms.checked) {
+      saveBtn.disabled = false;
+      saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      saveBtn.title = 'Save profile';
+    } else {
+      saveBtn.disabled = true;
+      saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      
+      if (!firstName || !lastName) {
+        saveBtn.title = 'Enter your first and last name';
+      } else if (firstName.length < 2 || lastName.length < 2) {
+        saveBtn.title = 'Name must be at least 2 characters';
+      } else if (!agreeTerms.checked) {
+        saveBtn.title = 'Please agree to the privacy terms';
+      }
+    }
+  }
+  
+  // Event listeners
+  firstNameInput.addEventListener('input', validateProfileForm);
+  lastNameInput.addEventListener('input', validateProfileForm);
+  agreeTerms.addEventListener('change', validateProfileForm);
+  
+  // Initial state
+  validateProfileForm();
+}
 
+// Enhanced save function with validation
+function saveVisitorName() {
+  const firstName = document.getElementById('visitorFirstName').value.trim();
+  const lastName = document.getElementById('visitorLastName').value.trim();
+  const agreeTerms = document.getElementById('agreeTerms').checked;
+  const saveBtn = document.getElementById('saveProfileBtn');
+  
+  // Double validation (safety net)
+  if (!firstName || !lastName) {
+    alert('Please enter your first and last name.');
+    return;
+  }
+  
+  if (firstName.length < 2 || lastName.length < 2) {
+    alert('Name must be at least 2 characters long.');
+    return;
+  }
+  
+  if (!agreeTerms) {
+    alert('Please agree to the privacy terms.');
+    return;
+  }
+  
+  // Disable button during save
+  saveBtn.disabled = true;
+  const originalText = saveBtn.innerHTML;
+  saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Saving...';
+  
+  const fullName = firstName + ' ' + lastName;
+  
+  // Save to localStorage first (always works)
+  safeLocalStorageSet('profile_name', fullName);
+  safeLocalStorageSet('profile_saved', 'true');
+  
+  // Try to save to Firestore if logged in
+  const savePromise = auth.currentUser 
+    ? db.collection('users').doc(auth.currentUser.uid).set({
+        firstName,
+        lastName,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true })
+    : Promise.resolve();
+  
+  savePromise
+    .then(() => {
+      console.log('Profile saved:', fullName);
+      closeProfileModal();
+    })
+    .catch(err => {
+      console.error('Error saving to Firestore:', err);
+      // Still close since localStorage worked
+      closeProfileModal();
+    })
+    .finally(() => {
+      // Reset button
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalText;
+    });
+}
 // ============================================================
 // STUDY PLANNER
 // ============================================================
@@ -1938,6 +2038,7 @@ function initializeApp() {
   renderCalendar();
   updateProviderUI();
   updateSettingsUI();
+  initProfileModal();
   
   // Show profile modal if not saved
   if (safeLocalStorageGet('profile_saved') !== 'true') {
