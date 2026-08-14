@@ -176,6 +176,11 @@ let draggedSchedId = null;
 let draggedPlannerId = null;
 let testUserAnswers = [];
 let schedulerFilter = 'all';
+let calendarMonth = new Date().getMonth();
+let calendarYear = new Date().getFullYear();
+let selectedDate = null; // string 'YYYY-MM-DD'
+let reminderInterval = null;
+let notifiedDeadlines = safeLocalStorageGet('acadhub_notified', {});
 
 // ============================================================
 // THEME & APPEARANCE
@@ -314,13 +319,16 @@ function changeTabPosition(pos) {
 // TABS
 // ============================================================
 function switchTab(tab) {
+  // Hide all views
   document.getElementById('viewReviewer').classList.add('hidden');
   document.getElementById('viewLibrary').classList.add('hidden');
   document.getElementById('viewTest').classList.add('hidden');
   document.getElementById('viewPlanner').classList.add('hidden');
   document.getElementById('viewScheduler').classList.add('hidden');
+  document.getElementById('viewCalendar').classList.add('hidden'); // <-- new
 
-  ['tabReviewer', 'tabLibrary', 'tabTest', 'tabPlanner', 'tabScheduler'].forEach(id => {
+  // Reset all tab buttons
+  ['tabReviewer', 'tabLibrary', 'tabTest', 'tabPlanner', 'tabScheduler', 'tabCalendar'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.classList.remove('tab-active', 'tab-inactive');
@@ -333,11 +341,13 @@ function switchTab(tab) {
     library: { view: 'viewLibrary', btn: 'tabLibrary' },
     test: { view: 'viewTest', btn: 'tabTest' },
     planner: { view: 'viewPlanner', btn: 'tabPlanner' },
-    scheduler: { view: 'viewScheduler', btn: 'tabScheduler' }
+    scheduler: { view: 'viewScheduler', btn: 'tabScheduler' },
+    calendar: { view: 'viewCalendar', btn: 'tabCalendar' } // <-- new
   };
 
   const target = map[tab];
   if (!target) return;
+
   document.getElementById(target.view).classList.remove('hidden');
   const btn = document.getElementById(target.btn);
   if (btn) {
@@ -345,17 +355,27 @@ function switchTab(tab) {
     btn.classList.add('tab-active');
   }
 
+  // Special rendering calls
   if (tab === 'planner') renderPlanner();
   if (tab === 'scheduler') renderScheduler();
   if (tab === 'library') renderSavedList();
+  if (tab === 'calendar') renderCalendar(); // <-- new
 }
+
+// Event listeners
+document.getElementById('tabReviewer').addEventListener('click', () => switchTab('reviewer'));
+document.getElementById('tabLibrary').addEventListener('click', () => switchTab('library'));
+document.getElementById('tabTest').addEventListener('click', () => switchTab('test'));
+document.getElementById('tabPlanner').addEventListener('click', () => switchTab('planner'));
+document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
+document.getElementById('tabCalendar').addEventListener('click', () => switchTab('calendar')); // <-- new
 
 document.getElementById('tabReviewer').addEventListener('click', () => switchTab('reviewer'));
 document.getElementById('tabLibrary').addEventListener('click', () => switchTab('library'));
 document.getElementById('tabTest').addEventListener('click', () => switchTab('test'));
 document.getElementById('tabPlanner').addEventListener('click', () => switchTab('planner'));
 document.getElementById('tabScheduler').addEventListener('click', () => switchTab('scheduler'));
-
+document.getElementById('tabCalendar').addEventListener('click', () => switchTab('calendar'));
 // ============================================================
 // SCHEDULER (Dev & Thesis)
 // ============================================================
@@ -1084,7 +1104,229 @@ function updateTestFileName(input) {
     nameDisplay.parentElement.classList.remove('border-indigo-500/50', 'bg-indigo-500/5');
   }
 }
+// ============================================================
+// CALENDAR & DEADLINE REMINDERS
+// ============================================================
+function getTasksForDate(dateStr) {
+  const tasks = [];
+  // Combine plannerTasks and schedItems
+  plannerTasks.forEach(t => {
+    if (t.deadline === dateStr) {
+      tasks.push({ ...t, source: 'planner' });
+    }
+  });
+  schedItems.forEach(t => {
+    if (t.deadline === dateStr) {
+      tasks.push({ ...t, source: 'scheduler' });
+    }
+  });
+  return tasks;
+}
 
+function renderCalendar() {
+  const grid = document.getElementById('calendarGrid');
+  const label = document.getElementById('calendarMonthLabel');
+  if (!grid || !label) return;
+
+  // Month label
+  const monthName = new Date(calendarYear, calendarMonth, 1).toLocaleString('default', { month: 'long' });
+  label.textContent = `${monthName} ${calendarYear}`;
+
+  // Clear grid
+  grid.innerHTML = '';
+
+  // Weekday headers
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  weekdays.forEach(d => {
+    const header = document.createElement('div');
+    header.className = 'calendar-day-header';
+    header.textContent = d;
+    grid.appendChild(header);
+  });
+
+  // Calculate days
+  const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'calendar-day empty';
+    grid.appendChild(empty);
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Day cells
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateObj = new Date(calendarYear, calendarMonth, day);
+    const dateStr = dateObj.toISOString().split('T')[0]; // beware timezone; better use local date formatting
+    // Use local date string to avoid timezone shift:
+    const localDateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const cell = document.createElement('div');
+    cell.className = 'calendar-day';
+    cell.dataset.date = localDateStr;
+    cell.textContent = day;
+
+    if (localDateStr === todayStr) {
+      cell.classList.add('today');
+    }
+    if (selectedDate === localDateStr) {
+      cell.classList.add('selected');
+    }
+
+    // Check tasks for this date
+    const tasks = getTasksForDate(localDateStr);
+    if (tasks.length > 0) {
+      const dot = document.createElement('span');
+      dot.className = 'task-dot' + (tasks.length > 1 ? ' multiple' : '');
+      cell.appendChild(dot);
+      if (tasks.length > 1) {
+        const count = document.createElement('span');
+        count.className = 'task-count';
+        count.textContent = tasks.length;
+        cell.appendChild(count);
+      }
+    }
+
+    cell.addEventListener('click', () => selectDate(localDateStr));
+    grid.appendChild(cell);
+  }
+}
+
+function selectDate(dateStr) {
+  selectedDate = dateStr;
+  renderCalendar();
+  showTasksForDate(dateStr);
+}
+
+function showTasksForDate(dateStr) {
+  const container = document.getElementById('selectedDayTasks');
+  if (!container) return;
+  const tasks = getTasksForDate(dateStr);
+  if (tasks.length === 0) {
+    container.innerHTML = `<p class="text-sm opacity-50">No tasks on ${dateStr}.</p>`;
+    return;
+  }
+  container.innerHTML = tasks.map(t => {
+    const priorityClass = `priority-${t.priority || 'medium'}`;
+    const badge = t.source === 'planner' ? '📚 Study Planner' : '🗓️ Scheduler';
+    return `
+      <div class="flex items-start justify-between p-2 mb-2 bg-white/5 rounded-lg">
+        <div>
+          <p class="text-sm font-semibold">${t.title}</p>
+          <p class="text-xs opacity-60">${badge} · ${t.deadline}</p>
+        </div>
+        <span class="text-[10px] px-2 py-0.5 rounded-full ${priorityClass}">${t.priority || 'medium'}</span>
+      </div>`;
+  }).join('');
+}
+
+function changeMonth(delta) {
+  calendarMonth += delta;
+  if (calendarMonth < 0) {
+    calendarMonth = 11;
+    calendarYear--;
+  } else if (calendarMonth > 11) {
+    calendarMonth = 0;
+    calendarYear++;
+  }
+  selectedDate = null;
+  renderCalendar();
+  document.getElementById('selectedDayTasks').innerHTML = '<p class="text-sm opacity-50">Select a date to see tasks.</p>';
+}
+
+// ============================================================
+// DEADLINE REMINDERS
+// ============================================================
+function toggleReminders() {
+  const enabled = document.getElementById('reminderToggle').checked;
+  localStorage.setItem('acadhub_reminders', enabled ? 'true' : 'false');
+  if (enabled) {
+    requestNotificationPermission();
+    checkDeadlines(); // run immediately
+    startReminderInterval();
+  } else {
+    stopReminderInterval();
+  }
+}
+
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function startReminderInterval() {
+  stopReminderInterval();
+  reminderInterval = setInterval(checkDeadlines, 30 * 60 * 1000); // every 30 minutes
+}
+
+function stopReminderInterval() {
+  if (reminderInterval) {
+    clearInterval(reminderInterval);
+    reminderInterval = null;
+  }
+}
+
+function checkDeadlines() {
+  const enabled = localStorage.getItem('acadhub_reminders') === 'true';
+  if (!enabled) return;
+
+  const now = new Date();
+  const upcomingThresholds = [1, 3, 7]; // days before
+  const allTasks = [
+    ...plannerTasks.map(t => ({ ...t, source: 'Planner' })),
+    ...schedItems.map(t => ({ ...t, source: 'Scheduler' }))
+  ];
+
+  allTasks.forEach(task => {
+    if (!task.deadline) return;
+    const deadline = new Date(task.deadline + 'T00:00:00');
+    const diffTime = deadline - now;
+    if (diffTime <= 0) return; // past deadline
+
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (!upcomingThresholds.includes(diffDays)) return;
+
+    // Unique key to avoid duplicate notifications
+    const notifKey = `${task.id}-${task.deadline}-${diffDays}`;
+    if (notifiedDeadlines[notifKey]) return;
+
+    // Mark as notified
+    notifiedDeadlines[notifKey] = true;
+    safeLocalStorageSet('acadhub_notified', notifiedDeadlines);
+
+    const message = `📅 ${task.title} (${task.source}) is due in ${diffDays} day${diffDays > 1 ? 's' : ''}.`;
+    showNotification(message);
+  });
+}
+
+function showNotification(message) {
+  // Browser notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('AcadHub Reminder', { body: message });
+  }
+  // In-app toast (optional)
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-4 right-4 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-lg z-50 fade-in';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+// Initialise calendar and reminders on page load
+document.addEventListener('DOMContentLoaded', () => {
+  renderCalendar();
+  const remindersEnabled = localStorage.getItem('acadhub_reminders') === 'true';
+  if (remindersEnabled) {
+    document.getElementById('reminderToggle').checked = true;
+    requestNotificationPermission();
+    checkDeadlines();
+    startReminderInterval();
+  }
+});
 // ============================================================
 // GENERATE REVIEWER
 // ============================================================

@@ -750,3 +750,72 @@ html.light [data-tooltip]:hover::after {
 .tab-position-left .glass-card.header {
   width: 100%;
 }
+
+/* Calendar styles */
+#calendarGrid {
+  grid-template-columns: repeat(7, 1fr);
+}
+.calendar-day-header {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+}
+.calendar-day {
+  min-height: 60px;
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  position: relative;
+}
+.calendar-day:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+.calendar-day.empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+.calendar-day.today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.calendar-day.selected {
+  background: rgba(99,102,241,0.2);
+  border-color: #6366f1;
+}
+.calendar-day .task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 4px;
+  display: inline-block;
+}
+.calendar-day .task-dot.multiple {
+  background: #f59e0b;
+}
+.calendar-day .task-count {
+  font-size: 0.6rem;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+html.light .calendar-day {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.05);
+}
+html.light .calendar-day:hover {
+  background: rgba(0,0,0,0.06);
+}
+html.light .calendar-day.selected {
+  background: rgba(99,102,241,0.15);
+}
