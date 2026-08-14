@@ -890,3 +890,99 @@ html.light #wakeUpOverlay .fa-spinner,
 html.light #wakeUpOverlay .animate-spin {
   color: #6366f1 !important;
 }
+
+/* ============ TAB BUTTON CLICK FIX ============ */
+
+/* Ensure tab container and buttons are above other elements */
+#tabContainer {
+  position: relative;
+  z-index: 100 !important;
+}
+
+#tabContainer button {
+  position: relative;
+  z-index: 101 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Ensure no other elements overlap the tabs */
+#mainWrapper > * {
+  position: relative;
+}
+
+#mainWrapper .glass-card.header {
+  z-index: 50;
+}
+
+#viewsContainer {
+  z-index: 10;
+}
+
+/* Make sure tab buttons are always clickable even on mobile */
+@media (max-width: 640px) {
+  #tabContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+  }
+  
+  #tabContainer button {
+    flex: 1 1 auto;
+    min-width: calc(50% - 0.25rem);
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Fix for any potential overlay issues */
+#wakeUpOverlay {
+  pointer-events: none;
+}
+
+#wakeUpOverlay > div {
+  pointer-events: auto;
+}
+
+/* When overlay is hidden, ensure it doesn't block clicks */
+#wakeUpOverlay[style*="display: none"],
+#wakeUpOverlay[style*="display:none"] {
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Ensure modals don't block tab clicks when hidden */
+[id$="Modal"].hidden,
+.hidden {
+  pointer-events: none !important;
+}
+
+/* Tab active state enhancement */
+.tab-active {
+  position: relative;
+  z-index: 102 !important;
+}
+
+/* Add visual feedback for tab clicks */
+#tabContainer button:active {
+  transform: scale(0.97);
+}
+
+/* Fix for potential iOS Safari issues */
+@supports (-webkit-touch-callout: none) {
+  #tabContainer button {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+}
+
+/* Ensure buttons inside tab container don't have disabled state */
+#tabContainer button:disabled {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+}
