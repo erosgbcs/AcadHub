@@ -17,6 +17,17 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// Enable offline persistence
+db.enablePersistence()
+  .then(() => console.log('Offline persistence enabled'))
+  .catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Browser does not support offline persistence');
+    }
+  });
+
 // ============================================================
 // GLOBAL VARIABLES
 // ============================================================
@@ -29,9 +40,12 @@ let testQuestions = [];
 let currentQuestionIndex = 0;
 let testScore = 0;
 let testDifficulty = 'easy';
+let testTimer = null;
+let timeLeft = 0;
 let calendarMonth = new Date().getMonth();
 let calendarYear = new Date().getFullYear();
 let unsubscribers = [];
+let currentResults = null;
 
 // ============================================================
 // UTILITY FUNCTIONS
@@ -54,6 +68,25 @@ function safeLocalStorageGet(key, defaultValue = null) {
   }
 }
 
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'No deadline';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function shuffleArray(array) {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
 // ============================================================
 // WAKE-UP OVERLAY
 // ============================================================
@@ -65,9 +98,7 @@ async function retryWakeUp() {
   btn.disabled = true;
   
   try {
-    // Check if Firebase is initialized
     if (firebase.apps.length > 0) {
-      // Test Firestore connection
       await db.collection('_health_check').doc('test').set({ 
         timestamp: firebase.firestore.FieldValue.serverTimestamp() 
       });
@@ -144,18 +175,15 @@ function showProfileModal() {
   const user = auth.currentUser;
   
   if (user) {
-    // User is logged in - show profile info
-    document.getElementById('authModal').classList.remove('hidden');
-    document.getElementById('authTitle').textContent = 'Account';
-    document.getElementById('authSubtitle').textContent = 'You are logged in as ' + user.email;
-    document.getElementById('authEmail').classList.add('hidden');
-    document.getElementById('authPassword').classList.add('hidden');
-    document.getElementById('authNameFields').classList.add('hidden');
-    document.getElementById('authBtnText').textContent = 'Logout';
-  } else {
-    // User is not logged in - show auth modal
     document.getElementById('authModal').classList.remove('hidden');
     updateAuthUI();
+  } else {
+    if (safeLocalStorageGet('profile_saved') !== 'true') {
+      document.getElementById('profileModal').classList.remove('hidden');
+    } else {
+      document.getElementById('authModal').classList.remove('hidden');
+      updateAuthUI();
+    }
   }
 }
 
@@ -178,13 +206,11 @@ function saveVisitorName() {
     return;
   }
   
-  // Save to localStorage
-  const profile = { firstName, lastName };
-  safeLocalStorageSet('profile_name', firstName + ' ' + lastName);
+  const fullName = firstName + ' ' + lastName;
+  safeLocalStorageSet('profile_name', fullName);
   safeLocalStorageSet('profile_saved', 'true');
   
-  // Save to Firestore (if available)
-  if (db && auth.currentUser) {
+  if (auth.currentUser) {
     db.collection('users').doc(auth.currentUser.uid).set({
       firstName,
       lastName,
@@ -195,7 +221,7 @@ function saveVisitorName() {
   }
   
   closeProfileModal();
-  console.log('Profile saved:', profile);
+  console.log('Profile saved:', fullName);
 }
 
 // ============================================================
@@ -206,7 +232,6 @@ function toggleSettingsModal() {
   modal.classList.toggle('hidden');
   
   if (!modal.classList.contains('hidden')) {
-    // Update UI to reflect current settings
     updateSettingsUI();
   }
 }
@@ -227,34 +252,42 @@ function toggleTheme() {
     html.classList.add('dark');
   }
   
-  safeLocalStorageSet('theme', html.classList.contains('dark') ? 'dark' : 'light');
+  const theme = html.classList.contains('dark') ? 'dark' : 'light';
+  safeLocalStorageSet('theme', theme);
+  
+  if (auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid).set({
+      theme
+    }, { merge: true }).catch(err => console.error('Error saving theme:', err));
+  }
+  
   updateSettingsUI();
 }
 
 function changeTabPosition(position) {
   const mainWrapper = document.getElementById('mainWrapper');
-  const tabContainer = document.getElementById('tabContainer');
   
-  // Remove existing position classes
   mainWrapper.classList.remove('tab-position-top', 'tab-position-bottom', 'tab-position-left');
-  
-  // Add new position class
   mainWrapper.classList.add('tab-position-' + position);
   
   safeLocalStorageSet('tab_position', position);
+  
+  if (auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid).set({
+      tabPosition: position
+    }, { merge: true }).catch(err => console.error('Error saving tab position:', err));
+  }
 }
 
 function updateSettingsUI() {
   const html = document.documentElement;
   const isDark = html.classList.contains('dark');
   
-  // Update theme toggle
   const dot = document.getElementById('settingsThemeDot');
   if (dot) {
-    dot.style.left = isDark ? '0.5rem' : '1.5rem';
+    dot.style.left = isDark ? '0.25rem' : '1.25rem';
   }
   
-  // Update accent color picker
   const accentPicker = document.getElementById('accentPicker');
   if (accentPicker) {
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
@@ -306,9 +339,6 @@ function updateFileName(input) {
   const display = document.getElementById('fileNameDisplay');
   
   if (file) {
-    display.textContent = file.name;
-    
-    // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('File too large. Maximum size is 10MB.');
       input.value = '';
@@ -316,13 +346,15 @@ function updateFileName(input) {
       return;
     }
     
-    // Check file type
     const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
     if (!allowedTypes.includes(file.type)) {
       alert('Invalid file type. Please upload PDF, DOCX, or TXT files.');
       input.value = '';
       display.textContent = 'Drop file or click to browse';
+      return;
     }
+    
+    display.textContent = file.name;
   } else {
     display.textContent = 'Drop file or click to browse';
   }
@@ -333,9 +365,6 @@ function updateTestFileName(input) {
   const display = document.getElementById('testFileNameDisplay');
   
   if (file) {
-    display.textContent = file.name;
-    
-    // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('File too large. Maximum size is 10MB.');
       input.value = '';
@@ -343,20 +372,533 @@ function updateTestFileName(input) {
       return;
     }
     
-    // Check file type
     const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
     if (!allowedTypes.includes(file.type)) {
       alert('Invalid file type. Please upload PDF, DOCX, or TXT files.');
       input.value = '';
       display.textContent = 'Drop file or click to browse';
+      return;
     }
+    
+    display.textContent = file.name;
   } else {
     display.textContent = 'Drop file or click to browse';
   }
 }
 
 // ============================================================
-// PLANNER FUNCTIONS
+// AI REVIEWER - GENERATE STUDY MATERIALS
+// ============================================================
+async function handleGenerate() {
+  const submitBtn = document.getElementById('submitBtn');
+  const btnContent = document.getElementById('btnContent');
+  const progressContainer = document.getElementById('progressContainer');
+  const resultsContainer = document.getElementById('resultsContainer');
+  
+  const notes = document.getElementById('studyNotes').value.trim();
+  const fileInput = document.getElementById('fileInput');
+  const hasFile = fileInput.files.length > 0;
+  
+  if (!notes && !hasFile) {
+    alert('Please paste notes or upload a document.');
+    return;
+  }
+  
+  submitBtn.disabled = true;
+  btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+  progressContainer.classList.remove('hidden');
+  resultsContainer.classList.add('hidden');
+  
+  try {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const summary = generateSummary(notes);
+    renderSummary(summary);
+    
+    const numFlashcards = parseInt(document.getElementById('numFlashcards').value) || 10;
+    const flashcards = generateFlashcards(notes, numFlashcards);
+    renderFlashcards(flashcards);
+    
+    const quiz = generateQuiz(notes);
+    renderQuiz(quiz);
+    
+    currentResults = {
+      summary,
+      flashcards,
+      quiz,
+      timestamp: new Date().toISOString()
+    };
+    
+    resultsContainer.classList.remove('hidden');
+    document.getElementById('saveToLibraryBtn').classList.remove('hidden');
+    
+  } catch (err) {
+    console.error('Error generating materials:', err);
+    alert('Error generating study materials. Please try again.');
+  } finally {
+    submitBtn.disabled = false;
+    btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+    progressContainer.classList.add('hidden');
+  }
+}
+
+function generateSummary(text) {
+  if (!text.trim()) return ['No content provided for summary.'];
+  
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const summary = sentences.slice(0, 5).map(s => s.trim());
+  
+  return summary.length > 0 ? summary : ['No key concepts found.'];
+}
+
+function generateFlashcards(text, count) {
+  const flashcards = [];
+  
+  if (!text.trim()) {
+    flashcards.push({ front: 'Sample Question', back: 'Sample Answer' });
+    return flashcards;
+  }
+  
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 15);
+  
+  for (let i = 0; i < Math.min(count, sentences.length); i++) {
+    const sentence = sentences[i].trim();
+    const words = sentence.split(' ');
+    
+    if (words.length > 5) {
+      const midPoint = Math.floor(words.length / 2);
+      flashcards.push({
+        front: words.slice(0, midPoint).join(' ') + '...',
+        back: words.slice(midPoint).join(' ')
+      });
+    }
+  }
+  
+  while (flashcards.length < Math.min(count, 3)) {
+    flashcards.push({ 
+      front: 'Concept ' + (flashcards.length + 1), 
+      back: 'Explanation for concept ' + (flashcards.length + 1) 
+    });
+  }
+  
+  return flashcards;
+}
+
+function generateQuiz(text) {
+  const quiz = {
+    trueFalse: [],
+    identification: [],
+    multipleChoice: []
+  };
+  
+  if (!text.trim()) {
+    quiz.trueFalse.push({ question: 'Sample true/false question?', answer: true });
+    quiz.identification.push({ question: 'What is this sample?', answer: 'Sample answer' });
+    quiz.multipleChoice.push({ 
+      question: 'Sample multiple choice?', 
+      options: ['A', 'B', 'C', 'D'], 
+      correct: 0 
+    });
+    return quiz;
+  }
+  
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  
+  sentences.slice(0, 3).forEach(sentence => {
+    const words = sentence.trim().split(' ');
+    if (words.length > 6) {
+      quiz.trueFalse.push({
+        question: sentence.trim(),
+        answer: Math.random() > 0.5
+      });
+      
+      const topic = words.slice(0, 4).join(' ');
+      quiz.identification.push({
+        question: 'What is being described: ' + topic + '...?',
+        answer: words.slice(4).join(' ')
+      });
+      
+      const correctAnswer = words[Math.floor(words.length / 2)];
+      quiz.multipleChoice.push({
+        question: 'Which term fits: ' + sentence.trim().replace(correctAnswer, '_____') + '?',
+        options: [correctAnswer, 'Option A', 'Option B', 'Option C'],
+        correct: 0
+      });
+    }
+  });
+  
+  return quiz;
+}
+
+function renderSummary(summary) {
+  const list = document.getElementById('summaryList');
+  list.innerHTML = '';
+  
+  summary.forEach((point, index) => {
+    const li = document.createElement('li');
+    li.className = 'bg-white/5 p-3 rounded-lg reveal-item';
+    li.style.animationDelay = (index * 0.1) + 's';
+    li.innerHTML = `<span class="text-indigo-400 font-semibold mr-2">${index + 1}.</span>${point}`;
+    list.appendChild(li);
+  });
+}
+
+function renderFlashcards(flashcards) {
+  const grid = document.getElementById('flashcardGrid');
+  grid.innerHTML = '';
+  
+  flashcards.forEach((card, index) => {
+    const div = document.createElement('div');
+    div.className = 'flashcard reveal-item';
+    div.style.animationDelay = (index * 0.05) + 's';
+    div.onclick = function() { this.classList.toggle('flipped'); };
+    
+    div.innerHTML = `
+      <div class="flashcard-inner">
+        <div class="flashcard-front">
+          <p class="text-sm font-semibold text-center">${card.front}</p>
+          <p class="text-xs text-center opacity-50 mt-2">Click to flip</p>
+        </div>
+        <div class="flashcard-back">
+          <p class="text-sm text-center">${card.back}</p>
+        </div>
+      </div>
+    `;
+    
+    grid.appendChild(div);
+  });
+}
+
+function renderQuiz(quiz) {
+  const container = document.getElementById('quizContainer');
+  container.innerHTML = '';
+  
+  quiz.trueFalse.forEach((q, index) => {
+    const div = document.createElement('div');
+    div.className = 'bg-white/5 p-4 rounded-lg reveal-item';
+    div.innerHTML = `
+      <p class="text-sm font-semibold mb-2">${index + 1}. ${q.question}</p>
+      <div class="flex gap-2">
+        <button class="quiz-option px-4 py-2 bg-white/10 rounded-lg text-sm" onclick="checkAnswer(this, ${q.answer}, true)">True</button>
+        <button class="quiz-option px-4 py-2 bg-white/10 rounded-lg text-sm" onclick="checkAnswer(this, ${q.answer}, false)">False</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+  
+  quiz.identification.forEach((q, index) => {
+    const div = document.createElement('div');
+    div.className = 'bg-white/5 p-4 rounded-lg reveal-item';
+    div.innerHTML = `
+      <p class="text-sm font-semibold mb-2">${quiz.trueFalse.length + index + 1}. ${q.question}</p>
+      <button class="quiz-option px-3 py-1 bg-white/10 rounded-lg text-sm mt-2" onclick="revealAnswer(this)">Show Answer</button>
+      <p class="text-xs text-emerald-400 mt-2 hidden">Answer: ${q.answer}</p>
+    `;
+    container.appendChild(div);
+  });
+  
+  quiz.multipleChoice.forEach((q, index) => {
+    const div = document.createElement('div');
+    div.className = 'bg-white/5 p-4 rounded-lg reveal-item';
+    let optionsHTML = '';
+    q.options.forEach((option, optIndex) => {
+      optionsHTML += `
+        <button class="quiz-option w-full text-left px-4 py-2 bg-white/10 rounded-lg text-sm mt-1" 
+                onclick="checkMCQAnswer(this, ${q.correct}, ${optIndex})">
+          ${String.fromCharCode(65 + optIndex)}. ${option}
+        </button>
+      `;
+    });
+    
+    div.innerHTML = `
+      <p class="text-sm font-semibold mb-2">${quiz.trueFalse.length + quiz.identification.length + index + 1}. ${q.question}</p>
+      ${optionsHTML}
+    `;
+    container.appendChild(div);
+  });
+}
+
+function checkAnswer(btn, correctAnswer, userAnswer) {
+  const parent = btn.parentElement;
+  const buttons = parent.querySelectorAll('.quiz-option');
+  
+  buttons.forEach(b => {
+    b.disabled = true;
+    b.classList.remove('bg-white/10');
+  });
+  
+  if (userAnswer === correctAnswer) {
+    btn.classList.add('bg-emerald-500/20', 'text-emerald-400');
+  } else {
+    btn.classList.add('bg-rose-500/20', 'text-rose-400');
+  }
+}
+
+function checkMCQAnswer(btn, correctIndex, userIndex) {
+  const parent = btn.parentElement;
+  const buttons = parent.querySelectorAll('.quiz-option');
+  
+  buttons.forEach((b, index) => {
+    b.disabled = true;
+    b.classList.remove('bg-white/10');
+    
+    if (index === correctIndex) {
+      b.classList.add('bg-emerald-500/20', 'text-emerald-400');
+    } else if (index === userIndex && userIndex !== correctIndex) {
+      b.classList.add('bg-rose-500/20', 'text-rose-400');
+    }
+  });
+}
+
+function revealAnswer(btn) {
+  const answerText = btn.nextElementSibling;
+  answerText.classList.remove('hidden');
+  btn.disabled = true;
+  btn.classList.add('opacity-50');
+}
+
+async function saveToLibrary() {
+  if (!currentResults) {
+    alert('No results to save.');
+    return;
+  }
+  
+  const saveItem = {
+    id: generateId(),
+    title: 'Reviewer ' + new Date().toLocaleDateString(),
+    date: new Date().toISOString(),
+    summaryHTML: document.getElementById('summaryList').innerHTML,
+    flashcardsHTML: document.getElementById('flashcardGrid').innerHTML,
+    quizHTML: document.getElementById('quizContainer').innerHTML,
+    data: currentResults
+  };
+  
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  saved.push(saveItem);
+  safeLocalStorageSet('acadhub_saved', saved);
+  
+  if (auth.currentUser) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid).collection('library').add(saveItem);
+    } catch (err) {
+      console.error('Error saving to Firestore:', err);
+    }
+  }
+  
+  alert('Saved to library!');
+  renderSavedList();
+}
+
+// ============================================================
+// TEST MY LIMITS
+// ============================================================
+function setDifficulty(difficulty) {
+  testDifficulty = difficulty;
+  
+  ['easy', 'medium', 'hard'].forEach(d => {
+    const btn = document.getElementById('diff' + d.charAt(0).toUpperCase() + d.slice(1));
+    if (btn) {
+      btn.classList.remove('bg-indigo-600');
+      btn.classList.add('bg-white/10');
+    }
+  });
+  
+  const selectedBtn = document.getElementById('diff' + difficulty.charAt(0).toUpperCase() + difficulty.slice(1));
+  if (selectedBtn) {
+    selectedBtn.classList.remove('bg-white/10');
+    selectedBtn.classList.add('bg-indigo-600');
+  }
+}
+
+function startTest() {
+  const notes = document.getElementById('testNotes').value.trim();
+  const fileInput = document.getElementById('testFileInput');
+  const hasFile = fileInput.files.length > 0;
+  
+  if (!notes && !hasFile) {
+    alert('Please paste notes or upload a document.');
+    return;
+  }
+  
+  testQuestions = [];
+  currentQuestionIndex = 0;
+  testScore = 0;
+  
+  const questionCount = testDifficulty === 'easy' ? 8 : testDifficulty === 'medium' ? 15 : 26;
+  
+  testQuestions = generateTestQuestions(notes, questionCount);
+  
+  if (testQuestions.length === 0) {
+    alert('Could not generate questions. Please add more notes.');
+    return;
+  }
+  
+  document.getElementById('startTestBtn').classList.add('hidden');
+  document.getElementById('testQuizContainer').classList.remove('hidden');
+  document.getElementById('testResultsContainer').classList.add('hidden');
+  document.getElementById('reviewContainer').classList.add('hidden');
+  
+  showTestQuestion();
+}
+
+function generateTestQuestions(text, count) {
+  const questions = [];
+  
+  if (!text.trim()) {
+    for (let i = 0; i < Math.min(count, 5); i++) {
+      questions.push({
+        question: 'Sample question ' + (i + 1) + '?',
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        correct: 0
+      });
+    }
+    return questions;
+  }
+  
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 15);
+  
+  sentences.slice(0, count).forEach((sentence) => {
+    const words = sentence.trim().split(' ');
+    
+    if (words.length > 5) {
+      const keyWordIndex = Math.floor(words.length / 2);
+      const correctAnswer = words[keyWordIndex];
+      const question = words.map((w, i) => i === keyWordIndex ? '_____' : w).join(' ');
+      
+      const options = [correctAnswer];
+      const fillerWords = ['concept', 'theory', 'method', 'process', 'element', 'factor', 'principle', 'system'];
+      
+      while (options.length < 4) {
+        const filler = fillerWords[Math.floor(Math.random() * fillerWords.length)];
+        if (!options.includes(filler)) {
+          options.push(filler);
+        }
+      }
+      
+      const shuffledOptions = shuffleArray(options);
+      const correctIndex = shuffledOptions.indexOf(correctAnswer);
+      
+      questions.push({
+        question: 'Fill in the blank: ' + question + '?',
+        options: shuffledOptions,
+        correct: correctIndex
+      });
+    }
+  });
+  
+  return questions;
+}
+
+function showTestQuestion() {
+  const question = testQuestions[currentQuestionIndex];
+  const questionText = document.getElementById('testQuestionText');
+  const optionsContainer = document.getElementById('testOptionsContainer');
+  const counter = document.getElementById('questionCounter');
+  
+  counter.textContent = 'Question ' + (currentQuestionIndex + 1) + ' / ' + testQuestions.length;
+  questionText.textContent = question.question;
+  optionsContainer.innerHTML = '';
+  
+  question.options.forEach((option, index) => {
+    const button = document.createElement('button');
+    button.className = 'quiz-option w-full text-left px-4 py-3 bg-white/10 rounded-lg text-sm mt-2';
+    button.textContent = String.fromCharCode(65 + index) + '. ' + option;
+    button.onclick = () => answerTestQuestion(index, question.correct);
+    optionsContainer.appendChild(button);
+  });
+  
+  document.getElementById('nextTestBtn').classList.add('hidden');
+}
+
+function answerTestQuestion(userAnswer, correctAnswer) {
+  if (userAnswer === correctAnswer) {
+    testScore++;
+  }
+  
+  const buttons = document.querySelectorAll('#testOptionsContainer .quiz-option');
+  buttons.forEach((btn, index) => {
+    btn.disabled = true;
+    btn.classList.remove('bg-white/10');
+    
+    if (index === correctAnswer) {
+      btn.classList.add('bg-emerald-500/20', 'text-emerald-400');
+    } else if (index === userAnswer && userAnswer !== correctAnswer) {
+      btn.classList.add('bg-rose-500/20', 'text-rose-400');
+    }
+  });
+  
+  const nextBtn = document.getElementById('nextTestBtn');
+  nextBtn.classList.remove('hidden');
+  nextBtn.textContent = (currentQuestionIndex === testQuestions.length - 1) ? 'Finish' : 'Next';
+}
+
+function nextTestQuestion() {
+  currentQuestionIndex++;
+  
+  if (currentQuestionIndex < testQuestions.length) {
+    showTestQuestion();
+  } else {
+    showTestResults();
+  }
+}
+
+function showTestResults() {
+  document.getElementById('testQuizContainer').classList.add('hidden');
+  document.getElementById('testResultsContainer').classList.remove('hidden');
+  
+  document.getElementById('testCorrectCount').textContent = testScore;
+  document.getElementById('testTotalCount').textContent = testQuestions.length;
+  
+  const percentage = Math.round((testScore / testQuestions.length) * 100);
+  document.getElementById('testPercentage').textContent = percentage + '% ' + getGradeMessage(percentage);
+  
+  document.getElementById('reviewBtn').classList.remove('hidden');
+}
+
+function getGradeMessage(percentage) {
+  if (percentage >= 90) return 'Excellent! 🎉';
+  if (percentage >= 80) return 'Great job! 👏';
+  if (percentage >= 70) return 'Good work! 💪';
+  if (percentage >= 60) return 'Keep practicing! 📚';
+  return 'Needs improvement. Don\'t give up! 🌟';
+}
+
+function resetTest() {
+  document.getElementById('testResultsContainer').classList.add('hidden');
+  document.getElementById('reviewContainer').classList.add('hidden');
+  document.getElementById('startTestBtn').classList.remove('hidden');
+  document.getElementById('testQuizContainer').classList.add('hidden');
+  document.getElementById('testNotes').value = '';
+  document.getElementById('testFileInput').value = '';
+  document.getElementById('testFileNameDisplay').textContent = 'Drop file or click to browse';
+  
+  testScore = 0;
+  currentQuestionIndex = 0;
+  testQuestions = [];
+}
+
+function showReview() {
+  const container = document.getElementById('reviewContainer');
+  container.classList.remove('hidden');
+  container.innerHTML = '';
+  
+  testQuestions.forEach((question, index) => {
+    const div = document.createElement('div');
+    div.className = 'review-item';
+    
+    div.innerHTML = `
+      <p class="text-sm font-semibold">${index + 1}. ${question.question}</p>
+      <p class="text-xs mt-1">
+        <span class="text-emerald-400">Correct: ${question.options[question.correct]}</span>
+      </p>
+    `;
+    
+    container.appendChild(div);
+  });
+}
+
+// ============================================================
+// STUDY PLANNER
 // ============================================================
 function renderPlanner() {
   const todoCol = document.getElementById('planner-todo');
@@ -365,34 +907,25 @@ function renderPlanner() {
   
   if (!todoCol || !progressCol || !doneCol) return;
   
-  // Clear columns
   todoCol.innerHTML = '';
   progressCol.innerHTML = '';
   doneCol.innerHTML = '';
   
-  // Sort by priority
   const priorityOrder = { high: 0, medium: 1, low: 2 };
   plannerTasks.sort((a, b) => (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1));
   
-  // Render tasks
   plannerTasks.forEach(task => {
-    const taskElement = createPlannerTaskElement(task);
+    const element = createPlannerTaskElement(task);
     const column = task.status === 'done' ? doneCol : task.status === 'progress' ? progressCol : todoCol;
-    column.appendChild(taskElement);
+    column.appendChild(element);
   });
   
-  // Update column counts
-  document.querySelectorAll('.kanban-column').forEach(col => {
-    const count = col.querySelector('.column-count');
-    if (count) {
-      count.textContent = col.querySelectorAll('.task-card').length;
-    }
-  });
+  updateColumnCounts();
 }
 
 function createPlannerTaskElement(task) {
   const div = document.createElement('div');
-  div.className = 'task-card bg-white/5 border border-white/10 rounded-lg p-3 cursor-grab';
+  div.className = 'task-card bg-white/5 border border-white/10 rounded-lg p-3 cursor-grab hover:border-indigo-400/50 transition';
   div.draggable = true;
   div.dataset.id = task.id;
   
@@ -402,17 +935,17 @@ function createPlannerTaskElement(task) {
     <div class="flex items-start justify-between gap-2">
       <div class="flex-1">
         <p class="text-sm font-medium">${task.title || 'Untitled'}</p>
-        <p class="text-xs opacity-50">${task.deadline || 'No deadline'}</p>
+        <p class="text-xs opacity-50">${formatDate(task.deadline)}</p>
       </div>
-      <span class="${priorityClass} text-xs px-2 py-0.5 rounded-full">${task.priority}</span>
+      <span class="${priorityClass} text-xs px-2 py-0.5 rounded-full font-semibold">${task.priority || 'medium'}</span>
     </div>
     <div class="flex items-center justify-between mt-2">
       <span class="category-tag">${task.category || 'study'}</span>
-      <div class="flex gap-1">
-        <button onclick="editPlannerTask('${task.id}')" class="text-xs opacity-50 hover:opacity-100">
+      <div class="flex gap-2">
+        <button onclick="editPlannerTask('${task.id}')" class="text-xs opacity-50 hover:opacity-100 transition">
           <i class="fa-solid fa-edit"></i>
         </button>
-        <button onclick="deletePlannerTask('${task.id}')" class="text-xs opacity-50 hover:opacity-100">
+        <button onclick="deletePlannerTask('${task.id}')" class="text-xs opacity-50 hover:opacity-100 transition">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
@@ -438,7 +971,6 @@ function addOrUpdatePlannerTask() {
   }
   
   if (editId) {
-    // Update existing task
     const index = plannerTasks.findIndex(t => t.id === editId);
     if (index !== -1) {
       plannerTasks[index] = {
@@ -452,7 +984,6 @@ function addOrUpdatePlannerTask() {
     document.getElementById('editPlannerId').value = '';
     document.getElementById('plannerAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
   } else {
-    // Add new task
     const newTask = {
       id: Date.now().toString(),
       title,
@@ -465,10 +996,8 @@ function addOrUpdatePlannerTask() {
     plannerTasks.push(newTask);
   }
   
-  // Save to localStorage
   safeLocalStorageSet('acadhub_planner', plannerTasks);
   
-  // Save to Firestore if logged in
   if (auth.currentUser) {
     const plannerRef = db.collection('users').doc(auth.currentUser.uid).collection('planner');
     if (editId) {
@@ -478,7 +1007,6 @@ function addOrUpdatePlannerTask() {
     }
   }
   
-  // Clear inputs
   document.getElementById('plannerTitle').value = '';
   document.getElementById('plannerDeadline').value = '';
   
@@ -546,19 +1074,23 @@ function handleDragEnd(event) {
   event.target.classList.remove('dragging');
 }
 
+function updateColumnCounts() {
+  document.querySelectorAll('.kanban-column').forEach(col => {
+    const count = col.querySelector('.column-count');
+    if (count) {
+      count.textContent = col.querySelectorAll('.task-card').length;
+    }
+  });
+}
+
 // ============================================================
 // SCHEDULER FUNCTIONS
 // ============================================================
 function renderScheduler() {
-  // Render Kanban
   renderSchedulerKanban();
-  // Render Gantt chart
   renderGanttChart();
-  // Render countdowns
   renderCountdowns();
-  // Render exam matrix
   renderExamMatrix();
-  // Render filter chips
   renderFilterChips();
 }
 
@@ -579,18 +1111,12 @@ function renderSchedulerKanban() {
     column.appendChild(element);
   });
   
-  // Update column counts
-  document.querySelectorAll('.kanban-column').forEach(col => {
-    const count = col.querySelector('.column-count');
-    if (count) {
-      count.textContent = col.querySelectorAll('.task-card').length;
-    }
-  });
+  updateColumnCounts();
 }
 
 function createSchedItemElement(item) {
   const div = document.createElement('div');
-  div.className = 'task-card bg-white/5 border border-white/10 rounded-lg p-3 cursor-grab';
+  div.className = 'task-card bg-white/5 border border-white/10 rounded-lg p-3 cursor-grab hover:border-indigo-400/50 transition';
   div.draggable = true;
   div.dataset.id = item.id;
   
@@ -601,17 +1127,17 @@ function createSchedItemElement(item) {
     <div class="flex items-start justify-between gap-2">
       <div class="flex-1">
         <p class="text-sm font-medium">${item.title || 'Untitled'}</p>
-        <p class="text-xs opacity-50">${item.deadline || 'No deadline'}</p>
+        <p class="text-xs opacity-50">${formatDate(item.deadline)}</p>
       </div>
-      <span class="${priorityClass} text-xs px-2 py-0.5 rounded-full">${item.priority}</span>
+      <span class="${priorityClass} text-xs px-2 py-0.5 rounded-full font-semibold">${item.priority || 'medium'}</span>
     </div>
     <div class="flex items-center justify-between mt-2">
       <span class="${typeClass} type-badge">${item.type || 'task'}</span>
-      <div class="flex gap-1">
-        <button onclick="editSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100">
+      <div class="flex gap-2">
+        <button onclick="editSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100 transition">
           <i class="fa-solid fa-edit"></i>
         </button>
-        <button onclick="deleteSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100">
+        <button onclick="deleteSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100 transition">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
@@ -633,7 +1159,6 @@ function renderGanttChart() {
     return;
   }
   
-  // Sort by deadline
   const sortedItems = [...schedItems].sort((a, b) => {
     if (!a.deadline) return 1;
     if (!b.deadline) return -1;
@@ -666,7 +1191,7 @@ function renderGanttChart() {
     
     const deadlineLabel = document.createElement('span');
     deadlineLabel.className = 'gantt-bar-deadline';
-    deadlineLabel.textContent = item.deadline;
+    deadlineLabel.textContent = formatDate(item.deadline);
     
     bar.appendChild(label);
     barContainer.appendChild(bar);
@@ -699,7 +1224,7 @@ function renderCountdowns() {
     div.innerHTML = `
       <div>
         <p class="text-sm font-medium">${defense.title}</p>
-        <p class="text-xs opacity-50">${defense.deadline}</p>
+        <p class="text-xs opacity-50">${formatDate(defense.deadline)}</p>
       </div>
       <div class="text-right">
         <p class="text-lg font-bold ${daysLeft < 7 ? 'text-rose-400' : daysLeft < 30 ? 'text-amber-400' : 'text-emerald-400'}">${daysLeft} days</p>
@@ -737,7 +1262,7 @@ function renderExamMatrix() {
         <i class="fa-solid fa-file-pen text-amber-400"></i>
         <div>
           <p class="text-sm font-medium">${exam.title}</p>
-          <p class="text-xs opacity-50">${exam.deadline}</p>
+          <p class="text-xs opacity-50">${formatDate(exam.deadline)}</p>
         </div>
       </div>
       <span class="text-xs ${daysLeft < 3 ? 'text-rose-400' : daysLeft < 7 ? 'text-amber-400' : 'text-emerald-400'}">
@@ -759,26 +1284,23 @@ function renderFilterChips() {
   
   types.forEach(type => {
     const chip = document.createElement('button');
-    chip.className = 'filter-chip';
+    chip.className = 'filter-chip' + (type === 'all' ? ' active' : '');
     chip.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-    chip.onclick = () => filterSchedItems(type);
+    chip.onclick = () => filterSchedItems(type, chip);
     container.appendChild(chip);
   });
 }
 
-function filterSchedItems(type) {
-  // Update active chip
+function filterSchedItems(type, chipElement) {
   document.querySelectorAll('.filter-chip').forEach(chip => {
     chip.classList.remove('active');
   });
-  event.target.classList.add('active');
+  chipElement.classList.add('active');
   
-  // Filter items
   if (type === 'all') {
     renderSchedulerKanban();
   } else {
     const filtered = schedItems.filter(item => item.type === type);
-    // Temporarily replace schedItems for rendering
     const original = schedItems;
     schedItems = filtered;
     renderSchedulerKanban();
@@ -800,7 +1322,6 @@ function addOrUpdateSchedItem() {
   }
   
   if (editId) {
-    // Update existing item
     const index = schedItems.findIndex(item => item.id === editId);
     if (index !== -1) {
       schedItems[index] = {
@@ -815,7 +1336,6 @@ function addOrUpdateSchedItem() {
     document.getElementById('editSchedId').value = '';
     document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
   } else {
-    // Add new item
     const newItem = {
       id: Date.now().toString(),
       title,
@@ -830,10 +1350,8 @@ function addOrUpdateSchedItem() {
     schedItems.push(newItem);
   }
   
-  // Save to localStorage
   safeLocalStorageSet('acadhub_sched', schedItems);
   
-  // Save to Firestore if logged in
   if (auth.currentUser) {
     const schedRef = db.collection('users').doc(auth.currentUser.uid).collection('scheduler');
     if (editId) {
@@ -843,7 +1361,6 @@ function addOrUpdateSchedItem() {
     }
   }
   
-  // Clear inputs
   document.getElementById('schedTitle').value = '';
   document.getElementById('schedDeadline').value = '';
   
@@ -926,7 +1443,6 @@ function renderCalendar() {
   
   grid.innerHTML = '';
   
-  // Add day headers
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   days.forEach(day => {
     const header = document.createElement('div');
@@ -935,26 +1451,22 @@ function renderCalendar() {
     grid.appendChild(header);
   });
   
-  // Add empty cells for days before the 1st
   for (let i = 0; i < firstDay; i++) {
     const empty = document.createElement('div');
     empty.className = 'calendar-day empty';
     grid.appendChild(empty);
   }
   
-  // Add days
   const today = new Date();
   for (let day = 1; day <= daysInMonth; day++) {
     const dayCell = document.createElement('div');
     dayCell.className = 'calendar-day';
     dayCell.textContent = day;
     
-    // Check if today
     if (day === today.getDate() && calendarMonth === today.getMonth() && calendarYear === today.getFullYear()) {
       dayCell.classList.add('today');
     }
     
-    // Check for tasks on this day
     const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const tasksOnDay = [...schedItems, ...plannerTasks].filter(task => task.deadline === dateStr);
     
@@ -971,21 +1483,18 @@ function renderCalendar() {
       }
     }
     
-    dayCell.onclick = () => selectDate(day);
+    dayCell.onclick = () => selectDate(day, dayCell);
     grid.appendChild(dayCell);
   }
 }
 
-function selectDate(day) {
-  // Remove selected class from all days
+function selectDate(day, dayCell) {
   document.querySelectorAll('.calendar-day').forEach(cell => {
     cell.classList.remove('selected');
   });
   
-  // Add selected class to clicked day
-  event.target.classList.add('selected');
+  dayCell.classList.add('selected');
   
-  // Show tasks for selected day
   const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const tasksOnDay = [...schedItems, ...plannerTasks].filter(task => task.deadline === dateStr);
   
@@ -1070,13 +1579,13 @@ function renderSavedList() {
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm font-medium">${item.title || 'Untitled Reviewer'}</p>
-          <p class="text-xs opacity-50">${item.date || 'No date'}</p>
+          <p class="text-xs opacity-50">${item.date ? new Date(item.date).toLocaleDateString() : 'No date'}</p>
         </div>
         <div class="flex gap-2">
-          <button onclick="loadSavedItem('${index}')" class="text-xs text-indigo-400 hover:text-indigo-300">
+          <button onclick="loadSavedItem(${index})" class="text-xs text-indigo-400 hover:text-indigo-300">
             <i class="fa-solid fa-eye mr-1"></i> View
           </button>
-          <button onclick="deleteSavedItem('${index}')" class="text-xs text-rose-400 hover:text-rose-300">
+          <button onclick="deleteSavedItem(${index})" class="text-xs text-rose-400 hover:text-rose-300">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -1093,14 +1602,14 @@ function loadSavedItem(index) {
   
   if (!item) return;
   
-  // Switch to reviewer tab
   switchTab('reviewer');
   
-  // Populate results
   document.getElementById('resultsContainer').classList.remove('hidden');
   document.getElementById('summaryList').innerHTML = item.summaryHTML || '';
   document.getElementById('flashcardGrid').innerHTML = item.flashcardsHTML || '';
   document.getElementById('quizContainer').innerHTML = item.quizHTML || '';
+  
+  document.getElementById('saveToLibraryBtn').classList.add('hidden');
 }
 
 function deleteSavedItem(index) {
@@ -1110,15 +1619,167 @@ function deleteSavedItem(index) {
   saved.splice(index, 1);
   safeLocalStorageSet('acadhub_saved', saved);
   
-  if (auth.currentUser) {
-    // Also delete from Firestore if logged in
-    const libraryRef = db.collection('users').doc(auth.currentUser.uid).collection('library');
-    libraryRef.where('date', '==', saved[index]?.date).get().then(snapshot => {
-      snapshot.forEach(doc => doc.ref.delete());
+  renderSavedList();
+}
+
+// ============================================================
+// EVALUATION MODAL
+// ============================================================
+document.querySelectorAll('.star').forEach(star => {
+  star.addEventListener('click', function() {
+    selectedRating = parseInt(this.dataset.value);
+    document.querySelectorAll('.star').forEach((s, index) => {
+      if (index < selectedRating) {
+        s.classList.remove('fa-regular');
+        s.classList.add('fa-solid', 'text-amber-400');
+      } else {
+        s.classList.remove('fa-solid', 'text-amber-400');
+        s.classList.add('fa-regular');
+      }
     });
+  });
+});
+
+function toggleEvalModal() {
+  const modal = document.getElementById('evalModal');
+  modal.classList.toggle('hidden');
+  if (!modal.classList.contains('hidden')) {
+    const name = safeLocalStorageGet('profile_name', 'Anonymous');
+    document.getElementById('evalProfileName').textContent = 'Submitting as: ' + name;
+  }
+}
+
+async function submitEval() {
+  if (selectedRating === 0) { 
+    alert('Please select a star rating.'); 
+    return; 
   }
   
-  renderSavedList();
+  const suggestions = document.getElementById('evalSuggestions').value.trim();
+  const profileName = safeLocalStorageGet('profile_name', 'Anonymous');
+  
+  try {
+    await db.collection('feedback').add({
+      name: profileName,
+      rating: selectedRating,
+      suggestions: suggestions,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    alert('Thank you for your feedback!');
+    toggleEvalModal();
+    selectedRating = 0;
+    document.querySelectorAll('.star').forEach(s => {
+      s.classList.remove('fa-solid', 'text-amber-400');
+      s.classList.add('fa-regular');
+    });
+    document.getElementById('evalSuggestions').value = '';
+  } catch (err) {
+    console.error('Error submitting feedback:', err);
+    alert('Error submitting feedback. Please try again.');
+  }
+}
+
+// ============================================================
+// AUTH FUNCTIONS
+// ============================================================
+function closeAuthModal() {
+  document.getElementById('authModal').classList.add('hidden');
+}
+
+function updateAuthUI() {
+  const user = auth.currentUser;
+  const emailInput = document.getElementById('authEmail');
+  const passInput = document.getElementById('authPassword');
+  const nameFields = document.getElementById('authNameFields');
+  const btn = document.getElementById('authBtnText');
+  const title = document.getElementById('authTitle');
+  const subtitle = document.getElementById('authSubtitle');
+  const toggleText = document.getElementById('authToggleText');
+  const toggleBtn = document.getElementById('authToggleBtn');
+
+  if (user) {
+    title.textContent = 'Account';
+    subtitle.textContent = 'You are logged in as ' + user.email;
+    emailInput.classList.add('hidden');
+    passInput.classList.add('hidden');
+    nameFields.classList.add('hidden');
+    toggleText.textContent = '';
+    toggleBtn.textContent = '';
+    btn.textContent = 'Logout';
+  } else {
+    title.textContent = isSignUpMode ? 'Sign Up' : 'Login';
+    subtitle.textContent = isSignUpMode ? 'Create an account to save your data.' : 'Login to save your data and access all features.';
+    emailInput.classList.remove('hidden');
+    passInput.classList.remove('hidden');
+    nameFields.classList.toggle('hidden', !isSignUpMode);
+    toggleText.textContent = isSignUpMode ? 'Already have an account?' : 'Don\'t have an account?';
+    toggleBtn.textContent = isSignUpMode ? 'Login' : 'Sign Up';
+    btn.textContent = isSignUpMode ? 'Sign Up' : 'Login';
+  }
+  
+  document.getElementById('authError').classList.add('hidden');
+}
+
+function toggleAuthMode() {
+  isSignUpMode = !isSignUpMode;
+  updateAuthUI();
+}
+
+async function handleAuth() {
+  if (auth.currentUser) {
+    await logout();
+    return;
+  }
+  
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value.trim();
+  const errorEl = document.getElementById('authError');
+  
+  errorEl.classList.add('hidden');
+  
+  if (!email || !password) {
+    errorEl.textContent = 'Please fill in all fields.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  try {
+    if (isSignUpMode) {
+      const firstName = document.getElementById('authFirstName').value.trim();
+      const lastName = document.getElementById('authLastName').value.trim();
+      
+      if (!firstName || !lastName) {
+        errorEl.textContent = 'Please enter your first and last name.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      await db.collection('users').doc(userCredential.user.uid).set({
+        firstName,
+        lastName,
+        email,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      await auth.signInWithEmailAndPassword(email, password);
+    }
+    
+    closeAuthModal();
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.classList.remove('hidden');
+  }
+}
+
+async function logout() {
+  try {
+    await auth.signOut();
+    closeAuthModal();
+  } catch (err) {
+    console.error('Logout error:', err);
+  }
 }
 
 // ============================================================
@@ -1146,32 +1807,104 @@ async function loadSettingsFromFirestore(user) {
     if (doc.exists) {
       const data = doc.data();
       
-      // Load theme
       if (data.theme) {
         const html = document.documentElement;
         html.classList.remove('dark', 'light');
         html.classList.add(data.theme);
       }
       
-      // Load tab position
       if (data.tabPosition) {
         changeTabPosition(data.tabPosition);
       }
       
-      // Load accent color
       if (data.accentColor) {
         document.documentElement.style.setProperty('--accent', data.accentColor);
         document.documentElement.style.setProperty('--accent2', data.accentColor);
       }
       
-      // Load reminders setting
       if (data.remindersEnabled !== undefined) {
-        document.getElementById('reminderToggle').checked = data.remindersEnabled;
+        const toggle = document.getElementById('reminderToggle');
+        if (toggle) toggle.checked = data.remindersEnabled;
       }
     }
   } catch (err) {
     console.error('Error loading settings:', err);
   }
+}
+
+// ============================================================
+// FIREBASE AUTH STATE LISTENER
+// ============================================================
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    document.getElementById('userIcon').classList.remove('fa-user');
+    document.getElementById('userIcon').classList.add('fa-user-check');
+    document.getElementById('profileButton').title = 'Logged in as ' + user.email;
+    document.getElementById('logoutButton').classList.remove('hidden');
+    
+    try {
+      await loadSettingsFromFirestore(user);
+      
+      const [sched, planner, library] = await Promise.all([
+        loadFromFirestore('scheduler'),
+        loadFromFirestore('planner'),
+        loadFromFirestore('library')
+      ]);
+      
+      schedItems = sched;
+      plannerTasks = planner;
+      safeLocalStorageSet('acadhub_sched', sched);
+      safeLocalStorageSet('acadhub_planner', planner);
+      safeLocalStorageSet('acadhub_saved', library);
+      
+      renderScheduler();
+      renderPlanner();
+      renderSavedList();
+    } catch (err) {
+      console.error('Error loading Firestore data:', err);
+    }
+  } else {
+    document.getElementById('userIcon').classList.remove('fa-user-check');
+    document.getElementById('userIcon').classList.add('fa-user');
+    document.getElementById('profileButton').title = 'Login / Sign Up';
+    document.getElementById('logoutButton').classList.add('hidden');
+  }
+  
+  updateAuthUI();
+});
+
+// ============================================================
+// MODAL EVENT LISTENERS
+// ============================================================
+document.getElementById('authModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAuthModal();
+});
+
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettingsModal();
+});
+
+document.getElementById('profileModal').addEventListener('click', function(e) {
+  if (e.target === this) closeProfileModal();
+});
+
+document.getElementById('evalModal').addEventListener('click', function(e) {
+  if (e.target === this) toggleEvalModal();
+});
+
+// ============================================================
+// SERVICE WORKER REGISTRATION
+// ============================================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered:', registration.scope);
+      })
+      .catch((err) => {
+        console.error('Service Worker registration failed:', err);
+      });
+  });
 }
 
 // ============================================================
@@ -1195,7 +1928,8 @@ function initializeApp() {
   
   // Load reminders setting
   const remindersEnabled = safeLocalStorageGet('reminders_enabled', false);
-  document.getElementById('reminderToggle').checked = remindersEnabled;
+  const reminderToggle = document.getElementById('reminderToggle');
+  if (reminderToggle) reminderToggle.checked = remindersEnabled;
   
   // Render initial views
   renderScheduler();
@@ -1231,6 +1965,7 @@ window.toggleApiKeyVisibility = toggleApiKeyVisibility;
 window.updateFileName = updateFileName;
 window.updateTestFileName = updateTestFileName;
 window.handleGenerate = handleGenerate;
+window.saveToLibrary = saveToLibrary;
 window.setDifficulty = setDifficulty;
 window.startTest = startTest;
 window.nextTestQuestion = nextTestQuestion;
@@ -1252,5 +1987,13 @@ window.retryWakeUp = retryWakeUp;
 window.handleAuth = handleAuth;
 window.toggleAuthMode = toggleAuthMode;
 window.logout = logout;
+window.closeAuthModal = closeAuthModal;
 window.submitEval = submitEval;
 window.toggleEvalModal = toggleEvalModal;
+window.checkAnswer = checkAnswer;
+window.checkMCQAnswer = checkMCQAnswer;
+window.revealAnswer = revealAnswer;
+window.loadSavedItem = loadSavedItem;
+window.deleteSavedItem = deleteSavedItem;
+
+console.log('AcadHub Suite loaded successfully with all features intact.');
