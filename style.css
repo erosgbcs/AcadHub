@@ -1028,3 +1028,21 @@ html.light .gantt-dot-row {
 #ganttCustomizeModal .glass-card {
   padding: 1.5rem;
 }
+
+/* Fix Gantt modal centering and scroll */
+#ganttCustomizeModal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+#ganttCustomizeModal .glass-card {
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+}
