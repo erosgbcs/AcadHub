@@ -87,82 +87,62 @@ function shuffleArray(array) {
   return newArray;
 }
 
-// ============================================================
-// WAKE-UP OVERLAY - WITH 30 SECOND TIMEOUT
-// ============================================================
 async function retryWakeUp() {
   const statusEl = document.getElementById('wakeUpStatus');
   const btn = document.getElementById('retryWakeBtn');
   const overlay = document.getElementById('wakeUpOverlay');
   
-  // Show loading state
   btn.innerHTML = '<span class="loading-spinner"></span>Checking...';
   btn.classList.add('loading');
   btn.disabled = true;
   
-  statusEl.innerHTML = '<span class="loading-spinner"></span>Connecting to backend...';
+  statusEl.innerHTML = '<span class="loading-spinner"></span>Connecting...';
   statusEl.className = 'loading';
   
-  // Start countdown
+  // Countdown display
   let secondsLeft = 30;
   const countdownInterval = setInterval(() => {
     secondsLeft--;
     if (secondsLeft > 0) {
-      statusEl.innerHTML = `<span class="loading-spinner"></span>Connecting... (${secondsLeft}s timeout)`;
+      statusEl.innerHTML = `<span class="loading-spinner"></span>Connecting... (${secondsLeft}s)`;
     }
   }, 1000);
   
   try {
-    // 30-second timeout promise
+    // 30-second timeout
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('TIMEOUT: Server took too long to respond'));
-      }, 30000);
+      setTimeout(() => reject(new Error('TIMEOUT')), 30000);
     });
     
-    // Firestore check
     const firestoreCheck = db.collection('_health_check').doc('test').set({ 
       timestamp: firebase.firestore.FieldValue.serverTimestamp() 
     });
     
-    // Race: whichever finishes first wins
     await Promise.race([firestoreCheck, timeoutPromise]);
     
     // Success
     clearInterval(countdownInterval);
-    statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Backend is ready!';
-    statusEl.className = 'success';
+    statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Backend ready!';
     statusEl.style.color = '#10b981';
     btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Connected!';
-    btn.classList.remove('loading');
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     overlay.classList.add('fade-out');
     await new Promise(resolve => setTimeout(resolve, 500));
     overlay.style.display = 'none';
-    console.log('Backend is ready!');
     
   } catch (err) {
     clearInterval(countdownInterval);
-    console.error('Wake-up error:', err);
-    
-    if (err.message.includes('TIMEOUT')) {
-      statusEl.innerHTML = '<i class="fa-solid fa-clock mr-2"></i>Server took too long (30s). Please try again.';
-      statusEl.style.color = '#f59e0b';
-    } else {
-      statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>Connection failed. Please try again.';
-      statusEl.style.color = '#ef4444';
-    }
-    
-    statusEl.className = 'error';
+    statusEl.innerHTML = '<i class="fa-solid fa-clock mr-2"></i>Timeout. Please retry.';
+    statusEl.style.color = '#f59e0b';
     btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-2"></i>Try Again';
-    btn.classList.remove('loading');
     
   } finally {
     btn.disabled = false;
+    btn.classList.remove('loading');
   }
 }
-}
+
 
 // ============================================================
 // TAB MANAGEMENT
