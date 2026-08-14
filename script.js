@@ -563,7 +563,16 @@ function saveVisitorName() {
   closeProfileModal();
   showNotification(`Welcome, ${firstName}! Your profile has been saved.`, 'success');
 }
-
+function getTaskDotColor(item) {
+  if (item.customColor) return item.customColor;
+  // Fallback: priority colors
+  const priorityColors = {
+    high: '#ef4444',
+    medium: '#f59e0b',
+    low: '#10b981'
+  };
+  return priorityColors[item.priority] || '#6366f1';
+}
 // ============================================================
 // SETTINGS MANAGEMENT
 // ============================================================
@@ -1809,13 +1818,11 @@ function renderCalendar() {
   const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
 
   let cells = '';
-  // Day headers
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   dayNames.forEach(d => {
     cells += `<div class="calendar-day-header">${d}</div>`;
   });
 
-  // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
     cells += '<div class="calendar-day empty"></div>';
   }
@@ -1823,16 +1830,26 @@ function renderCalendar() {
   const today = new Date();
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(calendarYear, calendarMonth, day);
-const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;    const isToday = date.toDateString() === today.toDateString();
+    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isToday = date.toDateString() === today.toDateString();
     const isSelected = selectedCalendarDate === dateStr;
 
-    // Count tasks/deadlines on this day
     const tasksOnDay = getAllTasksForDate(dateStr);
+
+    let dotsHTML = '';
+    if (tasksOnDay.length > 0) {
+      dotsHTML = `<span class="task-dots-container" style="display:flex; gap:2px; margin-top:4px; justify-content:center; flex-wrap:wrap; max-width:100%;">`;
+      tasksOnDay.forEach(task => {
+        const color = getTaskDotColor(task);
+        dotsHTML += `<span class="task-dot" style="background:${color}; width:6px; height:6px; border-radius:50%;"></span>`;
+      });
+      dotsHTML += `</span>`;
+    }
 
     cells += `
       <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDate('${dateStr}')">
         <span>${day}</span>
-        ${tasksOnDay.length > 0 ? `<span class="task-dot ${tasksOnDay.length > 1 ? 'multiple' : ''}"></span>` : ''}
+        ${dotsHTML}
       </div>
     `;
   }
