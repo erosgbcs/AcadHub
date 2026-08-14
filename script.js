@@ -88,17 +88,14 @@ function shuffleArray(array) {
 }
 
 // ============================================================
-// WAKE-UP OVERLAY
-// ============================================================
-// ============================================================
-// WAKE-UP OVERLAY - WITH VISIBLE LOADING SPINNER
+// WAKE-UP OVERLAY - WITH 30 SECOND TIMEOUT
 // ============================================================
 async function retryWakeUp() {
   const statusEl = document.getElementById('wakeUpStatus');
   const btn = document.getElementById('retryWakeBtn');
   const overlay = document.getElementById('wakeUpOverlay');
   
-  // Show loading state with custom spinner
+  // Show loading state
   btn.innerHTML = '<span class="loading-spinner"></span>Checking...';
   btn.classList.add('loading');
   btn.disabled = true;
@@ -106,48 +103,65 @@ async function retryWakeUp() {
   statusEl.innerHTML = '<span class="loading-spinner"></span>Connecting to backend...';
   statusEl.className = 'loading';
   
-  try {
-    // Minimum loading time of 2 seconds for better UX
-    const minLoadingTime = new Promise(resolve => setTimeout(resolve, 2000));
-    
-    if (firebase.apps.length > 0) {
-      const firestoreCheck = db.collection('_health_check').doc('test').set({ 
-        timestamp: firebase.firestore.FieldValue.serverTimestamp() 
-      });
-      
-      // Wait for both Firestore check and minimum loading time
-      await Promise.all([firestoreCheck, minLoadingTime]);
-      
-      // Success state
-      statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Backend is ready!';
-      statusEl.className = 'success';
-      btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Connected!';
-      btn.classList.remove('loading');
-      
-      // Wait 1 second so user sees success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Fade out overlay
-      overlay.classList.add('fade-out');
-      
-      // Wait for fade animation
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Hide overlay completely
-      overlay.style.display = 'none';
-      console.log('Backend is ready!');
+  // Start countdown
+  let secondsLeft = 30;
+  const countdownInterval = setInterval(() => {
+    secondsLeft--;
+    if (secondsLeft > 0) {
+      statusEl.innerHTML = `<span class="loading-spinner"></span>Connecting... (${secondsLeft}s timeout)`;
     }
+  }, 1000);
+  
+  try {
+    // 30-second timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('TIMEOUT: Server took too long to respond'));
+      }, 30000);
+    });
+    
+    // Firestore check
+    const firestoreCheck = db.collection('_health_check').doc('test').set({ 
+      timestamp: firebase.firestore.FieldValue.serverTimestamp() 
+    });
+    
+    // Race: whichever finishes first wins
+    await Promise.race([firestoreCheck, timeoutPromise]);
+    
+    // Success
+    clearInterval(countdownInterval);
+    statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Backend is ready!';
+    statusEl.className = 'success';
+    statusEl.style.color = '#10b981';
+    btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Connected!';
+    btn.classList.remove('loading');
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    overlay.classList.add('fade-out');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    overlay.style.display = 'none';
+    console.log('Backend is ready!');
+    
   } catch (err) {
+    clearInterval(countdownInterval);
     console.error('Wake-up error:', err);
     
-    // Error state
-    statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>Still waking up... Please try again.';
+    if (err.message.includes('TIMEOUT')) {
+      statusEl.innerHTML = '<i class="fa-solid fa-clock mr-2"></i>Server took too long (30s). Please try again.';
+      statusEl.style.color = '#f59e0b';
+    } else {
+      statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>Connection failed. Please try again.';
+      statusEl.style.color = '#ef4444';
+    }
+    
     statusEl.className = 'error';
     btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-2"></i>Try Again';
     btn.classList.remove('loading');
+    
   } finally {
     btn.disabled = false;
   }
+}
 }
 
 // ============================================================
