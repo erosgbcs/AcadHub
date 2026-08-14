@@ -989,3 +989,38 @@ html.light #wakeUpOverlay .animate-spin {
   cursor: pointer !important;
   opacity: 1 !important;
 }
+
+.gantt-dot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.gantt-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.gantt-dot-title {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gantt-dot-deadline {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+html.light .gantt-dot-row {
+  border-bottom-color: rgba(0,0,0,0.05);
+}
