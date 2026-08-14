@@ -436,16 +436,124 @@
     <!-- Calendar grid -->
     <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center"></div>
 
+<!-- ===== VIEW: DEV & THESIS SCHEDULER ===== -->
+<div id="viewScheduler" class="hidden space-y-4 sm:space-y-6">
+  <div class="glass-card">
+    <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-calendar-days mr-2"></i>Dev & Thesis Scheduler</h2>
+
+    <!-- Add / Edit Form -->
+    <div class="flex flex-col sm:flex-row gap-2 mb-6">
+      <input type="text" id="schedTitle" placeholder="Task / Milestone title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
+      <input type="date" id="schedDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
+      <select id="schedType" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+        <option value="task">Task</option>
+        <option value="milestone">Milestone</option>
+        <option value="defense">Thesis Defense</option>
+        <option value="exam">Exam</option>
+      </select>
+      <select id="schedPriority" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+        <option value="low">Low Priority</option>
+        <option value="medium" selected>Medium Priority</option>
+        <option value="high">High Priority</option>
+      </select>
+      <select id="schedCategory" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+        <option value="study">Study</option>
+        <option value="dev">Development</option>
+        <option value="thesis">Thesis</option>
+        <option value="exam">Exam</option>
+        <option value="personal">Personal</option>
+      </select>
+      <button onclick="addOrUpdateSchedItem()" id="schedAddBtn" class="btn-primary px-4 py-2 text-sm btn-hover"><i class="fa-solid fa-plus mr-1"></i> Add</button>
+      <input type="hidden" id="editSchedId" value="" />
+    </div>
+
+    <!-- Filter Chips for Scheduler -->
+    <div class="filter-chips"></div>
+
+    <!-- Gantt Chart Roadmap -->
+    <h3 class="text-sm font-semibold mb-3 text-cyan-400"><i class="fa-solid fa-chart-bar mr-2"></i>Gantt Chart Roadmap</h3>
+    <div id="ganttChart" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[150px]">
+      <p class="text-xs opacity-50 text-center py-8">Add tasks to see your roadmap timeline</p>
+    </div>
+
+    <!-- Thesis Defense Countdowns -->
+    <h3 class="text-sm font-semibold mb-3 text-rose-400"><i class="fa-solid fa-graduation-cap mr-2"></i>Thesis Defense Countdowns</h3>
+    <div id="countdowns" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
+      <p class="text-xs opacity-50 text-center py-4">No defense dates set</p>
+    </div>
+
+    <!-- Exam Reminder Matrix -->
+    <h3 class="text-sm font-semibold mb-3 text-amber-400"><i class="fa-solid fa-file-pen mr-2"></i>Exam Reminder Matrix</h3>
+    <div id="examMatrix" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
+      <p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>
+    </div>
+
+    <!-- Kanban Task Board -->
+    <h3 class="text-sm font-semibold mb-3 text-blue-400"><i class="fa-solid fa-clipboard-list mr-2"></i>Kanban Task Board</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'todo')" data-column="todo">
+        <div class="column-header">
+          <h4 class="text-xs font-semibold text-amber-400"><i class="fa-solid fa-thumbtack mr-1"></i>To Do</h4>
+          <span class="column-count">0</span>
+        </div>
+        <div id="sched-todo" class="space-y-2 min-h-[80px]"></div>
+      </div>
+      <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'progress')" data-column="progress">
+        <div class="column-header">
+          <h4 class="text-xs font-semibold text-blue-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>In Progress</h4>
+          <span class="column-count">0</span>
+        </div>
+        <div id="sched-progress" class="space-y-2 min-h-[80px]"></div>
+      </div>
+      <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'done')" data-column="done">
+        <div class="column-header">
+          <h4 class="text-xs font-semibold text-emerald-400"><i class="fa-solid fa-check mr-1"></i>Done</h4>
+          <span class="column-count">0</span>
+        </div>
+        <div id="sched-done" class="space-y-2 min-h-[80px]"></div>
+      </div>
+    </div> <!-- /grid -->
+  </div> <!-- /glass-card -->
+</div> <!-- /viewScheduler -->
+
+<!-- ===== VIEW: CALENDAR ===== -->
+<div id="viewCalendar" class="hidden space-y-4 sm:space-y-6">
+  <div class="glass-card">
+    <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-calendar-days mr-2"></i>Calendar & Deadlines</h2>
+
+    <!-- Reminder toggle & status -->
+    <div class="flex items-center justify-between mb-4 p-3 bg-white/5 rounded-xl border border-white/10">
+      <div>
+        <label class="text-sm font-semibold"><i class="fa-solid fa-bell mr-2"></i>Deadline Reminders</label>
+        <p class="text-xs opacity-60">Get notified when deadlines are near (1, 3, or 7 days before).</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="reminderToggle" class="sr-only peer" onchange="toggleReminders()">
+        <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-indigo-600 transition"></div>
+        <span class="ml-2 text-xs">Enable</span>
+      </label>
+    </div>
+
+    <!-- Month navigation -->
+    <div class="flex items-center justify-between mb-4">
+      <button onclick="changeMonth(-1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
+        <i class="fa-solid fa-chevron-left mr-1"></i> Prev
+      </button>
+      <h3 id="calendarMonthLabel" class="text-base sm:text-lg font-bold"></h3>
+      <button onclick="changeMonth(1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
+        Next <i class="fa-solid fa-chevron-right ml-1"></i>
+      </button>
+    </div>
+
+    <!-- Calendar grid -->
+    <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center"></div>
+
     <!-- Tasks for selected day -->
     <div id="selectedDayTasks" class="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 min-h-[100px]">
       <p class="text-sm opacity-50">Select a date to see tasks.</p>
     </div>
   </div>
-</div>
-          </div>
-        </div>
-      </div>
-    </div>
+</div> <!-- /viewCalendar -->
 
     <!-- ===== DONATION CARD ===== -->
     <div class="glass-card mt-6 text-center order-4">
