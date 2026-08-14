@@ -2332,6 +2332,40 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+/// ============================================================
+// TAB EVENT LISTENERS (SAFER APPROACH)
+// ============================================================
+function initTabListeners() {
+  const tabContainer = document.getElementById('tabContainer');
+  
+  if (!tabContainer) {
+    console.error('Tab container not found');
+    return;
+  }
+  
+  // Event delegation - single listener for all tabs
+  tabContainer.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    
+    const tabMap = {
+      'tabReviewer': 'reviewer',
+      'tabLibrary': 'library',
+      'tabTest': 'test',
+      'tabPlanner': 'planner',
+      'tabScheduler': 'scheduler',
+      'tabCalendar': 'calendar'
+    };
+    
+    const tabName = tabMap[button.id];
+    if (tabName) {
+      switchTab(tabName);
+    }
+  });
+  
+  console.log('✅ Tab listeners initialized');
+}
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
@@ -2355,15 +2389,16 @@ function initializeApp() {
   const remindersEnabled = safeLocalStorageGet('reminders_enabled', false);
   const reminderToggle = document.getElementById('reminderToggle');
   if (reminderToggle) reminderToggle.checked = remindersEnabled;
-  
+
   // Render initial views
-  renderScheduler();
-  renderPlanner();
-  renderSavedList();
-  renderCalendar();
-  updateProviderUI();
-  updateSettingsUI();
-  initProfileModal();
+renderScheduler();
+renderPlanner();
+renderSavedList();
+renderCalendar();
+updateProviderUI();
+updateSettingsUI();
+initProfileModal();
+initTabListeners(); 
   
   // Show profile modal if not saved
   if (safeLocalStorageGet('profile_saved') !== 'true') {
@@ -2378,6 +2413,7 @@ initializeApp();
 
 // Export functions for global use
 window.switchTab = switchTab;
+window.initTabListeners = initTabListeners; // ✅ ADD THIS LINE
 window.showProfileModal = showProfileModal;
 window.closeProfileModal = closeProfileModal;
 window.saveVisitorName = saveVisitorName;
