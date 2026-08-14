@@ -1024,3 +1024,7 @@ html.light #wakeUpOverlay .animate-spin {
 html.light .gantt-dot-row {
   border-bottom-color: rgba(0,0,0,0.05);
 }
+
+#ganttCustomizeModal .glass-card {
+  padding: 1.5rem;
+}

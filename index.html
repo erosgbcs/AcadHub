@@ -67,7 +67,30 @@
         </div>
       </div>
     </div>
-
+<!-- CUSTOMIZE GANTT MODAL -->
+<div id="ganttCustomizeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div class="glass-card w-80 p-6 relative">
+    <button onclick="closeGanttCustomizeModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
+      <i class="fa-solid fa-times"></i>
+    </button>
+    <h3 class="text-sm font-semibold mb-4"><i class="fa-solid fa-palette mr-2"></i>Customize Task</h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold mb-1">Priority</label>
+        <select id="ganttPrioritySelect" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+          <option value="high">High Priority</option>
+          <option value="medium" selected>Medium Priority</option>
+          <option value="low">Low Priority</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1">Custom Color</label>
+        <input type="color" id="ganttColorPicker" value="#f59e0b" class="w-full h-10 rounded-lg cursor-pointer" />
+      </div>
+      <button onclick="saveGanttCustomization()" class="btn-primary w-full text-base py-3 btn-hover">Save</button>
+    </div>
+  </div>
+</div>
     <!-- ===== TABS ===== -->
     <div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
   <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">AI Reviewer</button>

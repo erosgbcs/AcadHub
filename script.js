@@ -1578,7 +1578,8 @@ function renderGanttChart(items) {
     const row = document.createElement('div');
     row.className = 'gantt-dot-row';
 
-    const dotColor = item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981';
+const dotColor = item.customColor || 
+  (item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981');   
     const isMilestone = item.type === 'milestone';
 
     row.innerHTML = `
@@ -1596,34 +1597,51 @@ function renderGanttChart(items) {
   });
 }
 
+let ganttCustomizeId = null;
+
 function customizeGanttItem(id) {
   const item = schedItems.find(i => i.id === id);
   if (!item) return;
 
-  const newPriority = prompt(
-    `Customize "${item.title}"\nType priority: high, medium, or low`,
-    item.priority || 'medium'
-  );
+  ganttCustomizeId = id;
 
-  if (!newPriority) return;
+  document.getElementById('ganttPrioritySelect').value = item.priority || 'medium';
+  document.getElementById('ganttColorPicker').value = item.customColor || 
+    (item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981');
 
-  const valid = ['high', 'medium', 'low'];
-  const cleaned = newPriority.trim().toLowerCase();
-  if (!valid.includes(cleaned)) {
-    showNotification('Invalid priority. Use high, medium, or low.', 'error');
-    return;
-  }
+  document.getElementById('ganttCustomizeModal').classList.remove('hidden');
+}
 
-  item.priority = cleaned;
+function closeGanttCustomizeModal() {
+  document.getElementById('ganttCustomizeModal').classList.add('hidden');
+  ganttCustomizeId = null;
+}
+
+function saveGanttCustomization() {
+  if (!ganttCustomizeId) return;
+
+  const item = schedItems.find(i => i.id === ganttCustomizeId);
+  if (!item) return;
+
+  const priority = document.getElementById('ganttPrioritySelect').value;
+  const customColor = document.getElementById('ganttColorPicker').value;
+
+  item.priority = priority;
+  item.customColor = customColor;
+
   safeLocalStorageSet('acadhub_sched', schedItems);
 
   if (firebaseAvailable && auth && auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(id).update({ priority: cleaned });
+    db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(ganttCustomizeId).update({
+      priority,
+      customColor
+    });
   }
 
+  closeGanttCustomizeModal();
   renderScheduler();
   renderCalendar();
-  showNotification('Priority updated!', 'success');
+  showNotification('Task customized!', 'success');
 }
 
 function renderCountdowns(items) {
@@ -1805,8 +1823,7 @@ function renderCalendar() {
   const today = new Date();
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(calendarYear, calendarMonth, day);
-    const dateStr = date.toISOString().split('T')[0];
-    const isToday = date.toDateString() === today.toDateString();
+const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;    const isToday = date.toDateString() === today.toDateString();
     const isSelected = selectedCalendarDate === dateStr;
 
     // Count tasks/deadlines on this day
@@ -2291,6 +2308,7 @@ window.deleteSchedItem = deleteSchedItem;
 window.dropSchedTask = dropSchedTask;
 window.renderScheduler = renderScheduler;
 window.customizeGanttItem = customizeGanttItem;
-
+window.closeGanttCustomizeModal = closeGanttCustomizeModal;
+window.saveGanttCustomization = saveGanttCustomization;
 console.log('✅ All functions exported and ready');
 console.log('✅ Backend integration complete');
