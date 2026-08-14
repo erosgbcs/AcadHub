@@ -69,14 +69,14 @@
     </div>
 
     <!-- ===== TABS ===== -->
-    <div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
-      <button id="tabReviewer" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">AI Reviewer</button>
-      <button id="tabLibrary" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
-      <button id="tabTest" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
-      <button id="tabPlanner" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Study Planner</button>
-      <button id="tabScheduler" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Dev & Thesis Scheduler</button>
-      <button id="tabCalendar" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Calendar</button>
-    </div>
+    <<div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
+  <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">AI Reviewer</button>
+  <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
+  <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
+  <button id="tabPlanner" onclick="switchTab('planner')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Study Planner</button>
+  <button id="tabScheduler" onclick="switchTab('scheduler')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Dev & Thesis Scheduler</button>
+  <button id="tabCalendar" onclick="switchTab('calendar')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Calendar</button>
+</div>
 
     <!-- ===== VIEWS CONTAINER ===== -->
     <div id="viewsContainer" class="flex-1 space-y-4 sm:space-y-6 order-3">
@@ -472,11 +472,12 @@
           <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500" />
           <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly.</span>
         </label>
-<button id="saveProfileBtn" onclick="saveVisitorName()" 
-        class="btn-primary w-full text-base py-3 btn-hover opacity-50 cursor-not-allowed" 
-        disabled title="Fill in all fields to enable">
+<<button id="saveProfileBtn" onclick="saveVisitorName()" 
+        class="btn-primary w-full text-base py-3 btn-hover" 
+        title="Save profile">
   Save
-</button>      </div>
+</button>
+      </div>
     </div>
   </div>
 

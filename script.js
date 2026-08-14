@@ -17,21 +17,37 @@ const firebaseConfig = {
   measurementId: "G-CY6WD8V98H"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+// ============================================================
+// SAFE FIREBASE INITIALIZATION (works offline)
+// ============================================================
+let db = null;
+let auth = null;
+let firebaseAvailable = false;
 
-// Enable offline persistence
-db.enablePersistence()
-  .then(() => console.log('✅ Firebase offline persistence enabled'))
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn('⚠️ Multiple tabs open - persistence disabled');
-    } else if (err.code === 'unimplemented') {
-      console.warn('⚠️ Browser does not support offline persistence');
-    }
-  });
+try {
+  if (typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    firebaseAvailable = true;
+
+    // Enable offline persistence
+    db.enablePersistence()
+      .then(() => console.log('✅ Firebase offline persistence enabled'))
+      .catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.warn('⚠️ Multiple tabs open - persistence disabled');
+        } else if (err.code === 'unimplemented') {
+          console.warn('⚠️ Browser does not support offline persistence');
+        }
+      });
+  } else {
+    console.warn('⚠️ Firebase SDK not loaded. Running in offline mode.');
+  }
+} catch (err) {
+  console.error('Firebase initialization failed:', err);
+  firebaseAvailable = false;
+}
 
 // ============================================================
 // BACKEND API CONFIGURATION
@@ -447,17 +463,19 @@ function initTabListeners() {
 // PROFILE MANAGEMENT
 // ============================================================
 function showProfileModal() {
-  const user = auth.currentUser;
-  if (user) {
+  // If Firebase is available and user is logged in, show auth modal
+  if (firebaseAvailable && auth && auth.currentUser) {
     document.getElementById('authModal').classList.remove('hidden');
     updateAuthUI();
+    return;
+  }
+
+  // Otherwise show the simple profile modal
+  if (safeLocalStorageGet('profile_saved') !== 'true') {
+    document.getElementById('profileModal').classList.remove('hidden');
   } else {
-    if (safeLocalStorageGet('profile_saved') !== 'true') {
-      document.getElementById('profileModal').classList.remove('hidden');
-    } else {
-      document.getElementById('authModal').classList.remove('hidden');
-      updateAuthUI();
-    }
+    // If profile already saved, show auth modal (even without Firebase)
+    document.getElementById('authModal').classList.remove('hidden');
   }
 }
 
@@ -521,37 +539,26 @@ function saveVisitorName() {
     return;
   }
 
-  saveBtn.disabled = true;
-  const originalText = saveBtn.innerHTML;
-  saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Saving...';
-
+  // Save locally
   const fullName = firstName + ' ' + lastName;
   safeLocalStorageSet('profile_name', fullName);
   safeLocalStorageSet('profile_saved', 'true');
 
-  const savePromise = auth.currentUser
-    ? db.collection('users').doc(auth.currentUser.uid).set({
+  // Save to Firebase only if available and user is logged in
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      db.collection('users').doc(auth.currentUser.uid).set({
         firstName,
         lastName,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true })
-    : Promise.resolve();
-
-  savePromise
-    .then(() => {
-      console.log('Profile saved:', fullName);
-      closeProfileModal();
-      showNotification(`Welcome, ${firstName}! Your profile has been saved.`, 'success');
-    })
-    .catch(err => {
+      }, { merge: true });
+    } catch (err) {
       console.error('Error saving to Firebase:', err);
-      closeProfileModal();
-      showNotification('Profile saved locally. Will sync when online.', 'warning');
-    })
-    .finally(() => {
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = originalText;
-    });
+    }
+  }
+
+  closeProfileModal();
+  showNotification(`Welcome, ${firstName}! Your profile has been saved.`, 'success');
 }
 
 // ============================================================
@@ -584,7 +591,7 @@ function toggleTheme() {
   const theme = html.classList.contains('dark') ? 'dark' : 'light';
   safeLocalStorageSet('theme', theme);
 
-  if (auth.currentUser) {
+  if (firebaseAvailable && auth && auth.currentUser) {
     db.collection('users').doc(auth.currentUser.uid).set({
       theme
     }, { merge: true }).catch(err => console.error('Error saving theme:', err));
@@ -600,7 +607,7 @@ function changeTabPosition(position) {
 
   safeLocalStorageSet('tab_position', position);
 
-  if (auth.currentUser) {
+  if (firebaseAvailable && auth && auth.currentUser) {
     db.collection('users').doc(auth.currentUser.uid).set({
       tabPosition: position
     }, { merge: true }).catch(err => console.error('Error saving tab position:', err));
@@ -1047,13 +1054,13 @@ async function saveToLibrary() {
   saved.unshift(saveItem);
   safeLocalStorageSet('acadhub_saved', saved);
 
-  if (auth.currentUser) {
-    try {
-      await db.collection('users').doc(auth.currentUser.uid).collection('library').add(saveItem);
-    } catch (err) {
-      console.error('Error saving to Firebase:', err);
-    }
+if (firebaseAvailable && auth && auth.currentUser) {
+  try {
+    await db.collection('users').doc(auth.currentUser.uid).collection('library').add(saveItem);
+  } catch (err) {
+    console.error('Error saving to Firebase:', err);
   }
+}
 
   showNotification('Saved to library!', 'success');
   renderSavedList();
@@ -1391,14 +1398,14 @@ function addOrUpdatePlannerTask() {
 
   safeLocalStorageSet('acadhub_planner', plannerTasks);
 
-  if (auth.currentUser) {
-    const plannerRef = db.collection('users').doc(auth.currentUser.uid).collection('planner');
-    if (editId) {
-      plannerRef.doc(editId).update({ title, deadline, priority, category });
-    } else {
-      plannerRef.add({ title, deadline, priority, category, status: 'todo' });
-    }
+  if (firebaseAvailable && auth && auth.currentUser) {
+  const plannerRef = db.collection('users').doc(auth.currentUser.uid).collection('planner');
+  if (editId) {
+    plannerRef.doc(editId).update({ title, deadline, priority, category });
+  } else {
+    plannerRef.add({ title, deadline, priority, category, status: 'todo' });
   }
+}
 
   document.getElementById('plannerTitle').value = '';
   document.getElementById('plannerDeadline').value = '';
@@ -1425,9 +1432,9 @@ function deletePlannerTask(id) {
   plannerTasks = plannerTasks.filter(t => t.id !== id);
   safeLocalStorageSet('acadhub_planner', plannerTasks);
 
-  if (auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).collection('planner').doc(id).delete();
-  }
+  if (firebaseAvailable && auth && auth.currentUser) {
+  db.collection('users').doc(auth.currentUser.uid).collection('planner').doc(id).delete();
+}
 
   renderPlanner();
   showNotification('Task deleted.', 'info');
@@ -1451,9 +1458,9 @@ function dropPlannerTask(event, status) {
     task.status = status;
     safeLocalStorageSet('acadhub_planner', plannerTasks);
 
-    if (auth.currentUser) {
-      db.collection('users').doc(auth.currentUser.uid).collection('planner').doc(taskId).update({ status });
-    }
+    if (firebaseAvailable && auth && auth.currentUser) {
+  db.collection('users').doc(auth.currentUser.uid).collection('planner').doc(taskId).update({ status });
+}
 
     renderPlanner();
   }
@@ -1574,7 +1581,7 @@ function closeAuthModal() {
 }
 
 function updateAuthUI() {
-  const user = auth.currentUser;
+  const user = (firebaseAvailable && auth) ? auth.currentUser : null;
   const emailInput = document.getElementById('authEmail');
   const passInput = document.getElementById('authPassword');
   const nameFields = document.getElementById('authNameFields');
@@ -1613,6 +1620,11 @@ function toggleAuthMode() {
 }
 
 async function handleAuth() {
+  if (!firebaseAvailable) {
+    showNotification('Firebase authentication is not available offline.', 'warning');
+    return;
+  }
+
   if (auth.currentUser) {
     await logout();
     return;
@@ -1662,65 +1674,68 @@ async function handleAuth() {
 }
 
 async function logout() {
-  try {
-    await auth.signOut();
-    closeAuthModal();
-    showNotification('Logged out successfully.', 'info');
-  } catch (err) {
-    console.error('Logout error:', err);
-    showNotification('Error logging out.', 'error');
+  if (firebaseAvailable && auth) {
+    try {
+      await auth.signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
   }
+  closeAuthModal();
+  showNotification('Logged out successfully.', 'info');
 }
 
 // ============================================================
 // FIREBASE AUTH STATE LISTENER
 // ============================================================
-auth.onAuthStateChanged(async user => {
-  if (user) {
-    document.getElementById('userIcon').classList.remove('fa-user');
-    document.getElementById('userIcon').classList.add('fa-user-check');
-    document.getElementById('profileButton').title = 'Logged in as ' + user.email;
-    document.getElementById('logoutButton').classList.remove('hidden');
+if (firebaseAvailable && auth) {
+  auth.onAuthStateChanged(async user => {
+    if (user) {
+      document.getElementById('userIcon').classList.remove('fa-user');
+      document.getElementById('userIcon').classList.add('fa-user-check');
+      document.getElementById('profileButton').title = 'Logged in as ' + user.email;
+      document.getElementById('logoutButton').classList.remove('hidden');
 
-    try {
-      const [sched, planner, library] = await Promise.all([
-        loadFromFirestore('scheduler'),
-        loadFromFirestore('planner'),
-        loadFromFirestore('library')
-      ]);
+      try {
+        const [sched, planner, library] = await Promise.all([
+          loadFromFirestore('scheduler'),
+          loadFromFirestore('planner'),
+          loadFromFirestore('library')
+        ]);
 
-      if (sched.length > 0) {
-        schedItems = sched;
-        safeLocalStorageSet('acadhub_sched', sched);
+        if (sched.length > 0) {
+          schedItems = sched;
+          safeLocalStorageSet('acadhub_sched', sched);
+        }
+
+        if (planner.length > 0) {
+          plannerTasks = planner;
+          safeLocalStorageSet('acadhub_planner', planner);
+        }
+
+        if (library.length > 0) {
+          safeLocalStorageSet('acadhub_saved', library);
+        }
+
+        renderScheduler();
+        renderPlanner();
+        renderSavedList();
+      } catch (err) {
+        console.error('Error loading Firestore data:', err);
       }
-
-      if (planner.length > 0) {
-        plannerTasks = planner;
-        safeLocalStorageSet('acadhub_planner', planner);
-      }
-
-      if (library.length > 0) {
-        safeLocalStorageSet('acadhub_saved', library);
-      }
-
-      renderScheduler();
-      renderPlanner();
-      renderSavedList();
-    } catch (err) {
-      console.error('Error loading Firestore data:', err);
+    } else {
+      document.getElementById('userIcon').classList.remove('fa-user-check');
+      document.getElementById('userIcon').classList.add('fa-user');
+      document.getElementById('profileButton').title = 'Login / Sign Up';
+      document.getElementById('logoutButton').classList.add('hidden');
     }
-  } else {
-    document.getElementById('userIcon').classList.remove('fa-user-check');
-    document.getElementById('userIcon').classList.add('fa-user');
-    document.getElementById('profileButton').title = 'Login / Sign Up';
-    document.getElementById('logoutButton').classList.add('hidden');
-  }
 
-  updateAuthUI();
-});
+    updateAuthUI();
+  });
+}
 
 async function loadFromFirestore(collectionName) {
-  if (!auth.currentUser) return [];
+  if (!firebaseAvailable || !auth || !auth.currentUser) return [];
 
   try {
     const snapshot = await db.collection('users').doc(auth.currentUser.uid).collection(collectionName).get();
@@ -1749,14 +1764,14 @@ function submitEval() {
   
   console.log('Evaluation submitted:', { rating: selectedRating, suggestions, profileName });
   
-  if (auth.currentUser) {
-    db.collection('evaluations').add({
-      rating: selectedRating,
-      suggestions,
-      profileName,
-      userId: auth.currentUser.uid,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(err => console.error('Error saving evaluation:', err));
+  if (firebaseAvailable && auth && auth.currentUser) {
+  db.collection('evaluations').add({
+    rating: selectedRating,
+    suggestions,
+    profileName,
+    userId: auth.currentUser.uid,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(err => console.error('Error saving evaluation:', err));
   }
   
   toggleEvalModal();
