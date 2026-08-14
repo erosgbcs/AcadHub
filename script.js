@@ -87,61 +87,221 @@ function shuffleArray(array) {
   return newArray;
 }
 
+// ============================================================
+// WAKE-UP OVERLAY - WITH 30s TIMEOUT + SKIP TO DASHBOARD
+// ============================================================
 async function retryWakeUp() {
   const statusEl = document.getElementById('wakeUpStatus');
   const btn = document.getElementById('retryWakeBtn');
   const overlay = document.getElementById('wakeUpOverlay');
   
+  // Show loading state
   btn.innerHTML = '<span class="loading-spinner"></span>Checking...';
   btn.classList.add('loading');
   btn.disabled = true;
   
-  statusEl.innerHTML = '<span class="loading-spinner"></span>Connecting...';
+  statusEl.innerHTML = '<span class="loading-spinner"></span>Connecting to backend...';
   statusEl.className = 'loading';
+  statusEl.style.color = '#94a3b8';
   
   // Countdown display
   let secondsLeft = 30;
   const countdownInterval = setInterval(() => {
     secondsLeft--;
     if (secondsLeft > 0) {
-      statusEl.innerHTML = `<span class="loading-spinner"></span>Connecting... (${secondsLeft}s)`;
+      statusEl.innerHTML = `<span class="loading-spinner"></span>Connecting... (${secondsLeft}s timeout)`;
+      
+      // Change color when almost timeout
+      if (secondsLeft < 10) {
+        statusEl.style.color = '#f59e0b';
+      }
+      if (secondsLeft < 5) {
+        statusEl.style.color = '#ef4444';
+      }
     }
   }, 1000);
   
   try {
-    // 30-second timeout
+    // 30-second timeout promise
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('TIMEOUT')), 30000);
     });
     
+    // Firestore check
     const firestoreCheck = db.collection('_health_check').doc('test').set({ 
       timestamp: firebase.firestore.FieldValue.serverTimestamp() 
     });
     
+    // Race: whichever finishes first wins
     await Promise.race([firestoreCheck, timeoutPromise]);
     
-    // Success
+    // ✅ SUCCESS - Backend is online
     clearInterval(countdownInterval);
-    statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Backend ready!';
+    statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Backend is ready!';
+    statusEl.className = 'success';
     statusEl.style.color = '#10b981';
     btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Connected!';
+    btn.classList.remove('loading');
     
+    // Wait 1 second so user sees success
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Fade out overlay
     overlay.classList.add('fade-out');
     await new Promise(resolve => setTimeout(resolve, 500));
     overlay.style.display = 'none';
     
+    console.log('✅ Backend is ready!');
+    
   } catch (err) {
+    // ❌ TIMEOUT OR ERROR - Show options
     clearInterval(countdownInterval);
-    statusEl.innerHTML = '<i class="fa-solid fa-clock mr-2"></i>Timeout. Please retry.';
-    statusEl.style.color = '#f59e0b';
-    btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-2"></i>Try Again';
+    console.error('Wake-up error:', err);
+    
+    // Update status
+    if (err.message.includes('TIMEOUT')) {
+      statusEl.innerHTML = '<i class="fa-solid fa-clock mr-2"></i>Server took too long (30s). You can continue offline.';
+      statusEl.style.color = '#f59e0b';
+    } else {
+      statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>Backend offline. You can continue in offline mode.';
+      statusEl.style.color = '#ef4444';
+    }
+    
+    statusEl.className = 'error';
+    
+    // Change button to "Continue Offline"
+    btn.innerHTML = '<i class="fa-solid fa-arrow-right mr-2"></i>Continue to Dashboard';
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    
+    // Replace onclick to skip directly
+    btn.onclick = skipToDashboard;
+    
+    // Also add a secondary skip link
+    const skipLink = document.createElement('button');
+    skipLink.id = 'skipOfflineBtn';
+    skipLink.textContent = 'Skip and continue offline';
+    skipLink.style.cssText = `
+      display: block;
+      margin: 1rem auto 0;
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #94a3b8;
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    skipLink.onmouseover = () => {
+      skipLink.style.background = 'rgba(255,255,255,0.1)';
+      skipLink.style.color = '#e2e8f0';
+    };
+    skipLink.onmouseout = () => {
+      skipLink.style.background = 'transparent';
+      skipLink.style.color = '#94a3b8';
+    };
+    skipLink.onclick = skipToDashboard;
+    
+    // Remove old skip link if exists
+    const oldSkip = document.getElementById('skipOfflineBtn');
+    if (oldSkip) oldSkip.remove();
+    
+    // Add skip link after status
+    statusEl.parentElement.appendChild(skipLink);
     
   } finally {
+    // Ensure button is enabled
     btn.disabled = false;
     btn.classList.remove('loading');
   }
 }
+
+// ============================================================
+// SKIP TO DASHBOARD (OFFLINE MODE)
+// ============================================================
+function skipToDashboard() {
+  const overlay = document.getElementById('wakeUpOverlay');
+  const statusEl = document.getElementById('wakeUpStatus');
+  
+  // Show quick transition message
+  statusEl.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Continuing offline...';
+  statusEl.style.color = '#10b981';
+  
+  // Fade out overlay
+  overlay.classList.add('fade-out');
+  
+  // Hide after fade
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    console.log('📴 Entering offline mode - dashboard accessible');
+    
+    // Optional: Show notification that app is offline
+    showOfflineNotification();
+  }, 500);
+}
+
+// ============================================================
+// OFFLINE NOTIFICATION
+// ============================================================
+function showOfflineNotification() {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.id = 'offlineNotification';
+  notification.style.cssText = `
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    padding: 0.75rem 1rem;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 0.75rem;
+    color: #fbbf24;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: slideIn 0.3s ease;
+    backdrop-filter: blur(12px);
+  `;
+  notification.innerHTML = `
+    <i class="fa-solid fa-wifi-slash"></i>
+    <span>Offline Mode - Data saved locally</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#fbbf24;cursor:pointer;font-size:1rem;">×</button>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.style.opacity = '0';
+      notification.style.transition = 'opacity 0.3s';
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 5000);
+}
+
+// Add slide-in animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// Export for global use
+window.skipToDashboard = skipToDashboard;
 
 
 // ============================================================
@@ -221,38 +381,173 @@ function closeProfileModal() {
   document.getElementById('profileModal').classList.add('hidden');
 }
 
+// ============================================================
+// PROFILE SAVE WITH NOTIFICATION
+// ============================================================
 function saveVisitorName() {
   const firstName = document.getElementById('visitorFirstName').value.trim();
   const lastName = document.getElementById('visitorLastName').value.trim();
   const agreeTerms = document.getElementById('agreeTerms').checked;
+  const saveBtn = document.getElementById('saveProfileBtn');
   
+  // Validation
   if (!firstName || !lastName) {
-    alert('Please enter your first and last name.');
+    showNotification('Please enter your first and last name.', 'error');
+    return;
+  }
+  
+  if (firstName.length < 2 || lastName.length < 2) {
+    showNotification('Name must be at least 2 characters long.', 'error');
     return;
   }
   
   if (!agreeTerms) {
-    alert('Please agree to the privacy terms.');
+    showNotification('Please agree to the privacy terms.', 'error');
     return;
   }
   
+  // Disable button during save
+  saveBtn.disabled = true;
+  const originalText = saveBtn.innerHTML;
+  saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Saving...';
+  
   const fullName = firstName + ' ' + lastName;
+  
+  // Save to localStorage first
   safeLocalStorageSet('profile_name', fullName);
   safeLocalStorageSet('profile_saved', 'true');
   
-  if (auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).set({
-      firstName,
-      lastName,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true }).catch(err => {
-      console.error('Error saving profile:', err);
-    });
-  }
+  // Try to save to Firestore if logged in
+  const savePromise = auth.currentUser 
+    ? db.collection('users').doc(auth.currentUser.uid).set({
+        firstName,
+        lastName,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true })
+    : Promise.resolve();
   
-  closeProfileModal();
-  console.log('Profile saved:', fullName);
+  savePromise
+    .then(() => {
+      console.log('Profile saved:', fullName);
+      closeProfileModal();
+      
+      // ✅ Show success notification
+      showNotification(`Welcome, ${firstName}! Your profile has been saved.`, 'success');
+    })
+    .catch(err => {
+      console.error('Error saving to Firestore:', err);
+      closeProfileModal();
+      
+      // ⚠️ Show warning (saved locally but not cloud)
+      showNotification('Profile saved locally. Will sync when online.', 'warning');
+    })
+    .finally(() => {
+      // Reset button
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalText;
+    });
 }
+
+// ============================================================
+// NOTIFICATION SYSTEM
+// ============================================================
+function showNotification(message, type = 'success') {
+  // Remove existing notification
+  const existing = document.getElementById('appNotification');
+  if (existing) existing.remove();
+  
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.id = 'appNotification';
+  
+  // Style based on type
+  const styles = {
+    success: {
+      background: 'rgba(16, 185, 129, 0.15)',
+      border: '1px solid rgba(16, 185, 129, 0.3)',
+      color: '#34d399',
+      icon: 'fa-circle-check'
+    },
+    error: {
+      background: 'rgba(239, 68, 68, 0.15)',
+      border: '1px solid rgba(239, 68, 68, 0.3)',
+      color: '#f87171',
+      icon: 'fa-circle-xmark'
+    },
+    warning: {
+      background: 'rgba(245, 158, 11, 0.15)',
+      border: '1px solid rgba(245, 158, 11, 0.3)',
+      color: '#fbbf24',
+      icon: 'fa-triangle-exclamation'
+    },
+    info: {
+      background: 'rgba(99, 102, 241, 0.15)',
+      border: '1px solid rgba(99, 102, 241, 0.3)',
+      color: '#a5b4fc',
+      icon: 'fa-circle-info'
+    }
+  };
+  
+  const style = styles[type] || styles.success;
+  
+  notification.style.cssText = `
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1000;
+    padding: 1rem 1.25rem;
+    background: ${style.background};
+    border: ${style.border};
+    border-radius: 0.75rem;
+    color: ${style.color};
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 280px;
+    max-width: 400px;
+    animation: slideInRight 0.3s ease;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  `;
+  
+  notification.innerHTML = `
+    <i class="fa-solid ${style.icon} text-lg"></i>
+    <span style="flex:1;">${message}</span>
+    <button onclick="this.parentElement.remove()" 
+            style="background:none;border:none;color:${style.color};cursor:pointer;font-size:1.1rem;opacity:0.7;hover:opacity:1;">
+      ×
+    </button>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.style.opacity = '0';
+      notification.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 4000);
+}
+
+// Add animation
+const notificationStyle = document.createElement('style');
+notificationStyle.textContent = `
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+document.head.appendChild(notificationStyle);
 
 // ============================================================
 // SETTINGS MANAGEMENT
