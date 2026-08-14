@@ -1562,37 +1562,68 @@ function renderGanttChart(items) {
   if (!container) return;
   container.innerHTML = '';
 
-  // Filter out items with missing or invalid deadlines
+  // Filter valid deadlines
   const validItems = items.filter(i => i.deadline && !isNaN(new Date(i.deadline).getTime()));
-  
+
   if (validItems.length === 0) {
     container.innerHTML = '<p class="text-xs opacity-50 text-center py-8">No tasks with valid dates to display</p>';
     return;
   }
 
-  const today = new Date();
-  const dates = validItems.map(i => new Date(i.deadline).getTime());
-  const maxDate = new Date(Math.max(today.getTime(), ...dates));
-  const minDate = new Date(Math.min(today.getTime(), ...dates));
-  const totalDays = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
+  // Sort by deadline
+  validItems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
 
+  // Create rows
   validItems.forEach(item => {
-    const deadline = new Date(item.deadline);
-    const startOffset = Math.max(0, Math.floor((deadline - minDate) / (1000 * 60 * 60 * 24)));
-    const duration = 3; // fake duration
-    const width = Math.max(2, (duration / totalDays) * 100);
-    const left = (startOffset / totalDays) * 100;
+    const row = document.createElement('div');
+    row.className = 'gantt-dot-row';
 
-    const bar = document.createElement('div');
-    bar.className = 'gantt-bar-container';
-    bar.innerHTML = `
-      <div class="gantt-bar" style="left:${left}%; width:${width}%; background:${item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981'}">
-        <span class="gantt-bar-label">${item.title}</span>
-        <span class="gantt-bar-deadline">${formatDate(item.deadline)}</span>
-      </div>
+    const dotColor = item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981';
+    const isMilestone = item.type === 'milestone';
+
+    row.innerHTML = `
+      <span class="gantt-dot" 
+            style="background:${dotColor}; cursor:pointer;" 
+            title="Click to customize"
+            onclick="customizeGanttItem('${item.id}')">
+        ${isMilestone ? '<i class="fa-solid fa-star"></i>' : ''}
+      </span>
+      <span class="gantt-dot-title">${item.title || 'Untitled'}</span>
+      <span class="gantt-dot-deadline">${formatDate(item.deadline)}</span>
     `;
-    container.appendChild(bar);
+
+    container.appendChild(row);
   });
+}
+
+function customizeGanttItem(id) {
+  const item = schedItems.find(i => i.id === id);
+  if (!item) return;
+
+  const newPriority = prompt(
+    `Customize "${item.title}"\nType priority: high, medium, or low`,
+    item.priority || 'medium'
+  );
+
+  if (!newPriority) return;
+
+  const valid = ['high', 'medium', 'low'];
+  const cleaned = newPriority.trim().toLowerCase();
+  if (!valid.includes(cleaned)) {
+    showNotification('Invalid priority. Use high, medium, or low.', 'error');
+    return;
+  }
+
+  item.priority = cleaned;
+  safeLocalStorageSet('acadhub_sched', schedItems);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(id).update({ priority: cleaned });
+  }
+
+  renderScheduler();
+  renderCalendar();
+  showNotification('Priority updated!', 'success');
 }
 
 function renderCountdowns(items) {
