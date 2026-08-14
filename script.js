@@ -1562,17 +1562,21 @@ function renderGanttChart(items) {
   if (!container) return;
   container.innerHTML = '';
 
-  if (items.length === 0) {
-    container.innerHTML = '<p class="text-xs opacity-50 text-center py-8">No tasks to display</p>';
+  // Filter out items with missing or invalid deadlines
+  const validItems = items.filter(i => i.deadline && !isNaN(new Date(i.deadline).getTime()));
+  
+  if (validItems.length === 0) {
+    container.innerHTML = '<p class="text-xs opacity-50 text-center py-8">No tasks with valid dates to display</p>';
     return;
   }
 
   const today = new Date();
-  const maxDate = new Date(Math.max(...items.map(i => new Date(i.deadline))));
-  const minDate = new Date(Math.min(today, ...items.map(i => new Date(i.deadline))));
+  const dates = validItems.map(i => new Date(i.deadline).getTime());
+  const maxDate = new Date(Math.max(today.getTime(), ...dates));
+  const minDate = new Date(Math.min(today.getTime(), ...dates));
   const totalDays = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
 
-  items.forEach(item => {
+  validItems.forEach(item => {
     const deadline = new Date(item.deadline);
     const startOffset = Math.max(0, Math.floor((deadline - minDate) / (1000 * 60 * 60 * 24)));
     const duration = 3; // fake duration
@@ -1699,6 +1703,7 @@ function addOrUpdateSchedItem() {
   document.getElementById('schedTitle').value = '';
   document.getElementById('schedDeadline').value = '';
   renderScheduler();
+  renderCalendar();
   showNotification(editId ? 'Task updated!' : 'Task added!', 'success');
 }
 
@@ -1722,6 +1727,7 @@ function deleteSchedItem(id) {
     db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(id).delete();
   }
   renderScheduler();
+  renderCalendar();
   showNotification('Item deleted.', 'info');
 }
 
@@ -1737,6 +1743,7 @@ function dropSchedTask(event, status) {
       db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(taskId).update({ status });
     }
     renderScheduler();
+    renderCalendar();
   }
 }
 // ============================================================
@@ -2247,6 +2254,11 @@ window.toggleEvalModal = toggleEvalModal;
 window.submitEval = submitEval;
 window.hideWakeUpOverlay = hideWakeUpOverlay;
 window.enableTabButtons = enableTabButtons;
+window.addOrUpdateSchedItem = addOrUpdateSchedItem;
+window.editSchedItem = editSchedItem;
+window.deleteSchedItem = deleteSchedItem;
+window.dropSchedTask = dropSchedTask;
+window.renderScheduler = renderScheduler;
 
 console.log('✅ All functions exported and ready');
 console.log('✅ Backend integration complete');
