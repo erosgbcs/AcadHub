@@ -90,25 +90,61 @@ function shuffleArray(array) {
 // ============================================================
 // WAKE-UP OVERLAY
 // ============================================================
+// ============================================================
+// WAKE-UP OVERLAY - WITH VISIBLE LOADING SPINNER
+// ============================================================
 async function retryWakeUp() {
   const statusEl = document.getElementById('wakeUpStatus');
   const btn = document.getElementById('retryWakeBtn');
+  const overlay = document.getElementById('wakeUpOverlay');
   
-  statusEl.textContent = 'Checking backend...';
+  // Show loading state with custom spinner
+  btn.innerHTML = '<span class="loading-spinner"></span>Checking...';
+  btn.classList.add('loading');
   btn.disabled = true;
   
+  statusEl.innerHTML = '<span class="loading-spinner"></span>Connecting to backend...';
+  statusEl.className = 'loading';
+  
   try {
+    // Minimum loading time of 2 seconds for better UX
+    const minLoadingTime = new Promise(resolve => setTimeout(resolve, 2000));
+    
     if (firebase.apps.length > 0) {
-      await db.collection('_health_check').doc('test').set({ 
+      const firestoreCheck = db.collection('_health_check').doc('test').set({ 
         timestamp: firebase.firestore.FieldValue.serverTimestamp() 
       });
       
-      document.getElementById('wakeUpOverlay').style.display = 'none';
+      // Wait for both Firestore check and minimum loading time
+      await Promise.all([firestoreCheck, minLoadingTime]);
+      
+      // Success state
+      statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Backend is ready!';
+      statusEl.className = 'success';
+      btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Connected!';
+      btn.classList.remove('loading');
+      
+      // Wait 1 second so user sees success
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Fade out overlay
+      overlay.classList.add('fade-out');
+      
+      // Wait for fade animation
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Hide overlay completely
+      overlay.style.display = 'none';
       console.log('Backend is ready!');
     }
   } catch (err) {
-    statusEl.textContent = 'Still waking up... Please wait and try again.';
     console.error('Wake-up error:', err);
+    
+    // Error state
+    statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>Still waking up... Please try again.';
+    statusEl.className = 'error';
+    btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-2"></i>Try Again';
+    btn.classList.remove('loading');
   } finally {
     btn.disabled = false;
   }

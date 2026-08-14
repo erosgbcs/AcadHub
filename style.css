@@ -819,3 +819,74 @@ html.light .calendar-day:hover {
 html.light .calendar-day.selected {
   background: rgba(99,102,241,0.15);
 }
+
+/* ============ WAKE-UP OVERLAY SPINNER FIX ============ */
+
+/* Ensure spinner is visible */
+#wakeUpOverlay .fa-spinner,
+#wakeUpOverlay .animate-spin,
+.fa-spinner.animate-spin {
+  display: inline-block !important;
+  animation: spin 1s linear infinite !important;
+  color: #6366f1 !important;
+  font-size: 1.2rem !important;
+}
+
+/* Define spin animation if Tailwind doesn't load */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Wake-up overlay loading states */
+#wakeUpOverlay .loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Status text styles */
+#wakeUpStatus {
+  transition: color 0.3s ease;
+  min-height: 24px;
+}
+
+#wakeUpStatus.loading {
+  color: #94a3b8;
+}
+
+#wakeUpStatus.success {
+  color: #10b981;
+}
+
+#wakeUpStatus.error {
+  color: #f59e0b;
+}
+
+/* Button loading state */
+#retryWakeBtn.loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* Fade out animation for overlay */
+#wakeUpOverlay.fade-out {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+/* Light mode spinner */
+html.light #wakeUpOverlay .fa-spinner,
+html.light #wakeUpOverlay .animate-spin {
+  color: #6366f1 !important;
+}
