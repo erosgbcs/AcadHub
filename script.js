@@ -2290,6 +2290,7 @@ window.editSchedItem = editSchedItem;
 window.deleteSchedItem = deleteSchedItem;
 window.dropSchedTask = dropSchedTask;
 window.renderScheduler = renderScheduler;
+window.customizeGanttItem = customizeGanttItem;
 
 console.log('✅ All functions exported and ready');
 console.log('✅ Backend integration complete');
