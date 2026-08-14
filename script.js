@@ -83,7 +83,10 @@ let offlineQueue = [];
 let isOnline = navigator.onLine;
 let backendAvailable = false;
 let userAnswers = [];
-
+let currentSchedFilter = 'all';
+let calendarMonth = new Date().getMonth();
+let calendarYear = new Date().getFullYear();
+let selectedCalendarDate = null;
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
@@ -1488,19 +1491,355 @@ function updateColumnCounts() {
 // ============================================================
 // SCHEDULER FUNCTIONS
 // ============================================================
+// ============================================================
+// SCHEDULER FUNCTIONS
+// ============================================================
 function renderScheduler() {
-  // Implementation for scheduler rendering
-  console.log('Scheduler rendered');
+  const todoCol = document.getElementById('sched-todo');
+  const progressCol = document.getElementById('sched-progress');
+  const doneCol = document.getElementById('sched-done');
+
+  if (todoCol) todoCol.innerHTML = '';
+  if (progressCol) progressCol.innerHTML = '';
+  if (doneCol) doneCol.innerHTML = '';
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  const filtered = currentSchedFilter === 'all' 
+    ? [...schedItems]
+    : schedItems.filter(item => (item.type || 'task') === currentSchedFilter);
+
+  filtered.sort((a, b) => (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1));
+
+  filtered.forEach(item => {
+    const el = createSchedTaskElement(item);
+    if (item.status === 'done') doneCol?.appendChild(el);
+    else if (item.status === 'progress') progressCol?.appendChild(el);
+    else todoCol?.appendChild(el);
+  });
+
+  updateColumnCounts();
+
+  renderGanttChart(filtered);
+  renderCountdowns(schedItems);
+  renderExamMatrix(schedItems);
+  renderSchedFilterChips();
 }
 
+function createSchedTaskElement(item) {
+  const div = document.createElement('div');
+  div.className = 'task-card bg-white/5 border border-white/10 rounded-lg p-3 cursor-grab hover:border-indigo-400/50 transition';
+  div.draggable = true;
+  div.dataset.id = item.id;
+
+  const priorityClass = item.priority === 'high' ? 'priority-high' : item.priority === 'medium' ? 'priority-medium' : 'priority-low';
+  const typeClass = item.type === 'milestone' ? 'type-milestone' : item.type === 'defense' ? 'type-defense' : item.type === 'exam' ? 'type-exam' : 'type-task';
+
+  div.innerHTML = `
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex-1">
+        <p class="text-sm font-medium">${item.title || 'Untitled'}</p>
+        <p class="text-xs opacity-50">${formatDate(item.deadline)}</p>
+      </div>
+      <span class="${priorityClass} text-xs px-2 py-0.5 rounded-full font-semibold">${item.priority || 'medium'}</span>
+    </div>
+    <div class="flex items-center justify-between mt-2">
+      <span class="type-badge ${typeClass}">${item.type || 'task'}</span>
+      <span class="category-tag">${item.category || 'study'}</span>
+      <div class="flex gap-2">
+        <button onclick="editSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100 transition"><i class="fa-solid fa-edit"></i></button>
+        <button onclick="deleteSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100 transition"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+  `;
+
+  div.addEventListener('dragstart', handleDragStart);
+  div.addEventListener('dragend', handleDragEnd);
+  return div;
+}
+
+function renderGanttChart(items) {
+  const container = document.getElementById('ganttChart');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (items.length === 0) {
+    container.innerHTML = '<p class="text-xs opacity-50 text-center py-8">No tasks to display</p>';
+    return;
+  }
+
+  const today = new Date();
+  const maxDate = new Date(Math.max(...items.map(i => new Date(i.deadline))));
+  const minDate = new Date(Math.min(today, ...items.map(i => new Date(i.deadline))));
+  const totalDays = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
+
+  items.forEach(item => {
+    const deadline = new Date(item.deadline);
+    const startOffset = Math.max(0, Math.floor((deadline - minDate) / (1000 * 60 * 60 * 24)));
+    const duration = 3; // fake duration
+    const width = Math.max(2, (duration / totalDays) * 100);
+    const left = (startOffset / totalDays) * 100;
+
+    const bar = document.createElement('div');
+    bar.className = 'gantt-bar-container';
+    bar.innerHTML = `
+      <div class="gantt-bar" style="left:${left}%; width:${width}%; background:${item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981'}">
+        <span class="gantt-bar-label">${item.title}</span>
+        <span class="gantt-bar-deadline">${formatDate(item.deadline)}</span>
+      </div>
+    `;
+    container.appendChild(bar);
+  });
+}
+
+function renderCountdowns(items) {
+  const container = document.getElementById('countdowns');
+  if (!container) return;
+  const defenses = items.filter(i => i.type === 'defense' && i.deadline);
+  if (defenses.length === 0) {
+    container.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
+    return;
+  }
+
+  container.innerHTML = '';
+  defenses.forEach(def => {
+    const now = new Date();
+    const deadline = new Date(def.deadline);
+    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
+    div.innerHTML = `
+      <div>
+        <p class="text-sm font-medium">${def.title}</p>
+        <p class="text-xs opacity-60">${formatDate(def.deadline)}</p>
+      </div>
+      <span class="text-sm font-bold ${daysLeft < 7 ? 'text-rose-400' : 'text-emerald-400'}">${daysLeft} days</span>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderExamMatrix(items) {
+  const container = document.getElementById('examMatrix');
+  if (!container) return;
+  const exams = items.filter(i => i.type === 'exam' && i.deadline);
+  if (exams.length === 0) {
+    container.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
+    return;
+  }
+  container.innerHTML = '';
+  exams.forEach(ex => {
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
+    div.innerHTML = `
+      <p class="text-sm font-medium">${ex.title}</p>
+      <p class="text-xs text-amber-400">${formatDate(ex.deadline)}</p>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderSchedFilterChips() {
+  const container = document.querySelector('#viewScheduler .filter-chips');
+  if (!container) return;
+  container.innerHTML = '';
+  const filters = ['all', 'task', 'milestone', 'defense', 'exam'];
+  filters.forEach(f => {
+    const chip = document.createElement('button');
+    chip.className = 'filter-chip' + (currentSchedFilter === f ? ' active' : '');
+    chip.textContent = f.charAt(0).toUpperCase() + f.slice(1);
+    chip.onclick = () => { currentSchedFilter = f; renderScheduler(); };
+    container.appendChild(chip);
+  });
+}
+
+function addOrUpdateSchedItem() {
+  const title = document.getElementById('schedTitle').value.trim();
+  const deadline = document.getElementById('schedDeadline').value;
+  const type = document.getElementById('schedType').value;
+  const priority = document.getElementById('schedPriority').value;
+  const category = document.getElementById('schedCategory').value;
+  const editId = document.getElementById('editSchedId').value;
+
+  if (!title) {
+    showNotification('Please enter a task title.', 'warning');
+    return;
+  }
+
+  if (editId) {
+    const item = schedItems.find(i => i.id === editId);
+    if (item) {
+      item.title = title;
+      item.deadline = deadline;
+      item.type = type;
+      item.priority = priority;
+      item.category = category;
+    }
+    document.getElementById('editSchedId').value = '';
+    document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
+  } else {
+    schedItems.push({
+      id: generateId(),
+      title,
+      deadline,
+      type,
+      priority,
+      category,
+      status: 'todo',
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  safeLocalStorageSet('acadhub_sched', schedItems);
+  if (firebaseAvailable && auth && auth.currentUser) {
+    const ref = db.collection('users').doc(auth.currentUser.uid).collection('scheduler');
+    if (editId) ref.doc(editId).update({ title, deadline, type, priority, category });
+    else ref.add({ title, deadline, type, priority, category, status: 'todo' });
+  }
+
+  document.getElementById('schedTitle').value = '';
+  document.getElementById('schedDeadline').value = '';
+  renderScheduler();
+  showNotification(editId ? 'Task updated!' : 'Task added!', 'success');
+}
+
+function editSchedItem(id) {
+  const item = schedItems.find(i => i.id === id);
+  if (!item) return;
+  document.getElementById('schedTitle').value = item.title || '';
+  document.getElementById('schedDeadline').value = item.deadline || '';
+  document.getElementById('schedType').value = item.type || 'task';
+  document.getElementById('schedPriority').value = item.priority || 'medium';
+  document.getElementById('schedCategory').value = item.category || 'study';
+  document.getElementById('editSchedId').value = id;
+  document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
+}
+
+function deleteSchedItem(id) {
+  if (!confirm('Delete this item?')) return;
+  schedItems = schedItems.filter(i => i.id !== id);
+  safeLocalStorageSet('acadhub_sched', schedItems);
+  if (firebaseAvailable && auth && auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(id).delete();
+  }
+  renderScheduler();
+  showNotification('Item deleted.', 'info');
+}
+
+function dropSchedTask(event, status) {
+  event.preventDefault();
+  const taskId = event.dataTransfer.getData('text/plain');
+  if (!taskId) return;
+  const item = schedItems.find(i => i.id === taskId);
+  if (item) {
+    item.status = status;
+    safeLocalStorageSet('acadhub_sched', schedItems);
+    if (firebaseAvailable && auth && auth.currentUser) {
+      db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(taskId).update({ status });
+    }
+    renderScheduler();
+  }
+}
 // ============================================================
 // CALENDAR FUNCTIONS
 // ============================================================
 function renderCalendar() {
-  // Implementation for calendar rendering
-  console.log('Calendar rendered');
+  const grid = document.getElementById('calendarGrid');
+  const label = document.getElementById('calendarMonthLabel');
+  if (!grid || !label) return;
+
+  label.textContent = new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+  let cells = '';
+  // Day headers
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  dayNames.forEach(d => {
+    cells += `<div class="calendar-day-header">${d}</div>`;
+  });
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    cells += '<div class="calendar-day empty"></div>';
+  }
+
+  const today = new Date();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(calendarYear, calendarMonth, day);
+    const dateStr = date.toISOString().split('T')[0];
+    const isToday = date.toDateString() === today.toDateString();
+    const isSelected = selectedCalendarDate === dateStr;
+
+    // Count tasks/deadlines on this day
+    const tasksOnDay = getAllTasksForDate(dateStr);
+
+    cells += `
+      <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDate('${dateStr}')">
+        <span>${day}</span>
+        ${tasksOnDay.length > 0 ? `<span class="task-dot ${tasksOnDay.length > 1 ? 'multiple' : ''}"></span>` : ''}
+      </div>
+    `;
+  }
+
+  grid.innerHTML = cells;
+  if (selectedCalendarDate) showTasksForDate(selectedCalendarDate);
+  else document.getElementById('selectedDayTasks').innerHTML = '<p class="text-sm opacity-50">Select a date to see tasks.</p>';
 }
 
+function getAllTasksForDate(dateStr) {
+  const all = [];
+  schedItems.forEach(item => {
+    if (item.deadline === dateStr) all.push({ ...item, source: 'scheduler' });
+  });
+  plannerTasks.forEach(item => {
+    if (item.deadline === dateStr) all.push({ ...item, source: 'planner' });
+  });
+  return all;
+}
+
+function selectCalendarDate(dateStr) {
+  selectedCalendarDate = dateStr;
+  renderCalendar();
+  showTasksForDate(dateStr);
+}
+
+function showTasksForDate(dateStr) {
+  const container = document.getElementById('selectedDayTasks');
+  if (!container) return;
+  const tasks = getAllTasksForDate(dateStr);
+  if (tasks.length === 0) {
+    container.innerHTML = '<p class="text-sm opacity-50">No tasks for this day.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  tasks.forEach(task => {
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
+    const sourceIcon = task.source === 'scheduler' ? 'fa-calendar-days' : 'fa-clipboard-list';
+    div.innerHTML = `
+      <div class="flex items-center gap-2">
+        <i class="fa-solid ${sourceIcon} text-indigo-400 text-xs"></i>
+        <p class="text-sm font-medium">${task.title || 'Untitled'}</p>
+      </div>
+      <span class="text-xs opacity-60">${task.priority || 'medium'}</span>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function changeMonth(delta) {
+  calendarMonth += delta;
+  if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+  else if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+  renderCalendar();
+}
+
+function toggleReminders() {
+  const enabled = document.getElementById('reminderToggle').checked;
+  if (enabled) showNotification('Reminders enabled!', 'success');
+  else showNotification('Reminders disabled.', 'info');
+}
 // ============================================================
 // LIBRARY FUNCTIONS
 // ============================================================
@@ -1833,7 +2172,6 @@ function initializeApp() {
   updateProviderUI();
   updateSettingsUI();
   initProfileModal();
-  initTabListeners();
 
   // FIXED: Force enable tab buttons
   setTimeout(() => {

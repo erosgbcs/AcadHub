@@ -443,6 +443,9 @@ html.light #examMatrix {
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
+#wakeUpOverlay {
+  z-index: 2000 !important;
+}
 /* Kanban columns */
 html.light #sched-todo,
 html.light #sched-progress,
