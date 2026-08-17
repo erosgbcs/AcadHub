@@ -52,7 +52,7 @@ try {
 // ============================================================
 // BACKEND API CONFIGURATION
 // ============================================================
-const API_BASE_URL = 'https://acadhub-no6m.onrender.com';
+const API_BASE_URL = 'https://acadhub-spacy.onrender.com/';
 
 const API_ENDPOINTS = {
   health: '/api/health',
