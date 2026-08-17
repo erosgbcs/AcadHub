@@ -1,18 +1,14 @@
-# Core API & server
+# Server Framework
 fastapi
 uvicorn
 python-multipart
 
-# HTTP & async
-aiohttp
-
-# PDF & document processing
+# Document Parsing
 pypdf
 pdfplumber
-pytesseract
-pdf2image
 python-docx
-Pillow
 
-# NLP
-nltk
+# High Precision NLP & Summarization
+spacy
+scikit-learn
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
