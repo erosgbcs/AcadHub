@@ -18,7 +18,6 @@ import aiohttp
 
 # PDF Processing Libraries
 import pypdf
-
 try:
     import pdfplumber
     PDFPLUMBER_AVAILABLE = True
@@ -47,11 +46,12 @@ try:
     SKLEARN_AVAILABLE = True
 except Exception:
     SKLEARN_AVAILABLE = False
+    print("Warning: scikit-learn not available. Falling back to basic summarization.")
 
 # ------------------------------
 # App Initialization
 # ------------------------------
-app = FastAPI(title="AcademicHub Engine - High Accuracy Reviewer Generator")
+app = FastAPI(title="AcademicHub Engine - Full Featured High Accuracy")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -69,6 +69,13 @@ class ReviewRequest(BaseModel):
     quiz_types: Dict[str, int] = {"identification": 5}
     use_internet: bool = False
     enrich_count: int = 5
+
+class AIReviewRequest(BaseModel):
+    api_key: str
+    provider: str = "gemini"
+    notes: str = ""
+    num_flashcards: int = 10
+    num_quiz: int = 7
 
 # ------------------------------
 # Utility Constants
@@ -95,7 +102,6 @@ STOP_WORDS = frozenset({
 def extract_pdf_text(file_bytes: bytes) -> str:
     """Extract text from PDF using pdfplumber if available, falling back to pypdf."""
     extracted_text = []
-    
     if PDFPLUMBER_AVAILABLE:
         try:
             with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
@@ -103,11 +109,10 @@ def extract_pdf_text(file_bytes: bytes) -> str:
                     text = page.extract_text()
                     if text:
                         extracted_text.append(text)
-            if extracted_text:
-                return "\n".join(extracted_text)
+                if extracted_text:
+                    return "\n".join(extracted_text)
         except Exception:
             pass
-
     # Fallback to pypdf
     try:
         reader = pypdf.PdfReader(io.BytesIO(file_bytes))
@@ -125,23 +130,19 @@ def extract_docx_text(file_bytes: bytes) -> str:
         try:
             doc = docx.Document(io.BytesIO(file_bytes))
             full_text = []
-            
             # Extract Paragraphs
             for para in doc.paragraphs:
                 if para.text.strip():
                     full_text.append(para.text.strip())
-            
             # Extract Tables
             for table in doc.tables:
                 for row in table.rows:
                     row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
                     if row_text:
                         full_text.append(" | ".join(row_text))
-                        
             return "\n".join(full_text)
         except Exception:
             pass
-
     # XML Zip Fallback
     try:
         with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
@@ -200,15 +201,17 @@ def extract_document_text(file_bytes: bytes, filename: str) -> str:
 # High-Accuracy NLP Engine
 # ------------------------------
 def smart_sentences(text: str) -> List[str]:
+    """Sentence splitting with spaCy if available, otherwise regex fallback."""
     if NLP is not None:
         doc = NLP(text)
         return [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 20]
-    
+    # Fallback to regex
     text = re.sub(r'(Dr|Mr|Mrs|Ms|Prof|etc|vs|e\.g|i\.e)\.', r'\1<DOT>', text)
     sents = SENTENCE_PATTERN.split(text)
     return [s.strip().replace('<DOT>', '.') for s in sents if len(s.strip()) > 20]
 
 def extract_key_phrases(text: str, top_n: int = 20) -> List[str]:
+    """Extract key phrases using spaCy noun chunks + named entities, or regex fallback."""
     if NLP is not None:
         doc = NLP(text)
         phrases = []
@@ -218,16 +221,13 @@ def extract_key_phrases(text: str, top_n: int = 20) -> List[str]:
                 phrase = " ".join(words).strip()
                 if phrase and phrase.lower() not in STOP_WORDS and len(phrase) > 2:
                     phrases.append(phrase)
-        
         for ent in doc.ents:
             if ent.label_ in ("PERSON", "ORG", "PRODUCT", "GPE", "EVENT", "WORK_OF_ART", "TECHNOLOGY"):
                 if ent.text.lower() not in STOP_WORDS:
                     phrases.append(ent.text.strip())
-
         phrase_counts = Counter(phrases)
         weighted = [(p, c * (len(p.split()) ** 1.5)) for p, c in phrase_counts.items()]
         weighted.sort(key=lambda x: x[1], reverse=True)
-        
         final = []
         for phrase, _ in weighted:
             if not any(phrase != other and phrase.lower() in other.lower() for other in final):
@@ -236,20 +236,20 @@ def extract_key_phrases(text: str, top_n: int = 20) -> List[str]:
                 break
         return final
 
+    # Regex fallback
     phrases = CAPITALIZED_PHRASE.findall(text) + TECH_TERM.findall(text)
     phrase_counts = Counter([p for p in phrases if p.lower() not in STOP_WORDS])
     return [p[0] for p in phrase_counts.most_common(top_n)]
 
 def find_definition_sentence(text: str, phrase: str) -> str:
+    """Scored definition search prioritizing strong copular/appositive patterns."""
     sents = smart_sentences(text)
     phrase_lower = phrase.lower()
-    
     scored_sents = []
     for sent in sents:
         sent_lower = sent.lower()
         if phrase_lower not in sent_lower:
             continue
-        
         score = 0
         if re.search(r'\b(?:is|are|was|were)\s+(?:a|an|the|defined as|known as|a type of)\b', sent_lower):
             score += 5
@@ -259,20 +259,17 @@ def find_definition_sentence(text: str, phrase: str) -> str:
             score += 2
         if sent_lower.startswith(phrase_lower):
             score += 3
-        
         scored_sents.append((sent, score))
-    
     if scored_sents:
         scored_sents.sort(key=lambda x: x[1], reverse=True)
         return scored_sents[0][0][:300].strip()
-        
     return f"{phrase} is a key topic covered in the document."
 
 def summarize_text(text: str, max_sentences: int = 5) -> List[str]:
+    """TextRank Summarization using TF-IDF + Cosine Similarity."""
     sents = smart_sentences(text)
     if len(sents) <= max_sentences:
         return sents
-
     if SKLEARN_AVAILABLE:
         vectorizer = TfidfVectorizer(stop_words='english')
         try:
@@ -284,29 +281,64 @@ def summarize_text(text: str, max_sentences: int = 5) -> List[str]:
             return [sents[i] for i in top_indices]
         except Exception:
             pass
-
     return sents[:max_sentences]
 
+# ------------------------------
+# Entity Extraction (spaCy NER if available)
+# ------------------------------
+def extract_persons(text: str) -> List[str]:
+    if NLP is not None:
+        doc = NLP(text)
+        return list(set(ent.text.strip() for ent in doc.ents if ent.label_ == "PERSON" and len(ent.text.strip()) > 2))
+    # Regex fallback
+    words = WORD_PATTERN.findall(text)
+    persons = set()
+    non_person = {'rendering', 'pipeline', 'definition', 'high', 'android', 'ios', 'system', 'data', 'algorithm'}
+    for i in range(len(words) - 1):
+        if words[i][0].isupper() and words[i+1][0].isupper():
+            full = f"{words[i]} {words[i+1]}"
+            if not any(w.lower() in STOP_WORDS or w.lower() in non_person for w in full.split()):
+                persons.add(full)
+    return list(persons)[:10]
+
+def extract_locations(text: str) -> List[str]:
+    if NLP is not None:
+        doc = NLP(text)
+        return list(set(ent.text.strip() for ent in doc.ents if ent.label_ in ("GPE", "LOC")))
+    return []
+
+def extract_dates(text: str) -> List[str]:
+    if NLP is not None:
+        doc = NLP(text)
+        dates = list(set(ent.text.strip() for ent in doc.ents if ent.label_ == "DATE"))
+        if dates:
+            return dates
+    return list(set(re.findall(
+        r'\b(?:19|20)\d{2}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b',
+        text
+    )))
+
+# ------------------------------
+# Smart Distractor & Question Generation
+# ------------------------------
 def get_smart_distractors(correct: str, pool: List[str], count: int = 3) -> List[str]:
+    """Filter distractors by length parity to avoid obvious correct answers."""
     target_len = len(correct)
     filtered = [
-        p for p in pool 
+        p for p in pool
         if p.lower() != correct.lower() and (0.6 * target_len <= len(p) <= 1.4 * target_len)
     ]
     if len(filtered) < count:
         filtered = [p for p in pool if p.lower() != correct.lower()]
-        
     if len(filtered) >= count:
         return random.sample(filtered, count)
-    
     distractors = list(filtered)
-    generic = ["None of the above", "All of the above", "Not specified in lesson", "Other related factors"]
+    generic = ["None of the above", "All of the above", "Not specified in text", "Other related factors"]
     for g in generic:
         if len(distractors) >= count:
             break
         if g not in distractors:
             distractors.append(g)
-            
     return distractors[:count]
 
 def deduplicate_options(correct: str, raw_distractors: List[str]) -> List[str]:
@@ -319,9 +351,109 @@ def deduplicate_options(correct: str, raw_distractors: List[str]) -> List[str]:
     return options[:4]
 
 # ------------------------------
+# Internet Enrichment (Wikipedia)
+# ------------------------------
+enrichment_cache: Dict[str, str] = {}
+
+async def fetch_wikipedia_summary(term: str, session: aiohttp.ClientSession) -> Optional[str]:
+    if term in enrichment_cache:
+        return enrichment_cache[term]
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{term.replace(' ', '_')}"
+    try:
+        async with session.get(url, timeout=5) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                extract = data.get('extract', '')
+                if extract:
+                    result = f"{term}: {extract[:300]}"
+                    enrichment_cache[term] = result
+                    return result
+    except Exception:
+        pass
+    return None
+
+async def fetch_wikipedia_search(term: str, session: aiohttp.ClientSession) -> Optional[str]:
+    search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={term}&format=json&utf8=1&srlimit=1"
+    try:
+        async with session.get(search_url, timeout=5) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                results = data.get('query', {}).get('search', [])
+                if results:
+                    snippet = results[0].get('snippet', '')
+                    snippet = re.sub(r'<[^>]+>', '', snippet)
+                    if snippet:
+                        result = f"{term}: {snippet[:300]}"
+                        enrichment_cache[term] = result
+                        return result
+    except Exception:
+        pass
+    return None
+
+async def enrich_with_internet(key_phrases: List[str], enrich_count: int = 5) -> str:
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_wikipedia_summary(phrase, session) for phrase in key_phrases[:enrich_count]]
+        results = await asyncio.gather(*tasks)
+
+        fallback_tasks = []
+        fallback_indices = []
+        for i, res in enumerate(results):
+            if res is None:
+                fallback_tasks.append(fetch_wikipedia_search(key_phrases[i], session))
+                fallback_indices.append(i)
+        fallback_results = await asyncio.gather(*fallback_tasks)
+
+        for idx, res in zip(fallback_indices, fallback_results):
+            if res:
+                results[idx] = res
+
+        summaries = [r for r in results if r]
+        return "\n".join(summaries)
+
+# ------------------------------
+# AI Provider Functions
+# ------------------------------
+def call_gemini(prompt: str, key: str) -> Dict:
+    import urllib.request
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+    data = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"}
+    }).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=35) as r:
+        response = json.loads(r.read())
+        return json.loads(response["candidates"][0]["content"]["parts"][0]["text"])
+
+def call_deepseek(prompt: str, key: str) -> Dict:
+    import urllib.request
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": "Return JSON only."},
+            {"role": "user", "content": prompt}
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2
+    }
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=data, headers=headers)
+    with urllib.request.urlopen(req, timeout=40) as r:
+        response = json.loads(r.read())
+        return json.loads(response["choices"][0]["message"]["content"])
+
+# ------------------------------
 # Core Generation Pipeline
 # ------------------------------
-def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[str, int]):
+def generate_reviewer_content(
+    text: str,
+    num_flashcards: int,
+    quiz_types: Dict[str, int],
+    use_internet: bool = False,
+    internet_phrases: Optional[List[str]] = None
+) -> Dict[str, Any]:
     if not text.strip():
         raise ValueError("No text extracted from document.")
 
@@ -329,7 +461,6 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
     sents = smart_sentences(text)
     phrases = extract_key_phrases(text, top_n=max(num_flashcards, 30))
     doc = NLP(text) if NLP is not None else None
-
     summary = summarize_text(text, max_sentences=5)
 
     # Generate Flashcards
@@ -357,11 +488,9 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
         sent = random.choice(sents) if sents else ""
         if not sent:
             break
-        
         is_false_target = (i % 2 == 1)
         q_text = sent[:200]
         correct = "True"
-
         if is_false_target and doc is not None:
             sent_doc = NLP(sent)
             if sent_doc.ents:
@@ -371,7 +500,6 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
                     false_val = random.choice(same_label_ents)
                     q_text = sent.replace(target_ent.text, false_val)[:200]
                     correct = "False"
-
         quiz.append({
             "id": len(quiz) + 1,
             "type": "truefalse",
@@ -381,7 +509,7 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
             "explanation": f"The statement is {correct.lower()}."
         })
 
-    # Identification
+    # Identification (Fill in the blank)
     id_count = quiz_types.get("identification", 0)
     for _ in range(id_count):
         if not phrases:
@@ -389,12 +517,10 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
         phrase = random.choice(phrases)
         def_sent = find_definition_sentence(text, phrase)
         blanked = re.sub(re.escape(phrase), "________", def_sent, flags=re.IGNORECASE)
-        
         distractor_pool = [p for p in phrases if p != phrase]
         distractors = get_smart_distractors(phrase, distractor_pool, 3)
         options = deduplicate_options(phrase, distractors)
         random.shuffle(options)
-
         quiz.append({
             "id": len(quiz) + 1,
             "type": "identification",
@@ -404,6 +530,36 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
             "explanation": f"The correct term is '{phrase}'."
         })
 
+    # Enumeration
+    enum_count = quiz_types.get("enumeration", 0)
+    if enum_count > 0:
+        enum_concepts = [p for p in phrases if len(p.split()) >= 2] or phrases
+        for _ in range(enum_count):
+            if not enum_concepts:
+                break
+            concept = random.choice(enum_concepts)
+            related = [s for s in sents if concept.lower() in s.lower()]
+            if not related:
+                continue
+            points = []
+            for sent in related:
+                parts = re.split(r'[;,]\s*|\band\b', sent)
+                for part in parts:
+                    part = part.strip()
+                    if len(part) > 10 and part not in points:
+                        points.append(part)
+            if not points:
+                continue
+            answer = "; ".join(points[:3])
+            quiz.append({
+                "id": len(quiz) + 1,
+                "type": "enumeration",
+                "question": f"List key points about {concept}.",
+                "options": [],
+                "answer": answer,
+                "explanation": f"Points about {concept}."
+            })
+
     # Multiple Choice
     mc_count = quiz_types.get("multiplechoice", 0)
     for _ in range(mc_count):
@@ -411,13 +567,10 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
             break
         phrase = random.choice(phrases)
         correct_def = find_definition_sentence(text, phrase)
-        
         other_defs = [find_definition_sentence(text, p) for p in phrases if p != phrase]
         distractors = get_smart_distractors(correct_def, other_defs, 3)
-        
         options = deduplicate_options(correct_def, distractors)
         random.shuffle(options)
-
         quiz.append({
             "id": len(quiz) + 1,
             "type": "multiplechoice",
@@ -427,13 +580,100 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
             "explanation": f"Definition of {phrase}."
         })
 
+    # What questions (based on definitions)
+    what_count = quiz_types.get("what", 0)
+    for _ in range(what_count):
+        if not phrases:
+            break
+        phrase = random.choice(phrases)
+        def_sent = find_definition_sentence(text, phrase)
+        pool = [find_definition_sentence(text, p) for p in phrases if p != phrase][:3]
+        while len(pool) < 3:
+            pool.append("None of the above")
+        options = deduplicate_options(def_sent, pool)
+        random.shuffle(options)
+        quiz.append({
+            "id": len(quiz) + 1,
+            "type": "what",
+            "question": f"What is {phrase}?",
+            "options": options,
+            "answer": def_sent,
+            "explanation": f"The description of {phrase}."
+        })
+
+    # Who questions
+    persons = extract_persons(text)
+    who_count = quiz_types.get("who", 0)
+    for person in persons[:who_count]:
+        related = [s for s in sents if person.lower() in s.lower()]
+        if not related:
+            continue
+        correct = related[0][:200]
+        other_sents = [s[:200] for s in sents if person.lower() not in s.lower()][:3]
+        while len(other_sents) < 3:
+            other_sents.append("None of the above")
+        options = deduplicate_options(correct, other_sents)
+        random.shuffle(options)
+        quiz.append({
+            "id": len(quiz) + 1,
+            "type": "who",
+            "question": f"Who is {person}?",
+            "options": options,
+            "answer": correct,
+            "explanation": f"About {person}."
+        })
+
+    # Where questions
+    locations = extract_locations(text)
+    where_count = quiz_types.get("where", 0)
+    for loc in locations[:where_count]:
+        related = [s for s in sents if loc.lower() in s.lower()]
+        if not related:
+            continue
+        correct = related[0][:200]
+        other_sents = [s[:200] for s in sents if loc.lower() not in s.lower()][:3]
+        while len(other_sents) < 3:
+            other_sents.append("None of the above")
+        options = deduplicate_options(correct, other_sents)
+        random.shuffle(options)
+        quiz.append({
+            "id": len(quiz) + 1,
+            "type": "where",
+            "question": f"Where is {loc}?",
+            "options": options,
+            "answer": correct,
+            "explanation": f"About {loc}."
+        })
+
+    # When questions
+    dates = extract_dates(text)
+    when_count = quiz_types.get("when", 0)
+    for date in dates[:when_count]:
+        related = [s for s in sents if date in s]
+        if not related:
+            continue
+        correct = related[0][:200]
+        other_sents = [s[:200] for s in sents if date not in s][:3]
+        while len(other_sents) < 3:
+            other_sents.append("None of the above")
+        options = deduplicate_options(correct, other_sents)
+        random.shuffle(options)
+        quiz.append({
+            "id": len(quiz) + 1,
+            "type": "when",
+            "question": "When did this occur?",
+            "options": options,
+            "answer": correct,
+            "explanation": f"This sentence contains the date {date}."
+        })
+
     elapsed = round(time.time() - start, 2)
     return {
         "summary": summary,
         "flashcards": flashcards,
         "quiz": quiz,
         "metadata": {
-            "method": "accuracy_v7_document_nlp",
+            "method": "accuracy_v7_full_featured",
             "length": len(text),
             "time": elapsed,
             "num_sentences": len(sents),
@@ -446,7 +686,7 @@ def generate_reviewer_content(text: str, num_flashcards: int, quiz_types: Dict[s
 # ------------------------------
 @app.get("/")
 def root():
-    return {"status": "online", "system": "AcademicHub High-Precision Document Engine"}
+    return {"status": "online", "system": "AcademicHub Full Featured Engine"}
 
 @app.get("/api/health")
 def health():
@@ -463,16 +703,23 @@ async def gen_local(
     notes: str = Form(""),
     file: UploadFile = File(None),
     num_flashcards: int = Form(12),
-    quiz_types: str = Form('{"identification":5}')
+    quiz_types: str = Form('{"identification":5}'),
+    use_internet: bool = Form(False),
+    enrich_count: int = Form(5)
 ):
     text = notes.strip() if notes else ""
     if file:
         fb = await file.read()
         extracted = extract_document_text(fb, file.filename)
         text += "\n" + extracted
-
     if not text.strip():
-        raise HTTPException(400, "Please provide lesson text or upload a valid document (PDF, DOCX, TXT).")
+        raise HTTPException(400, "Please provide lesson text or upload a valid document.")
+
+    if use_internet:
+        phrases = extract_key_phrases(text, top_n=25)
+        extra = await enrich_with_internet(phrases, enrich_count=enrich_count)
+        if extra:
+            text += "\n\n--- Additional Context from Wikipedia ---\n" + extra
 
     try:
         qt = json.loads(quiz_types)
@@ -486,10 +733,185 @@ async def gen_local(
 async def generate_reviewer_json(request: ReviewRequest):
     text = request.notes.strip()
     if not text:
-        raise HTTPException(400, "No text provided.")
+        raise HTTPException(400, "No notes provided.")
+    if request.use_internet:
+        phrases = extract_key_phrases(text, top_n=25)
+        extra = await enrich_with_internet(phrases, enrich_count=request.enrich_count)
+        if extra:
+            text += "\n\n--- Additional Context from Wikipedia ---\n" + extra
     result = generate_reviewer_content(text, request.num_flashcards, request.quiz_types)
     return JSONResponse(content=result)
 
+@app.post("/api/generate-reviewer")
+async def generate_reviewer_ai(
+    api_key: str = Form(...),
+    provider: str = Form("gemini"),
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    num_flashcards: int = Form(10),
+    num_quiz: int = Form(7)
+):
+    if not api_key.strip():
+        raise HTTPException(400, "API key required.")
+    text = notes.strip() if notes else ""
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_document_text(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "Provide notes or file.")
+
+    prompt = (
+        f"Analyze the following notes and return JSON with: "
+        f"summary (5 points), flashcards ({num_flashcards} items with term/definition), "
+        f"quiz ({num_quiz} questions with options/answer/explanation). "
+        f"Notes: {text[:6000]}"
+    )
+    try:
+        if provider == "deepseek":
+            return call_deepseek(prompt, api_key)
+        return call_gemini(prompt, api_key)
+    except Exception as e:
+        raise HTTPException(500, f"AI provider error: {str(e)}")
+
+@app.post("/api/generate-test")
+async def generate_test_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    difficulty: str = Form("medium"),
+    use_internet: bool = Form(False)
+):
+    text = notes.strip() if notes else ""
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_document_text(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "Provide notes or a file.")
+
+    if use_internet:
+        phrases = extract_key_phrases(text, top_n=25)
+        extra = await enrich_with_internet(phrases, enrich_count=5)
+        if extra:
+            text += "\n\n--- Additional Context from Wikipedia ---\n" + extra
+
+    if difficulty == "easy":
+        question_count = 8
+        quiz_types = {
+            "truefalse": 3,
+            "identification": 2,
+            "multiplechoice": 3
+        }
+    elif difficulty == "hard":
+        question_count = 26
+        quiz_types = {
+            "truefalse": 5,
+            "identification": 8,
+            "multiplechoice": 8,
+            "what": 3,
+            "who": 1,
+            "where": 1
+        }
+    else:  # medium
+        question_count = 15
+        quiz_types = {
+            "truefalse": 4,
+            "identification": 4,
+            "multiplechoice": 4,
+            "what": 2,
+            "who": 1
+        }
+
+    result = generate_reviewer_content(text, num_flashcards=0, quiz_types=quiz_types)
+    questions = result.get("quiz", [])
+    if len(questions) > question_count:
+        questions = random.sample(questions, question_count)
+
+    return JSONResponse(content={"questions": questions})
+
+@app.post("/api/summary")
+async def summary_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None)
+):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_document_text(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+    summary = summarize_text(text)
+    return JSONResponse(content={"summary": summary})
+
+@app.post("/api/flashcards")
+async def flashcards_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    num_flashcards: int = Form(10)
+):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_document_text(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+    phrases = extract_key_phrases(text, top_n=num_flashcards)
+    flashcards = []
+    used_defs = set()
+    for phrase in phrases:
+        if len(flashcards) >= num_flashcards:
+            break
+        def_sent = find_definition_sentence(text, phrase)
+        if def_sent in used_defs:
+            continue
+        flashcards.append({
+            "id": len(flashcards) + 1,
+            "term": phrase,
+            "definition": def_sent
+        })
+        used_defs.add(def_sent)
+    return JSONResponse(content={"flashcards": flashcards})
+
+@app.post("/api/quiz")
+async def quiz_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    quiz_types: str = Form('{"identification":5}')
+):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_document_text(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+    try:
+        qt = json.loads(quiz_types)
+    except:
+        qt = {"identification": 5}
+    result = generate_reviewer_content(text, num_flashcards=0, quiz_types=qt)
+    return JSONResponse(content={"quiz": result["quiz"]})
+
+@app.post("/api/enrich")
+async def enrich_endpoint(
+    notes: str = Form(""),
+    file: UploadFile = File(None),
+    enrich_count: int = Form(5)
+):
+    text = notes.strip()
+    if file:
+        fb = await file.read()
+        text += "\n" + extract_document_text(fb, file.filename)
+    if not text.strip():
+        raise HTTPException(400, "No text provided.")
+    phrases = extract_key_phrases(text, top_n=25)
+    enriched = await enrich_with_internet(phrases, enrich_count=enrich_count)
+    if enriched:
+        combined = text + "\n\n--- Additional Context from Wikipedia ---\n" + enriched
+    else:
+        combined = text
+    return JSONResponse(content={"enriched_text": combined})
+
+# ------------------------------
+# Run Instructions
+# ------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
