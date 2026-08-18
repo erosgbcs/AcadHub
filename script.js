@@ -1,6 +1,6 @@
 // ============================================================
 // ACADHUB SUITE - COMPLETE JAVASCRIPT
-// Backend: https://acadhub-no6m.onrender.com
+// Backend: const API_BASE_URL = 'https://acadhub-spacy.onrender.com/';
 // Database: Firebase
 // ============================================================
 
@@ -52,7 +52,7 @@ try {
 // ============================================================
 // BACKEND API CONFIGURATION
 // ============================================================
-const API_BASE_URL = 'https://acadhub-spacy.onrender.com/';
+const API_BASE_URL = 'https://acadhub-spacy.onrender.com';
 
 const API_ENDPOINTS = {
   health: '/api/health',
