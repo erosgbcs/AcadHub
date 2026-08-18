@@ -2,15 +2,26 @@
   "name": "AcadHub Suite",
   "short_name": "AcadHub",
   "description": "Smart Academic Workspace – generate flashcards, quizzes, and study materials with local NLP or AI.",
+  "id": "/AcadHub/",
   "start_url": "/AcadHub/",
+  "scope": "/AcadHub/",
   "display": "standalone",
-  "background_color": "#0b0f19",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a12",
   "theme_color": "#6366f1",
+  "lang": "en",
   "icons": [
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjUwLDEwIDkwLDQwIDUwLDcwIDEwLDQwIiBmaWxsPSIjNjM2NmYxIi8+PHBvbHlnb24gcG9pbnRzPSI1MCw3MCA5MCw0MCA1MCw5MCAxMCw0MCIgZmlsbD0iIzIyZDNlZSIgb3BhY2l0eT0iMC44Ii8+PHJlY3QgeD0iMzUiIHk9IjY1IiB3aWR0aD0iMzAiIGhlaWdodD0iMjAiIHJ4PSIzIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjkiLz48L3N2Zz4=",
+      "src": "/AcadHub/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/AcadHub/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

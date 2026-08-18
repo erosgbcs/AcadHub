@@ -1,0 +1,1047 @@
+:root {
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --bg-body: #0a0a12;
+  --text-body: #e2e8f0;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-solid: #1a1a2e;
+  --bg-elevated: rgba(255, 255, 255, 0.06);
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  --bg-input: rgba(255, 255, 255, 0.06);
+  --border-card: rgba(255, 255, 255, 0.08);
+  --border-input: rgba(255, 255, 255, 0.08);
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --shadow-card: none;
+}
+
+html.light {
+  --bg-body: #f1f5f9;
+  --text-body: #0f172a;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --bg-card-solid: #ffffff;
+  --bg-elevated: rgba(0, 0, 0, 0.04);
+  --bg-hover: rgba(0, 0, 0, 0.06);
+  --bg-input: rgba(0, 0, 0, 0.04);
+  --border-card: rgba(0, 0, 0, 0.08);
+  --border-input: rgba(0, 0, 0, 0.12);
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  background: var(--bg-body);
+  color: var(--text-body);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+  line-height: 1.6;
+}
+
+body {
+  padding: 1rem;
+}
+
+/* Button hover effects */
+.btn-hover {
+  transition: transform 0.1s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.btn-hover:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.btn-hover:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  backdrop-filter: blur(12px);
+  border-radius: 1.5rem;
+  padding: 1.25rem;
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+  box-shadow: var(--shadow-card);
+}
+
+@media (min-width: 640px) {
+  .glass-card {
+    padding: 1.5rem;
+  }
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 0.75rem;
+  color: var(--text-body);
+  font-size: 0.9rem;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-primary {
+  padding: 0.7rem 1.5rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s, opacity 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover {
+  background: var(--accent2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tab-active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+html.light .tab-active {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+.tab-inactive {
+  color: #94a3b8;
+}
+html.light .tab-inactive {
+  color: #475569;
+}
+.tab-inactive:hover {
+  background: var(--bg-hover);
+}
+
+.reveal-item {
+  animation: reveal 0.35s ease-out forwards;
+  opacity: 0;
+  transform: translateY(8px);
+}
+@keyframes reveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.quiz-option {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.quiz-option:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+html.light .quiz-option:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.saved-card {
+  transition: background 0.15s, border-color 0.15s;
+}
+.saved-card:hover {
+  background: var(--bg-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+html.light .saved-card:hover {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+#gcashFull p {
+  word-break: break-all;
+}
+
+/* ============ LIGHT MODE OVERRIDES FOR TAILWIND UTILITIES ============ */
+html.light .bg-white\/5 {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .bg-white\/10 {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+html.light .bg-white\/20 {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+html.light .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+html.light .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+html.light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light .text-gray-400 {
+  color: #475569 !important;
+}
+html.light .text-white {
+  color: #0f172a !important;
+}
+html.light .opacity-50 {
+  opacity: 0.6;
+}
+html.light .opacity-70 {
+  opacity: 0.75;
+}
+html.light .font-mono {
+  color: #1e293b;
+}
+html.light .hover\:border-indigo-400\/50:hover {
+  border-color: rgba(99, 102, 241, 0.5) !important;
+}
+html.light .accent-indigo-500 {
+  accent-color: #6366f1;
+}
+html.light .animate-spin {
+  color: #6366f1;
+}
+
+/* Specific component overrides */
+html.light #wakeUpOverlay {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+html.light #wakeUpOverlay h1 {
+  color: #0f172a;
+}
+html.light #wakeUpOverlay p {
+  color: #334155;
+}
+html.light footer {
+  color: #64748b !important;
+}
+html.light footer a {
+  color: #6366f1 !important;
+}
+html.light #backendStatus {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+  color: #059669 !important;
+}
+html.light .bg-emerald-500\/10 {
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+html.light .border-emerald-500\/20 {
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+html.light .text-emerald-400 {
+  color: #059669 !important;
+}
+html.light .bg-emerald-500\/20 {
+  background: rgba(16, 185, 129, 0.18) !important;
+}
+html.light .border-emerald-500 {
+  border-color: #10b981 !important;
+}
+html.light .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light .bg-rose-500\/20 {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+html.light .border-rose-500 {
+  border-color: #ef4444 !important;
+}
+html.light .text-rose-300 {
+  color: #b91c1c !important;
+}
+html.light .text-rose-400 {
+  color: #dc2626 !important;
+}
+html.light .bg-amber-500\/20 {
+  background: rgba(245, 158, 11, 0.15) !important;
+}
+html.light .text-amber-400 {
+  color: #d97706 !important;
+}
+html.light .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light .bg-indigo-500\/10 {
+  background: rgba(99, 102, 241, 0.1) !important;
+}
+html.light .bg-indigo-500\/20 {
+  background: rgba(99, 102, 241, 0.15) !important;
+}
+html.light .bg-indigo-500\/5 {
+  background: rgba(99, 102, 241, 0.06) !important;
+}
+html.light .bg-indigo-600 {
+  background: #6366f1 !important;
+}
+html.light .bg-indigo-600:hover {
+  background: #4f46e5 !important;
+}
+html.light .text-indigo-400 {
+  color: #6366f1 !important;
+}
+html.light .text-cyan-400 {
+  color: #0891b2 !important;
+}
+html.light .text-teal-400 {
+  color: #0d9488 !important;
+}
+html.light .text-blue-400 {
+  color: #2563eb !important;
+}
+html.light .bg-rose-500\/20 {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+html.light .hover\:bg-rose-500\/30:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+html.light .bg-rose-500\/10 {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+html.light .bg-black\/60 {
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+html.light .bg-gradient-to-r.from-indigo-400.to-cyan-300 {
+  background: linear-gradient(to right, #6366f1, #0891b2) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+html.light #starContainer .fa-star {
+  color: #94a3b8;
+}
+html.light #starContainer .fa-star.text-amber-400,
+html.light #starContainer .fa-star.fa-solid {
+  color: #f59e0b !important;
+}
+html.light #starContainer .fa-star:hover {
+  color: #f59e0b !important;
+}
+html.light select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+html.light label {
+  color: var(--text-body);
+}
+html.light .cursor-grab {
+  color: var(--text-body);
+}
+html.light .cursor-grab:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Priority badges */
+.priority-high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+.priority-medium {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+.priority-low {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+html.light .priority-high {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+html.light .priority-medium {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+html.light .priority-low {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+/* Category tag */
+.category-tag {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+html.light .category-tag {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4338ca;
+}
+
+/* Overdue */
+.overdue {
+  border-left: 3px solid #ef4444 !important;
+}
+
+/* Drag over effect */
+.drag-over {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-color: #6366f1 !important;
+}
+
+/* Progress bar */
+.progress-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 9999px;
+  transition: width 0.3s;
+}
+
+/* Tooltip */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  color: #e2e8f0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+html.light [data-tooltip]:hover::after {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(0,0,0,0.1);
+}
+
+/* Gantt chart, countdowns, exam matrix */
+html.light #ganttChart,
+html.light #countdowns,
+html.light #examMatrix {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+#wakeUpOverlay {
+  z-index: 2000 !important;
+}
+/* Kanban columns */
+html.light #sched-todo,
+html.light #sched-progress,
+html.light #sched-done,
+html.light #planner-todo,
+html.light #planner-progress,
+html.light #planner-done {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Test question card */
+html.light #testQuestionCard {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Summary list items */
+html.light #summaryList li {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Flashcard grid items */
+html.light #flashcardGrid > div {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Quiz container items */
+html.light #quizContainer > div {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Profile modal input overrides */
+html.light #profileModal input,
+html.light #authModal input {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
+html.light #profileModal input::placeholder,
+html.light #authModal input::placeholder {
+  color: #64748b !important;
+}
+html.light #evalModal textarea {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
+html.light #gcashHidden p,
+html.light #gcashFull p {
+  color: #0f172a !important;
+}
+html.light #testResultsContainer h3 {
+  color: #0f172a;
+}
+html.light #testResultsContainer .text-2xl {
+  color: #0f172a;
+}
+
+/* ============ NEW IMPROVEMENTS ============ */
+
+/* Kanban improvements */
+.kanban-column {
+  transition: background 0.2s, border-color 0.2s;
+}
+.kanban-column .column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.kanban-column .column-count {
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+/* Gantt chart bars */
+.gantt-bar-container {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  position: relative;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+.gantt-bar {
+  height: 100%;
+  border-radius: 6px;
+  min-width: 2px;
+  position: relative;
+  transition: width 0.3s;
+}
+.gantt-bar-label {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 16px);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.gantt-bar-deadline {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.8);
+}
+
+/* Circular countdown */
+.circular-countdown {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--percent) * 1%), rgba(255,255,255,0.1) 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.circular-countdown .inner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-card-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+/* Flashcard flip */
+.flashcard {
+  perspective: 1000px;
+  cursor: pointer;
+  height: 10rem; /* fixed height */
+}
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+.flashcard.flipped .flashcard-inner {
+  transform: rotateY(180deg);
+}
+.flashcard-front, .flashcard-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-card);
+}
+.flashcard-back {
+  transform: rotateY(180deg);
+}
+/* Filter chips */
+.filter-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.filter-chip {
+  padding: 0.4rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-chip:hover {
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+.filter-chip.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--accent);
+  color: #a5b4fc;
+}
+html.light .filter-chip.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+
+/* Type badges */
+.type-badge {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.type-task { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.type-milestone { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+.type-defense { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.type-exam { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+html.light .type-task { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+html.light .type-milestone { background: rgba(168, 85, 247, 0.1); color: #9333ea; }
+html.light .type-defense { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+html.light .type-exam { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+/* Review mode */
+.review-item {
+  border-left: 3px solid transparent;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.03);
+  margin-bottom: 0.5rem;
+}
+.review-item.correct {
+  border-left-color: #10b981;
+  background: rgba(16,185,129,0.05);
+}
+.review-item.incorrect {
+  border-left-color: #ef4444;
+  background: rgba(239,68,68,0.05);
+}
+
+/* Difficulty tooltips */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  color: #e2e8f0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+html.light [data-tooltip]:hover::after {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(0,0,0,0.1);
+}
+
+/* Settings modal */
+#settingsModal .glass-card {
+  padding: 1.5rem;
+}
+
+/* Tab positioning */
+.tab-position-top #tabContainer { order: 2; }
+.tab-position-top #viewsContainer { order: 3; }
+
+.tab-position-bottom #tabContainer { order: 4; }
+.tab-position-bottom #viewsContainer { order: 3; }
+.tab-position-bottom #mainWrapper { flex-direction: column; }
+
+.tab-position-left #mainWrapper {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.tab-position-left #tabContainer {
+  width: 180px;
+  flex-direction: column;
+  position: sticky;
+  top: 1rem;
+}
+.tab-position-left #tabContainer button {
+  width: 100%;
+  text-align: left;
+}
+.tab-position-left #viewsContainer {
+  flex: 1;
+  min-width: 0;
+}
+.tab-position-left .glass-card.header {
+  width: 100%;
+}
+
+/* Calendar styles */
+#calendarGrid {
+  grid-template-columns: repeat(7, 1fr);
+}
+.calendar-day-header {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+}
+.calendar-day {
+  min-height: 60px;
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  position: relative;
+}
+.calendar-day:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+.calendar-day.empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+.calendar-day.today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.calendar-day.selected {
+  background: rgba(99,102,241,0.2);
+  border-color: #6366f1;
+}
+.calendar-day .task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 4px;
+  display: inline-block;
+}
+.calendar-day .task-dot.multiple {
+  background: #f59e0b;
+}
+.calendar-day .task-count {
+  font-size: 0.6rem;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+html.light .calendar-day {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.05);
+}
+html.light .calendar-day:hover {
+  background: rgba(0,0,0,0.06);
+}
+html.light .calendar-day.selected {
+  background: rgba(99,102,241,0.15);
+}
+
+/* ============ WAKE-UP OVERLAY SPINNER FIX ============ */
+
+/* Ensure spinner is visible */
+#wakeUpOverlay .fa-spinner,
+#wakeUpOverlay .animate-spin,
+.fa-spinner.animate-spin {
+  display: inline-block !important;
+  animation: spin 1s linear infinite !important;
+  color: #6366f1 !important;
+  font-size: 1.2rem !important;
+}
+
+/* Define spin animation if Tailwind doesn't load */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Wake-up overlay loading states */
+#wakeUpOverlay .loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Status text styles */
+#wakeUpStatus {
+  transition: color 0.3s ease;
+  min-height: 24px;
+}
+
+#wakeUpStatus.loading {
+  color: #94a3b8;
+}
+
+#wakeUpStatus.success {
+  color: #10b981;
+}
+
+#wakeUpStatus.error {
+  color: #f59e0b;
+}
+
+/* Button loading state */
+#retryWakeBtn.loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* Fade out animation for overlay */
+#wakeUpOverlay.fade-out {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+/* Light mode spinner */
+html.light #wakeUpOverlay .fa-spinner,
+html.light #wakeUpOverlay .animate-spin {
+  color: #6366f1 !important;
+}
+
+/* ============ TAB BUTTON CLICK FIX ============ */
+
+/* Ensure tab container and buttons are above other elements */
+#tabContainer {
+  position: relative;
+  z-index: 100 !important;
+}
+
+#tabContainer button {
+  position: relative;
+  z-index: 101 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Ensure no other elements overlap the tabs */
+#mainWrapper > * {
+  position: relative;
+}
+
+#mainWrapper .glass-card.header {
+  z-index: 50;
+}
+
+#viewsContainer {
+  z-index: 10;
+}
+
+/* Make sure tab buttons are always clickable even on mobile */
+@media (max-width: 640px) {
+  #tabContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+  }
+  
+  #tabContainer button {
+    flex: 1 1 auto;
+    min-width: calc(50% - 0.25rem);
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Fix for any potential overlay issues */
+#wakeUpOverlay {
+  pointer-events: none;
+}
+
+#wakeUpOverlay > div {
+  pointer-events: auto;
+}
+
+/* When overlay is hidden, ensure it doesn't block clicks */
+#wakeUpOverlay[style*="display: none"],
+#wakeUpOverlay[style*="display:none"] {
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Ensure modals don't block tab clicks when hidden */
+[id$="Modal"].hidden,
+.hidden {
+  pointer-events: none !important;
+}
+
+/* Tab active state enhancement */
+.tab-active {
+  position: relative;
+  z-index: 102 !important;
+}
+
+/* Add visual feedback for tab clicks */
+#tabContainer button:active {
+  transform: scale(0.97);
+}
+
+/* Fix for potential iOS Safari issues */
+@supports (-webkit-touch-callout: none) {
+  #tabContainer button {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+}
+
+/* Ensure buttons inside tab container don't have disabled state */
+#tabContainer button:disabled {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+}
+
+.gantt-dot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.gantt-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.gantt-dot-title {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gantt-dot-deadline {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+html.light .gantt-dot-row {
+  border-bottom-color: rgba(0,0,0,0.05);
+}
+
+#ganttCustomizeModal .glass-card {
+  padding: 1.5rem;
+}
+
+/* Fix Gantt modal centering and scroll */
+#ganttCustomizeModal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2000 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+#ganttCustomizeModal .glass-card {
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+}
