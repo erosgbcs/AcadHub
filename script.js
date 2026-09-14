@@ -1409,17 +1409,6 @@ function loadSavedItem(index) {
   document.getElementById('saveToLibraryBtn').classList.add('hidden');
 }
 
-function deleteSavedItem(index) {
-  if (!confirm('Delete this saved reviewer?')) return;
-
-  const saved = safeLocalStorageGet('acadhub_saved', []);
-  saved.splice(index, 1);
-  safeLocalStorageSet('acadhub_saved', saved);
-
-  renderSavedList();
-  showNotification('Reviewer deleted.', 'info');
-}
-
 // ============================================================
 // AUTHENTICATION
 // ============================================================
