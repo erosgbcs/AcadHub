@@ -1038,28 +1038,32 @@ async function saveToLibrary() {
     id: generateId(),
     title: 'Reviewer ' + new Date().toLocaleDateString(),
     date: new Date().toISOString(),
-    summaryHTML: document.getElementById('summaryList').innerHTML,
-    flashcardsHTML: document.getElementById('flashcardGrid').innerHTML,
-    quizHTML: document.getElementById('quizContainer').innerHTML,
     data: currentResults
   };
 
   const saved = safeLocalStorageGet('acadhub_saved', []);
   saved.unshift(saveItem);
-  safeLocalStorageSet('acadhub_saved', saved);
+  const savedOk = safeLocalStorageSet('acadhub_saved', saved);
 
-if (firebaseAvailable && auth && auth.currentUser) {
-  try {
-    await db.collection('users').doc(auth.currentUser.uid).collection('library').doc(saveItem.id).set(saveItem);
-  } catch (err) {
-    console.error('Error saving to Firebase:', err);
+  if (!savedOk) {
+    showNotification('Could not save — local storage is full. Try deleting old reviewers.', 'error');
+    return;
   }
-}
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid).collection('library').doc(saveItem.id).set(saveItem);
+    } catch (err) {
+      console.error('Error saving to Firebase:', err);
+      showNotification('Saved locally, but cloud sync failed.', 'warning');
+      renderSavedList();
+      return;
+    }
+  }
 
   showNotification('Saved to library!', 'success');
   renderSavedList();
 }
-
 // TEST MY LIMITS
 function setDifficulty(difficulty) {
   testDifficulty = difficulty;
@@ -1397,18 +1401,18 @@ function loadSavedItem(index) {
   const saved = safeLocalStorageGet('acadhub_saved', []);
   const item = saved[index];
 
-  if (!item) return;
+  if (!item || !item.data) return;
 
   switchTab('reviewer');
 
   document.getElementById('resultsContainer').classList.remove('hidden');
-  document.getElementById('summaryList').innerHTML = item.summaryHTML || '';
-  document.getElementById('flashcardGrid').innerHTML = item.flashcardsHTML || '';
-  document.getElementById('quizContainer').innerHTML = item.quizHTML || '';
+  renderSummary(item.data.summary);
+  renderFlashcards(item.data.flashcards);
+  renderQuiz(item.data.quiz);
 
+  currentResults = item.data;
   document.getElementById('saveToLibraryBtn').classList.add('hidden');
 }
-
 // ============================================================
 // AUTHENTICATION
 // ============================================================
