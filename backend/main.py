@@ -215,7 +215,7 @@ async def generate_with_gemini(
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
     }).encode("utf-8")
     request = urllib.request.Request(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
         f"?key={urllib.parse.quote(api_key)}",
         data=request_body,
         headers={"Content-Type": "application/json"},
