@@ -11,8 +11,8 @@
 
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="manifest" href="/AcadHub/manifest.json" />
-  <link rel="apple-touch-icon" href="/AcadHub/icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
 
   <!-- Google Font Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -24,7 +24,7 @@
 <body>
 
   <!-- Wake-up overlay -->
-  <div id="wakeUpOverlay" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:flex;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;">
+  <div id="wakeUpOverlay" aria-hidden="true" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:none;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;">
     <div>
       <h1 style="font-size:1.8rem;margin-bottom:0.5rem;">Server is waking up <i class="fa-solid fa-mug-hot ml-2"></i></h1>
       <p style="margin-bottom:1.5rem;">The backend is cold-starting. Please tap below once it's ready.</p>
@@ -73,8 +73,6 @@
   <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">AI Reviewer</button>
   <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
   <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
-  <button id="tabPlanner" onclick="switchTab('planner')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Study Planner</button>
-  <button id="tabScheduler" onclick="switchTab('scheduler')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Dev & Thesis Scheduler</button>
   <button id="tabCalendar" onclick="switchTab('calendar')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Calendar</button>
 </div>
 
@@ -120,14 +118,12 @@
                   </tr>
                 </thead>
                 <tbody class="opacity-80">
-                  <tr class="border-b border-white/5"><td class="py-2 pr-2">True/False</td><td class="py-2 px-2">90% accurate</td><td class="py-2 pl-2">100% accurate</td></tr>
-                  <tr class="border-b border-white/5"><td class="py-2 pr-2">Identification</td><td class="py-2 px-2">95%</td><td class="py-2 pl-2">100%</td></tr>
-                  <tr class="border-b border-white/5"><td class="py-2 pr-2">Multiple Choice</td><td class="py-2 px-2">80%</td><td class="py-2 pl-2">100%</td></tr>
-                  <tr class="border-b border-white/5"><td class="py-2 pr-2">What / Who / Where</td><td class="py-2 px-2">85%</td><td class="py-2 pl-2">100%</td></tr>
-                  <tr><td class="py-2 pr-2">Enumeration</td><td class="py-2 px-2">80%</td><td class="py-2 pl-2">100%</td></tr>
+                  <tr class="border-b border-white/5"><td class="py-2 pr-2">Source grounding</td><td class="py-2 px-2">Checked</td><td class="py-2 pl-2">Checked</td></tr>
+                  <tr class="border-b border-white/5"><td class="py-2 pr-2">Answer consistency</td><td class="py-2 px-2">Checked</td><td class="py-2 pl-2">Checked</td></tr>
+                  <tr><td class="py-2 pr-2">Semantic accuracy</td><td class="py-2 px-2">Review recommended</td><td class="py-2 pl-2">Review recommended</td></tr>
                 </tbody>
               </table>
-              <p class="mt-2 opacity-50">Accuracy may vary with text complexity.</p>
+              <p class="mt-2 opacity-50">The score measures source grounding and answer consistency. It cannot prove semantic accuracy.</p>
             </div>
 
             <div>
@@ -190,6 +186,7 @@
               <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
             </button>
           </div>
+          <p id="generationQuality" class="text-xs text-right opacity-60"></p>
           <div class="glass-card border-l-4 border-l-indigo-500">
             <h3 class="text-sm font-bold uppercase text-indigo-400 mb-3"><i class="fa-solid fa-thumbtack mr-2"></i>Key Concepts</h3>
             <ul id="summaryList" class="space-y-2 text-sm"></ul>
@@ -281,122 +278,6 @@
           </div>
 
           <div id="reviewContainer" class="hidden mt-4 sm:mt-6 space-y-2"></div>
-        </div>
-      </div>
-
-      <!-- ===== VIEW: STUDY PLANNER ===== -->
-      <div id="viewPlanner" class="hidden space-y-4 sm:space-y-6">
-        <div class="glass-card">
-          <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-clipboard-list mr-2"></i>Study Planner</h2>
-          <div class="flex flex-col sm:flex-row gap-2 mb-4">
-            <input type="text" id="plannerTitle" placeholder="Task title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-            <input type="date" id="plannerDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-            <select id="plannerPriority" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-              <option value="low">Low Priority</option>
-              <option value="medium" selected>Medium Priority</option>
-              <option value="high">High Priority</option>
-            </select>
-            <select id="plannerCategory" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-              <option value="study">Study</option>
-              <option value="dev">Development</option>
-              <option value="thesis">Thesis</option>
-              <option value="exam">Exam</option>
-              <option value="personal">Personal</option>
-            </select>
-            <button onclick="addOrUpdatePlannerTask()" id="plannerAddBtn" class="btn-primary px-4 py-2 text-sm btn-hover"><i class="fa-solid fa-plus mr-1"></i> Add</button>
-            <input type="hidden" id="editPlannerId" value="" />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'todo')" data-column="todo">
-              <div class="column-header">
-                <h3 class="text-sm font-semibold text-amber-400"><i class="fa-solid fa-thumbtack mr-1"></i>To Do</h3>
-                <span class="column-count">0</span>
-              </div>
-              <div id="planner-todo" class="space-y-2 min-h-[100px]"></div>
-            </div>
-            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'progress')" data-column="progress">
-              <div class="column-header">
-                <h3 class="text-sm font-semibold text-blue-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>In Progress</h3>
-                <span class="column-count">0</span>
-              </div>
-              <div id="planner-progress" class="space-y-2 min-h-[100px]"></div>
-            </div>
-            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropPlannerTask(event, 'done')" data-column="done">
-              <div class="column-header">
-                <h3 class="text-sm font-semibold text-emerald-400"><i class="fa-solid fa-check mr-1"></i>Done</h3>
-                <span class="column-count">0</span>
-              </div>
-              <div id="planner-done" class="space-y-2 min-h-[100px]"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===== VIEW: DEV & THESIS SCHEDULER ===== -->
-      <div id="viewScheduler" class="hidden space-y-4 sm:space-y-6">
-        <div class="glass-card">
-          <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-calendar-days mr-2"></i>Dev & Thesis Scheduler</h2>
-          <div class="flex flex-col sm:flex-row gap-2 mb-6">
-            <input type="text" id="schedTitle" placeholder="Task / Milestone title..." class="flex-1 py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-            <input type="date" id="schedDeadline" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm" />
-            <select id="schedType" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-              <option value="task">Task</option>
-              <option value="milestone">Milestone</option>
-              <option value="defense">Thesis Defense</option>
-              <option value="exam">Exam</option>
-            </select>
-            <select id="schedPriority" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-              <option value="low">Low Priority</option>
-              <option value="medium" selected>Medium Priority</option>
-              <option value="high">High Priority</option>
-            </select>
-            <select id="schedCategory" class="py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-              <option value="study">Study</option>
-              <option value="dev">Development</option>
-              <option value="thesis">Thesis</option>
-              <option value="exam">Exam</option>
-              <option value="personal">Personal</option>
-            </select>
-            <button onclick="addOrUpdateSchedItem()" id="schedAddBtn" class="btn-primary px-4 py-2 text-sm btn-hover"><i class="fa-solid fa-plus mr-1"></i> Add</button>
-            <input type="hidden" id="editSchedId" value="" />
-          </div>
-          <div class="filter-chips"></div>
-          <h3 class="text-sm font-semibold mb-3 text-cyan-400"><i class="fa-solid fa-chart-bar mr-2"></i>Gantt Chart Roadmap</h3>
-          <div id="ganttChart" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[150px]">
-            <p class="text-xs opacity-50 text-center py-8">Add tasks to see your roadmap timeline</p>
-          </div>
-          <h3 class="text-sm font-semibold mb-3 text-rose-400"><i class="fa-solid fa-graduation-cap mr-2"></i>Thesis Defense Countdowns</h3>
-          <div id="countdowns" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
-            <p class="text-xs opacity-50 text-center py-4">No defense dates set</p>
-          </div>
-          <h3 class="text-sm font-semibold mb-3 text-amber-400"><i class="fa-solid fa-file-pen mr-2"></i>Exam Reminder Matrix</h3>
-          <div id="examMatrix" class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
-            <p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>
-          </div>
-          <h3 class="text-sm font-semibold mb-3 text-blue-400"><i class="fa-solid fa-clipboard-list mr-2"></i>Kanban Task Board</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'todo')" data-column="todo">
-              <div class="column-header">
-                <h4 class="text-xs font-semibold text-amber-400"><i class="fa-solid fa-thumbtack mr-1"></i>To Do</h4>
-                <span class="column-count">0</span>
-              </div>
-              <div id="sched-todo" class="space-y-2 min-h-[80px]"></div>
-            </div>
-            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'progress')" data-column="progress">
-              <div class="column-header">
-                <h4 class="text-xs font-semibold text-blue-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>In Progress</h4>
-                <span class="column-count">0</span>
-              </div>
-              <div id="sched-progress" class="space-y-2 min-h-[80px]"></div>
-            </div>
-            <div class="bg-white/5 border border-white/10 rounded-xl p-4 kanban-column" ondragover="allowDrop(event)" ondrop="dropSchedTask(event, 'done')" data-column="done">
-              <div class="column-header">
-                <h4 class="text-xs font-semibold text-emerald-400"><i class="fa-solid fa-check mr-1"></i>Done</h4>
-                <span class="column-count">0</span>
-              </div>
-              <div id="sched-done" class="space-y-2 min-h-[80px]"></div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -559,30 +440,6 @@
       </div>
     </div>
   </div>
-<!-- CUSTOMIZE GANTT MODAL -->
-<div id="ganttCustomizeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-  <div class="glass-card w-80 p-6 relative">
-    <button onclick="closeGanttCustomizeModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
-      <i class="fa-solid fa-times"></i>
-    </button>
-    <h3 class="text-sm font-semibold mb-4"><i class="fa-solid fa-palette mr-2"></i>Customize Task</h3>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold mb-1">Priority</label>
-        <select id="ganttPrioritySelect" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-          <option value="high">High Priority</option>
-          <option value="medium" selected>Medium Priority</option>
-          <option value="low">Low Priority</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold mb-1">Custom Color</label>
-        <input type="color" id="ganttColorPicker" value="#f59e0b" />
-      </div>
-      <button onclick="saveGanttCustomization()" class="btn-primary w-full text-base py-3 btn-hover">Save</button>
-    </div>
-  </div>
-</div>
   <!-- ===== FIREBASE SDK ===== -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>

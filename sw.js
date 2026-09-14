@@ -1,10 +1,10 @@
 const CACHE_NAME = 'acadhub-v2';
 const STATIC_ASSETS = [
-  '/AcadHub/',
-  '/AcadHub/index.html',
-  '/AcadHub/style.css',
-  '/AcadHub/script.js',
-  '/AcadHub/manifest.json',
+  './',
+  './index.html',
+  './style.css',
+  './script.js',
+  './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];

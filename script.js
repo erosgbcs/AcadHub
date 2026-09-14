@@ -52,7 +52,8 @@ try {
 // ============================================================
 // BACKEND API CONFIGURATION
 // ============================================================
-const API_BASE_URL = 'https://acadhub-spacy.onrender.com';
+const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const API_BASE_URL = window.ACADHUB_API_URL || (isLocalHost ? 'http://127.0.0.1:8000' : 'https://acadhub-spacy.onrender.com');
 
 const API_ENDPOINTS = {
   health: '/api/health',
@@ -70,8 +71,6 @@ const API_ENDPOINTS = {
 // GLOBAL VARIABLES
 // ============================================================
 let isSignUpMode = false;
-let schedItems = [];
-let plannerTasks = [];
 let selectedRating = 0;
 let currentTab = 'reviewer';
 let testQuestions = [];
@@ -83,7 +82,6 @@ let offlineQueue = [];
 let isOnline = navigator.onLine;
 let backendAvailable = false;
 let userAnswers = [];
-let currentSchedFilter = 'all';
 let calendarMonth = new Date().getMonth();
 let calendarYear = new Date().getFullYear();
 let selectedCalendarDate = null;
@@ -216,6 +214,8 @@ async function apiCall(endpoint, options = {}) {
 }
 
 async function checkBackendHealth() {
+  const statusEl = document.getElementById('backendStatus');
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -227,9 +227,21 @@ async function checkBackendHealth() {
     
     clearTimeout(timeoutId);
     backendAvailable = response.ok;
+    if (statusEl) {
+      statusEl.innerHTML = backendAvailable
+        ? '<i class="fa-solid fa-circle mr-1"></i> ONLINE'
+        : '<i class="fa-solid fa-circle mr-1"></i> OFFLINE'
+      statusEl.className = backendAvailable
+        ? 'px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold'
+        : 'px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold';
+    }
     return backendAvailable;
   } catch (err) {
     backendAvailable = false;
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fa-solid fa-circle mr-1"></i> OFFLINE'
+      statusEl.className = 'px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold';
+    }
     return false;
   }
 }
@@ -370,40 +382,6 @@ function skipToDashboard() {
     console.log('📴 Continuing to dashboard');
   }, 500);
 }
-function getDaysUntil(dateStr) {
-  const now = new Date();
-  const target = new Date(dateStr + 'T00:00:00');
-  const diffTime = target - now;
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function createCircularCountdown(daysLeft) {
-  const maxDays = 30; // reference period for ring percentage
-  const percent = Math.max(0, Math.min(100, (daysLeft / maxDays) * 100));
-
-  let color = '#6366f1'; // default indigo
-  if (daysLeft < 0) {
-    color = '#ef4444';
-  } else if (daysLeft <= 7) {
-    color = '#ef4444';
-  } else if (daysLeft <= 14) {
-    color = '#f59e0b';
-  } else {
-    color = '#10b981';
-  }
-
-  const bgColor = 'rgba(255,255,255,0.1)';
-  const circleStyle = `background: conic-gradient(${color} ${percent}%, ${bgColor} 0);`;
-  const displayDays = daysLeft < 0 ? '0' : daysLeft;
-
-  return `
-    <div class="circular-countdown" style="${circleStyle}">
-      <div class="inner" style="color:${color}; font-size:0.8rem; font-weight:bold;">
-        ${displayDays}d
-      </div>
-    </div>
-  `;
-}
 // ============================================================
 // TAB MANAGEMENT - FIXED VERSION
 // ============================================================
@@ -419,8 +397,6 @@ function switchTab(tab) {
     'reviewer': 'viewReviewer',
     'library': 'viewLibrary',
     'test': 'viewTest',
-    'planner': 'viewPlanner',
-    'scheduler': 'viewScheduler',
     'calendar': 'viewCalendar'
   };
 
@@ -442,8 +418,6 @@ function switchTab(tab) {
     'reviewer': 'tabReviewer',
     'library': 'tabLibrary',
     'test': 'tabTest',
-    'planner': 'tabPlanner',
-    'scheduler': 'tabScheduler',
     'calendar': 'tabCalendar'
   };
 
@@ -458,8 +432,6 @@ function switchTab(tab) {
 
   // Refresh data for certain tabs
   if (tab === 'library') renderSavedList();
-  if (tab === 'scheduler') renderScheduler();
-  if (tab === 'planner') renderPlanner();
   if (tab === 'calendar') renderCalendar();
 }
 
@@ -469,8 +441,6 @@ function initTabListeners() {
     'tabReviewer': 'reviewer',
     'tabLibrary': 'library',
     'tabTest': 'test',
-    'tabPlanner': 'planner',
-    'tabScheduler': 'scheduler',
     'tabCalendar': 'calendar'
   };
   
@@ -593,16 +563,6 @@ function saveVisitorName() {
 
   closeProfileModal();
   showNotification(`Welcome, ${firstName}! Your profile has been saved.`, 'success');
-}
-function getTaskDotColor(item) {
-  if (item.customColor) return item.customColor;
-  // Fallback: priority colors
-  const priorityColors = {
-    high: '#ef4444',
-    medium: '#f59e0b',
-    low: '#10b981'
-  };
-  return priorityColors[item.priority] || '#6366f1';
 }
 // SETTINGS MANAGEMENT
 function toggleSettingsModal() {
@@ -820,6 +780,10 @@ async function handleGenerate() {
     renderSummary(transformedData.summary);
     renderFlashcards(transformedData.flashcards);
     renderQuiz(transformedData.quiz);
+    const qualityEl = document.getElementById('generationQuality');
+    if (qualityEl && transformedData.quality) {
+      qualityEl.textContent = `Generation quality: ${transformedData.quality.score}% (source and answer consistency)`;
+    }
 
     currentResults = {
       ...transformedData,
@@ -859,17 +823,18 @@ function transformBackendResponse(backendData) {
   };
 
   (backendData.quiz || []).forEach(question => {
+    const questionText = String(question.question || 'Question');
     switch (question.type) {
       case 'truefalse':
         quiz.trueFalse.push({
-          question: question.question.replace(/^True or False: ["']?|["']?$/g, ''),
-          answer: question.answer === 'True'
+          question: questionText.replace(/^True or False: ["']?|["']?$/g, ''),
+          answer: question.answer === true || String(question.answer).toLowerCase() === 'true'
         });
         break;
       case 'identification':
         quiz.identification.push({
-          question: question.question,
-          answer: question.answer
+          question: questionText,
+          answer: String(question.answer || 'Unknown')
         });
         break;
       case 'multiplechoice':
@@ -878,21 +843,21 @@ function transformBackendResponse(backendData) {
       case 'where':
       case 'when':
         quiz.multipleChoice.push({
-          question: question.question,
+          question: questionText,
           options: question.options || [],
           correct: (question.options || []).indexOf(question.answer)
         });
         break;
       case 'enumeration':
         quiz.enumeration.push({
-          question: question.question,
-          answer: question.answer
+          question: questionText,
+          answer: String(question.answer || 'Unknown')
         });
         break;
     }
   });
 
-  return { summary, flashcards, quiz };
+  return { summary, flashcards, quiz, quality: backendData.quality || null };
 }
 
 // RENDER FUNCTIONS
@@ -1325,533 +1290,6 @@ function showReview() {
 }
 
 // ============================================================
-// STUDY PLANNER
-// ============================================================
-function renderPlanner() {
-  const todoCol = document.getElementById('planner-todo');
-  const progressCol = document.getElementById('planner-progress');
-  const doneCol = document.getElementById('planner-done');
-
-  if (!todoCol || !progressCol || !doneCol) return;
-
-  todoCol.innerHTML = '';
-  progressCol.innerHTML = '';
-  doneCol.innerHTML = '';
-
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-  plannerTasks.sort((a, b) => (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1));
-
-  plannerTasks.forEach(task => {
-    const element = createPlannerTaskElement(task);
-    const column = task.status === 'done' ? doneCol : task.status === 'progress' ? progressCol : todoCol;
-    column.appendChild(element);
-  });
-
-  updateColumnCounts();
-}
-
-function createPlannerTaskElement(task) {
-  const div = document.createElement('div');
-  div.className = 'task-card bg-white/5 border border-white/10 rounded-lg p-3 cursor-grab hover:border-indigo-400/50 transition';
-  div.draggable = true;
-  div.dataset.id = task.id;
-
-  const priorityClass = task.priority === 'high' ? 'priority-high' : task.priority === 'medium' ? 'priority-medium' : 'priority-low';
-
-  div.innerHTML = `
-    <div class="flex items-start justify-between gap-2">
-      <div class="flex-1">
-        <p class="text-sm font-medium">${task.title || 'Untitled'}</p>
-        <p class="text-xs opacity-50">${formatDate(task.deadline)}</p>
-      </div>
-      <span class="${priorityClass} text-xs px-2 py-0.5 rounded-full font-semibold">${task.priority || 'medium'}</span>
-    </div>
-    <div class="flex items-center justify-between mt-2">
-      <span class="category-tag">${task.category || 'study'}</span>
-      <div class="flex gap-2">
-        <button onclick="editPlannerTask('${task.id}')" class="text-xs opacity-50 hover:opacity-100 transition">
-          <i class="fa-solid fa-edit"></i>
-        </button>
-        <button onclick="deletePlannerTask('${task.id}')" class="text-xs opacity-50 hover:opacity-100 transition">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      </div>
-    </div>
-  `;
-
-  div.addEventListener('dragstart', handleDragStart);
-  div.addEventListener('dragend', handleDragEnd);
-
-  return div;
-}
-
-function addOrUpdatePlannerTask() {
-  const title = document.getElementById('plannerTitle').value.trim();
-  const deadline = document.getElementById('plannerDeadline').value;
-  const priority = document.getElementById('plannerPriority').value;
-  const category = document.getElementById('plannerCategory').value;
-  const editId = document.getElementById('editPlannerId').value;
-
-  if (!title) {
-    showNotification('Please enter a task title.', 'warning');
-    return;
-  }
-
-  if (editId) {
-    const index = plannerTasks.findIndex(t => t.id === editId);
-    if (index !== -1) {
-      plannerTasks[index] = {
-        ...plannerTasks[index],
-        title,
-        deadline,
-        priority,
-        category
-      };
-    }
-    document.getElementById('editPlannerId').value = '';
-    document.getElementById('plannerAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
-  } else {
-    const newTask = {
-      id: generateId(),
-      title,
-      deadline,
-      priority,
-      category,
-      status: 'todo',
-      createdAt: new Date().toISOString()
-    };
-    plannerTasks.push(newTask);
-  }
-
-  safeLocalStorageSet('acadhub_planner', plannerTasks);
-
-  if (firebaseAvailable && auth && auth.currentUser) {
-  const plannerRef = db.collection('users').doc(auth.currentUser.uid).collection('planner');
-  if (editId) {
-    plannerRef.doc(editId).update({ title, deadline, priority, category });
-  } else {
-    const newTaskId = plannerTasks[plannerTasks.length - 1].id; // last pushed
-    plannerRef.doc(newTaskId).set(plannerTasks[plannerTasks.length - 1]);
-  }
-}
-
-  document.getElementById('plannerTitle').value = '';
-  document.getElementById('plannerDeadline').value = '';
-
-  renderPlanner();
-  showNotification(editId ? 'Task updated!' : 'Task added!', 'success');
-}
-
-function editPlannerTask(id) {
-  const task = plannerTasks.find(t => t.id === id);
-  if (!task) return;
-
-  document.getElementById('plannerTitle').value = task.title || '';
-  document.getElementById('plannerDeadline').value = task.deadline || '';
-  document.getElementById('plannerPriority').value = task.priority || 'medium';
-  document.getElementById('plannerCategory').value = task.category || 'study';
-  document.getElementById('editPlannerId').value = id;
-  document.getElementById('plannerAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
-}
-
-function deletePlannerTask(id) {
-  if (!confirm('Delete this task?')) return;
-
-  plannerTasks = plannerTasks.filter(t => t.id !== id);
-  safeLocalStorageSet('acadhub_planner', plannerTasks);
-
-  if (firebaseAvailable && auth && auth.currentUser) {
-  db.collection('users').doc(auth.currentUser.uid).collection('planner').doc(id).delete();
-}
-
-  renderPlanner();
-  showNotification('Task deleted.', 'info');
-}
-
-// ============================================================
-// DRAG AND DROP
-// ============================================================
-function allowDrop(event) {
-  event.preventDefault();
-}
-
-function dropPlannerTask(event, status) {
-  event.preventDefault();
-  const taskId = event.dataTransfer.getData('text/plain');
-
-  if (!taskId) return;
-
-  const task = plannerTasks.find(t => t.id === taskId);
-  if (task) {
-    task.status = status;
-    safeLocalStorageSet('acadhub_planner', plannerTasks);
-
-    if (firebaseAvailable && auth && auth.currentUser) {
-  db.collection('users').doc(auth.currentUser.uid).collection('planner').doc(taskId).update({ status });
-}
-
-    renderPlanner();
-  }
-}
-
-function handleDragStart(event) {
-  event.target.classList.add('dragging');
-  event.dataTransfer.setData('text/plain', event.target.dataset.id);
-  event.dataTransfer.effectAllowed = 'move';
-}
-
-function handleDragEnd(event) {
-  event.target.classList.remove('dragging');
-}
-
-function updateColumnCounts() {
-  document.querySelectorAll('.kanban-column').forEach(col => {
-    const count = col.querySelector('.column-count');
-    if (count) {
-      count.textContent = col.querySelectorAll('.task-card').length;
-    }
-  });
-}
-
-// SCHEDULER FUNCTIONS
-function renderScheduler() {
-  const todoCol = document.getElementById('sched-todo');
-  const progressCol = document.getElementById('sched-progress');
-  const doneCol = document.getElementById('sched-done');
-
-  if (todoCol) todoCol.innerHTML = '';
-  if (progressCol) progressCol.innerHTML = '';
-  if (doneCol) doneCol.innerHTML = '';
-
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-  const filtered = currentSchedFilter === 'all' 
-    ? [...schedItems]
-    : schedItems.filter(item => (item.type || 'task') === currentSchedFilter);
-
-  filtered.sort((a, b) => (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1));
-
-  filtered.forEach(item => {
-    const el = createSchedTaskElement(item);
-    if (item.status === 'done') doneCol?.appendChild(el);
-    else if (item.status === 'progress') progressCol?.appendChild(el);
-    else todoCol?.appendChild(el);
-  });
-
-  updateColumnCounts();
-
-  renderGanttChart(filtered);
-  renderCountdowns(schedItems);
-  renderExamMatrix(schedItems);
-  renderSchedFilterChips();
-}
-
-function createSchedTaskElement(item) {
-  const div = document.createElement('div');
-  div.className = 'task-card bg-white/5 border border-white/10 rounded-lg p-3 cursor-grab hover:border-indigo-400/50 transition';
-  div.draggable = true;
-  div.dataset.id = item.id;
-
-  const priorityClass = item.priority === 'high' ? 'priority-high' : item.priority === 'medium' ? 'priority-medium' : 'priority-low';
-  const typeClass = item.type === 'milestone' ? 'type-milestone' : item.type === 'defense' ? 'type-defense' : item.type === 'exam' ? 'type-exam' : 'type-task';
-
-  div.innerHTML = `
-    <div class="flex items-start justify-between gap-2">
-      <div class="flex-1">
-        <p class="text-sm font-medium">${item.title || 'Untitled'}</p>
-        <p class="text-xs opacity-50">${formatDate(item.deadline)}</p>
-      </div>
-      <span class="${priorityClass} text-xs px-2 py-0.5 rounded-full font-semibold">${item.priority || 'medium'}</span>
-    </div>
-    <div class="flex items-center justify-between mt-2">
-      <span class="type-badge ${typeClass}">${item.type || 'task'}</span>
-      <span class="category-tag">${item.category || 'study'}</span>
-      <div class="flex gap-2">
-        <button onclick="editSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100 transition"><i class="fa-solid fa-edit"></i></button>
-        <button onclick="deleteSchedItem('${item.id}')" class="text-xs opacity-50 hover:opacity-100 transition"><i class="fa-solid fa-trash"></i></button>
-      </div>
-    </div>
-  `;
-
-  div.addEventListener('dragstart', handleDragStart);
-  div.addEventListener('dragend', handleDragEnd);
-  return div;
-}
-
-function renderGanttChart(items) {
-  const container = document.getElementById('ganttChart');
-  if (!container) return;
-  container.innerHTML = '';
-
-  // Filter valid deadlines
-  const validItems = items.filter(i => i.deadline && !isNaN(new Date(i.deadline).getTime()));
-
-  if (validItems.length === 0) {
-    container.innerHTML = '<p class="text-xs opacity-50 text-center py-8">No tasks with valid dates to display</p>';
-    return;
-  }
-
-  // Sort by deadline
-  validItems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-
-  // Create rows
-  validItems.forEach(item => {
-    const row = document.createElement('div');
-    row.className = 'gantt-dot-row';
-
-const dotColor = item.customColor || 
-  (item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981');   
-    const isMilestone = item.type === 'milestone';
-
-    row.innerHTML = `
-      <span class="gantt-dot" 
-            style="background:${dotColor}; cursor:pointer;" 
-            title="Click to customize"
-            onclick="customizeGanttItem('${item.id}')">
-        ${isMilestone ? '<i class="fa-solid fa-star"></i>' : ''}
-      </span>
-      <span class="gantt-dot-title">${item.title || 'Untitled'}</span>
-      <span class="gantt-dot-deadline">${formatDate(item.deadline)}</span>
-    `;
-
-    container.appendChild(row);
-  });
-}
-
-let ganttCustomizeId = null;
-
-function customizeGanttItem(id) {
-  const item = schedItems.find(i => i.id === id);
-  if (!item) return;
-
-  ganttCustomizeId = id;
-
-  document.getElementById('ganttPrioritySelect').value = item.priority || 'medium';
-  document.getElementById('ganttColorPicker').value = item.customColor || 
-    (item.priority === 'high' ? '#ef4444' : item.priority === 'medium' ? '#f59e0b' : '#10b981');
-
-  document.getElementById('ganttCustomizeModal').classList.remove('hidden');
-}
-
-function closeGanttCustomizeModal() {
-  document.getElementById('ganttCustomizeModal').classList.add('hidden');
-  ganttCustomizeId = null;
-}
-
-function saveGanttCustomization() {
-  if (!ganttCustomizeId) return;
-
-  const item = schedItems.find(i => i.id === ganttCustomizeId);
-  if (!item) return;
-
-  const priority = document.getElementById('ganttPrioritySelect').value;
-  const customColor = document.getElementById('ganttColorPicker').value;
-
-  item.priority = priority;
-  item.customColor = customColor;
-
-  safeLocalStorageSet('acadhub_sched', schedItems);
-
-  if (firebaseAvailable && auth && auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(ganttCustomizeId).update({
-      priority,
-      customColor
-    });
-  }
-
-  closeGanttCustomizeModal();
-  renderScheduler();
-  renderCalendar();
-  showNotification('Task customized!', 'success');
-}
-
-function renderCountdowns(items) {
-  const container = document.getElementById('countdowns');
-  if (!container) return;
-  const defenses = items.filter(i => i.type === 'defense' && i.deadline);
-  if (defenses.length === 0) {
-    container.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No defense dates set</p>';
-    return;
-  }
-
-  container.innerHTML = '';
-  defenses.forEach(def => {
-    const daysLeft = getDaysUntil(def.deadline);
-    const circleHTML = createCircularCountdown(daysLeft);
-    const div = document.createElement('div');
-    div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
-    div.innerHTML = `
-      <div class="flex items-center gap-3">
-        ${circleHTML}
-        <div>
-          <p class="text-sm font-medium">${def.title}</p>
-          <p class="text-xs opacity-60">${formatDate(def.deadline)}</p>
-        </div>
-      </div>
-    `;
-    container.appendChild(div);
-  });
-}
-
-function renderExamMatrix(items) {
-  const container = document.getElementById('examMatrix');
-  if (!container) return;
-  const exams = items.filter(i => i.type === 'exam' && i.deadline);
-  if (exams.length === 0) {
-    container.innerHTML = '<p class="text-xs opacity-50 text-center py-4">No exams scheduled</p>';
-    return;
-  }
-
-  container.innerHTML = '';
-  exams.forEach(ex => {
-    const daysLeft = getDaysUntil(ex.deadline);
-    const circleHTML = createCircularCountdown(daysLeft);
-    const div = document.createElement('div');
-    div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
-    div.innerHTML = `
-      <div class="flex items-center gap-3">
-        ${circleHTML}
-        <div>
-          <p class="text-sm font-medium">${ex.title}</p>
-          <p class="text-xs opacity-60">${formatDate(ex.deadline)}</p>
-        </div>
-      </div>
-    `;
-    container.appendChild(div);
-  });
-}
-function mergeById(remoteItems, localItems) {
-  const remoteMap = new Map(remoteItems.map(item => [item.id, item]));
-  const merged = [...remoteItems];
-  localItems.forEach(localItem => {
-    if (!remoteMap.has(localItem.id)) {
-      merged.push(localItem);
-    }
-  });
-  return merged;
-}
-
-function dedupeByIdentifier(items) {
-  const seen = new Map();
-  const result = [];
-  for (const item of items) {
-    const key = `${(item.title || '').trim().toLowerCase()}__${(item.deadline || '')}`;
-    if (!seen.has(key)) {
-      seen.set(key, true);
-      result.push(item);
-    }
-  }
-  return result;
-}
-
-function renderSchedFilterChips() {
-  const container = document.querySelector('#viewScheduler .filter-chips');
-  if (!container) return;
-  container.innerHTML = '';
-  const filters = ['all', 'task', 'milestone', 'defense', 'exam'];
-  filters.forEach(f => {
-    const chip = document.createElement('button');
-    chip.className = 'filter-chip' + (currentSchedFilter === f ? ' active' : '');
-    chip.textContent = f.charAt(0).toUpperCase() + f.slice(1);
-    chip.onclick = () => { currentSchedFilter = f; renderScheduler(); };
-    container.appendChild(chip);
-  });
-}
-
-function addOrUpdateSchedItem() {
-  const title = document.getElementById('schedTitle').value.trim();
-  const deadline = document.getElementById('schedDeadline').value;
-  const type = document.getElementById('schedType').value;
-  const priority = document.getElementById('schedPriority').value;
-  const category = document.getElementById('schedCategory').value;
-  const editId = document.getElementById('editSchedId').value;
-
-  if (!title) {
-    showNotification('Please enter a task title.', 'warning');
-    return;
-  }
-
-  if (editId) {
-    const item = schedItems.find(i => i.id === editId);
-    if (item) {
-      item.title = title;
-      item.deadline = deadline;
-      item.type = type;
-      item.priority = priority;
-      item.category = category;
-    }
-    document.getElementById('editSchedId').value = '';
-    document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Add';
-  } else {
-    schedItems.push({
-      id: generateId(),
-      title,
-      deadline,
-      type,
-      priority,
-      category,
-      status: 'todo',
-      createdAt: new Date().toISOString()
-    });
-  }
-
-  safeLocalStorageSet('acadhub_sched', schedItems);
-  if (firebaseAvailable && auth && auth.currentUser) {
-  const ref = db.collection('users').doc(auth.currentUser.uid).collection('scheduler');
-  if (editId) {
-    ref.doc(editId).update({ title, deadline, type, priority, category });
-  } else {
-    const newSchedId = schedItems[schedItems.length - 1].id; // last pushed
-    ref.doc(newSchedId).set(schedItems[schedItems.length - 1]);
-  }
-}
-
-  document.getElementById('schedTitle').value = '';
-  document.getElementById('schedDeadline').value = '';
-  renderScheduler();
-  renderCalendar();
-  showNotification(editId ? 'Task updated!' : 'Task added!', 'success');
-}
-
-function editSchedItem(id) {
-  const item = schedItems.find(i => i.id === id);
-  if (!item) return;
-  document.getElementById('schedTitle').value = item.title || '';
-  document.getElementById('schedDeadline').value = item.deadline || '';
-  document.getElementById('schedType').value = item.type || 'task';
-  document.getElementById('schedPriority').value = item.priority || 'medium';
-  document.getElementById('schedCategory').value = item.category || 'study';
-  document.getElementById('editSchedId').value = id;
-  document.getElementById('schedAddBtn').innerHTML = '<i class="fa-solid fa-check mr-1"></i> Update';
-}
-
-function deleteSchedItem(id) {
-  if (!confirm('Delete this item?')) return;
-  schedItems = schedItems.filter(i => i.id !== id);
-  safeLocalStorageSet('acadhub_sched', schedItems);
-  if (firebaseAvailable && auth && auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(id).delete();
-  }
-  renderScheduler();
-  renderCalendar();
-  showNotification('Item deleted.', 'info');
-}
-
-function dropSchedTask(event, status) {
-  event.preventDefault();
-  const taskId = event.dataTransfer.getData('text/plain');
-  if (!taskId) return;
-  const item = schedItems.find(i => i.id === taskId);
-  if (item) {
-    item.status = status;
-    safeLocalStorageSet('acadhub_sched', schedItems);
-    if (firebaseAvailable && auth && auth.currentUser) {
-      db.collection('users').doc(auth.currentUser.uid).collection('scheduler').doc(taskId).update({ status });
-    }
-    renderScheduler();
-    renderCalendar();
-  }
-}
-// ============================================================
 // CALENDAR FUNCTIONS
 // ============================================================
 function renderCalendar() {
@@ -1881,70 +1319,21 @@ function renderCalendar() {
     const isToday = date.toDateString() === today.toDateString();
     const isSelected = selectedCalendarDate === dateStr;
 
-    const tasksOnDay = getAllTasksForDate(dateStr);
-
-    let dotsHTML = '';
-    if (tasksOnDay.length > 0) {
-      dotsHTML = `<span class="task-dots-container" style="display:flex; gap:2px; margin-top:4px; justify-content:center; flex-wrap:wrap; max-width:100%;">`;
-      tasksOnDay.forEach(task => {
-        const color = getTaskDotColor(task);
-        dotsHTML += `<span class="task-dot" style="background:${color}; width:6px; height:6px; border-radius:50%;"></span>`;
-      });
-      dotsHTML += `</span>`;
-    }
-
     cells += `
       <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDate('${dateStr}')">
         <span>${day}</span>
-        ${dotsHTML}
       </div>
     `;
   }
 
   grid.innerHTML = cells;
-  if (selectedCalendarDate) showTasksForDate(selectedCalendarDate);
-  else document.getElementById('selectedDayTasks').innerHTML = '<p class="text-sm opacity-50">Select a date to see tasks.</p>';
-}
-
-function getAllTasksForDate(dateStr) {
-  const all = [];
-  schedItems.forEach(item => {
-    if (item.deadline === dateStr) all.push({ ...item, source: 'scheduler' });
-  });
-  plannerTasks.forEach(item => {
-    if (item.deadline === dateStr) all.push({ ...item, source: 'planner' });
-  });
-  return all;
+  const selectedTasks = document.getElementById('selectedDayTasks');
+  if (selectedTasks) selectedTasks.innerHTML = '<p class="text-sm opacity-50">Task planning is disabled.</p>';
 }
 
 function selectCalendarDate(dateStr) {
   selectedCalendarDate = dateStr;
   renderCalendar();
-  showTasksForDate(dateStr);
-}
-
-function showTasksForDate(dateStr) {
-  const container = document.getElementById('selectedDayTasks');
-  if (!container) return;
-  const tasks = getAllTasksForDate(dateStr);
-  if (tasks.length === 0) {
-    container.innerHTML = '<p class="text-sm opacity-50">No tasks for this day.</p>';
-    return;
-  }
-  container.innerHTML = '';
-  tasks.forEach(task => {
-    const div = document.createElement('div');
-    div.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg mb-2';
-    const sourceIcon = task.source === 'scheduler' ? 'fa-calendar-days' : 'fa-clipboard-list';
-    div.innerHTML = `
-      <div class="flex items-center gap-2">
-        <i class="fa-solid ${sourceIcon} text-indigo-400 text-xs"></i>
-        <p class="text-sm font-medium">${task.title || 'Untitled'}</p>
-      </div>
-      <span class="text-xs opacity-60">${task.priority || 'medium'}</span>
-    `;
-    container.appendChild(div);
-  });
 }
 
 function changeMonth(delta) {
@@ -2144,7 +1533,7 @@ async function logout() {
 }
 async function migrateFirestoreData(user) {
   if (!firebaseAvailable || !db || !user) return;
-  const collections = ['scheduler', 'planner', 'library'];
+  const collections = ['library'];
   for (const col of collections) {
     const snapshot = await db.collection('users').doc(user.uid).collection(col).get();
     const batch = db.batch();
@@ -2188,21 +1577,7 @@ if (firebaseAvailable && auth) {
   await migrateFirestoreData(user);
 
   // Load collections from Firestore
-  const [firestoreSched, firestorePlanner, firestoreLibrary] = await Promise.all([
-    loadFromFirestore('scheduler'),
-    loadFromFirestore('planner'),
-    loadFromFirestore('library')
-  ]);
-
-  // ---- Merge scheduler ----
-const localSched = safeLocalStorageGet('acadhub_sched', []);
-schedItems = mergeById(firestoreSched, localSched);
-safeLocalStorageSet('acadhub_sched', schedItems);
-
-// ---- Merge planner ----
-const localPlanner = safeLocalStorageGet('acadhub_planner', []);
-plannerTasks = mergeById(firestorePlanner, localPlanner);
-safeLocalStorageSet('acadhub_planner', plannerTasks);
+  const firestoreLibrary = await loadFromFirestore('library');
 
         // ---- Library (just replace with Firestore if available) ----
         if (firestoreLibrary.length > 0) {
@@ -2240,18 +1615,12 @@ safeLocalStorageSet('acadhub_planner', plannerTasks);
         }
 
         // Re-render UI
-        renderScheduler();
-        renderPlanner();
         renderSavedList();
         renderCalendar();
         updateSettingsUI();
       } catch (err) {
         console.error('Error loading Firestore data:', err);
         // Fall back to local data on error
-        schedItems = safeLocalStorageGet('acadhub_sched', []);
-        plannerTasks = safeLocalStorageGet('acadhub_planner', []);
-        renderScheduler();
-        renderPlanner();
         renderSavedList();
       }
     } else {
@@ -2364,13 +1733,9 @@ document.documentElement.style.setProperty('--accent', savedAccent);
 const accentPicker = document.getElementById('accentPicker');
 if (accentPicker) accentPicker.value = savedAccent;
   // Load saved data
-  schedItems = safeLocalStorageGet('acadhub_sched', []);
-  plannerTasks = safeLocalStorageGet('acadhub_planner', []);
   offlineQueue = safeLocalStorageGet('offline_queue', []);
 
   // Render initial views
-  renderScheduler();
-  renderPlanner();
   renderSavedList();
   renderCalendar();
   updateProviderUI();
@@ -2430,12 +1795,6 @@ window.nextTestQuestion = nextTestQuestion;
 window.showTestResults = showTestResults;
 window.resetTest = resetTest;
 window.showReview = showReview;
-window.renderPlanner = renderPlanner;
-window.addOrUpdatePlannerTask = addOrUpdatePlannerTask;
-window.editPlannerTask = editPlannerTask;
-window.deletePlannerTask = deletePlannerTask;
-window.allowDrop = allowDrop;
-window.dropPlannerTask = dropPlannerTask;
 window.renderSavedList = renderSavedList;
 window.loadSavedItem = loadSavedItem;
 window.deleteSavedItem = deleteSavedItem;
@@ -2451,14 +1810,6 @@ window.toggleEvalModal = toggleEvalModal;
 window.submitEval = submitEval;
 window.hideWakeUpOverlay = hideWakeUpOverlay;
 window.enableTabButtons = enableTabButtons;
-window.addOrUpdateSchedItem = addOrUpdateSchedItem;
-window.editSchedItem = editSchedItem;
-window.deleteSchedItem = deleteSchedItem;
-window.dropSchedTask = dropSchedTask;
-window.renderScheduler = renderScheduler;
-window.customizeGanttItem = customizeGanttItem;
-window.closeGanttCustomizeModal = closeGanttCustomizeModal;
-window.saveGanttCustomization = saveGanttCustomization;
 window.updateAccentColor = updateAccentColor;
 
 
