@@ -126,16 +126,31 @@
               <p class="mt-2 opacity-50">The score measures source grounding and answer consistency. It cannot prove semantic accuracy.</p>
             </div>
 
+            <!-- ===== MULTI-FILE UPLOAD (REVIEWER) ===== -->
             <div>
-              <label class="block text-xs font-semibold mb-1">Upload Document</label>
-              <label for="fileInput" class="flex flex-col items-center justify-center w-full p-6 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5 btn-hover">
+              <label class="block text-xs font-semibold mb-1">
+                Upload Documents
+                <span class="opacity-50 font-normal">(multiple files allowed)</span>
+              </label>
+              <label for="fileInput" id="fileDropZone"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event, 'reviewer')"
+                     class="flex flex-col items-center justify-center w-full p-6 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5 btn-hover">
                 <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2">
                   <i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-400"></i>
                 </div>
-                <p class="text-xs sm:text-sm" id="fileNameDisplay">Drop file or click to browse</p>
-                <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
-                <input id="fileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateFileName(this)" />
+                <p class="text-xs sm:text-sm" id="fileNameDisplay">Drop files or click to browse</p>
+                <p class="text-xs opacity-50">PDF, DOCX, TXT · up to 10 files</p>
+                <input id="fileInput" type="file" accept=".pdf,.docx,.txt,application/pdf" multiple onchange="updateFileName(this)" />
               </label>
+
+              <!-- selected file chips -->
+              <div id="fileListContainer" class="hidden mt-2 space-y-1"></div>
+              <button type="button" id="clearFilesBtn" onclick="clearSelectedFiles('reviewer')"
+                      class="hidden mt-2 text-xs text-rose-400 hover:underline btn-hover">
+                <i class="fa-solid fa-trash mr-1"></i>Clear all files
+              </button>
             </div>
 
             <div>
@@ -231,17 +246,33 @@
             <label class="block text-xs font-semibold mb-1">Notes</label>
             <textarea id="testNotes" rows="4" placeholder="Paste your study notes here..." class="text-sm"></textarea>
           </div>
+
+          <!-- ===== MULTI-FILE UPLOAD (TEST) ===== -->
           <div class="mb-3 sm:mb-4">
-            <label class="block text-xs font-semibold mb-1">Upload Document (optional)</label>
-            <label for="testFileInput" class="flex flex-col items-center justify-center w-full p-4 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5 btn-hover">
+            <label class="block text-xs font-semibold mb-1">
+              Upload Documents (optional)
+              <span class="opacity-50 font-normal">(multiple files allowed)</span>
+            </label>
+            <label for="testFileInput" id="testFileDropZone"
+                   ondragover="handleDragOver(event)"
+                   ondragleave="handleDragLeave(event)"
+                   ondrop="handleDrop(event, 'test')"
+                   class="flex flex-col items-center justify-center w-full p-4 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5 btn-hover">
               <div class="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2">
                 <i class="fa-solid fa-cloud-arrow-up text-lg sm:text-2xl text-indigo-400"></i>
               </div>
-              <p class="text-xs sm:text-sm" id="testFileNameDisplay">Drop file or click to browse</p>
-              <p class="text-xs opacity-50">PDF, DOCX, TXT</p>
-              <input id="testFileInput" type="file" accept=".pdf,.docx,.txt" onchange="updateTestFileName(this)" />
+              <p class="text-xs sm:text-sm" id="testFileNameDisplay">Drop files or click to browse</p>
+              <p class="text-xs opacity-50">PDF, DOCX, TXT · up to 10 files</p>
+              <input id="testFileInput" type="file" accept=".pdf,.docx,.txt,application/pdf" multiple onchange="updateTestFileName(this)" />
             </label>
+
+            <div id="testFileListContainer" class="hidden mt-2 space-y-1"></div>
+            <button type="button" id="clearTestFilesBtn" onclick="clearSelectedFiles('test')"
+                    class="hidden mt-2 text-xs text-rose-400 hover:underline btn-hover">
+              <i class="fa-solid fa-trash mr-1"></i>Clear all files
+            </button>
           </div>
+
           <div class="flex items-center gap-2 mb-3 sm:mb-4">
             <input type="checkbox" id="useTestInternet" class="accent-indigo-500" />
             <label for="useTestInternet" class="text-xs"><i class="fa-solid fa-globe mr-1"></i>Boost accuracy with Wikipedia</label>
