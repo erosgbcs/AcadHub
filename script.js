@@ -1633,7 +1633,27 @@ if (firebaseAvailable && auth) {
     updateAuthUI();
   });
 }
+async function deleteSavedItem(index) {
+  if (!confirm('Delete this saved reviewer?')) return;
 
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[index];
+  saved.splice(index, 1);
+  safeLocalStorageSet('acadhub_saved', saved);
+
+  if (firebaseAvailable && auth && auth.currentUser && item?.id) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('library').doc(item.id).delete();
+    } catch (err) {
+      console.error('Error deleting from Firebase:', err);
+      showNotification('Deleted locally, but cloud sync failed.', 'warning');
+    }
+  }
+
+  renderSavedList();
+  showNotification('Reviewer deleted.', 'info');
+}
 async function loadFromFirestore(collectionName) {
   if (!firebaseAvailable || !auth || !auth.currentUser) return [];
 
