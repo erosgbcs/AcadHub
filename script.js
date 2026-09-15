@@ -23,7 +23,8 @@ const firebaseConfig = {
 let db = null;
 let auth = null;
 let firebaseAvailable = false;
-
+const SUBJECT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#8b5cf6', '#64748b'];
+let actionSheetIndex = null;
 try {
   if (typeof firebase !== 'undefined') {
     firebase.initializeApp(firebaseConfig);
@@ -1358,45 +1359,63 @@ function toggleReminders() {
 function renderSavedList() {
   const container = document.getElementById('savedList');
   const emptyMsg = document.getElementById('emptyLibrary');
-
   if (!container) return;
 
   const saved = safeLocalStorageGet('acadhub_saved', []);
-
   container.innerHTML = '';
 
   if (saved.length === 0) {
     if (emptyMsg) emptyMsg.style.display = 'block';
     return;
   }
-
   if (emptyMsg) emptyMsg.style.display = 'none';
 
   saved.forEach((item, index) => {
     const div = document.createElement('div');
     div.className = 'saved-card bg-white/5 border border-white/10 rounded-lg p-3';
 
+    const subjectPill = item.subject
+      ? `<span class="subject-pill" style="background:${item.subject.color}22; color:${item.subject.color}; border:1px solid ${item.subject.color}55;">
+           <i class="fa-solid fa-tag" style="font-size:0.6rem;"></i>${item.subject.name}
+         </span>`
+      : '';
+
     div.innerHTML = `
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-sm font-medium">${item.title || 'Untitled Reviewer'}</p>
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium truncate">${item.title || 'Untitled Reviewer'}</p>
           <p class="text-xs opacity-50">${item.date ? new Date(item.date).toLocaleDateString() : 'No date'}</p>
+          ${subjectPill}
         </div>
-        <div class="flex gap-2">
-          <button onclick="loadSavedItem(${index})" class="text-xs text-indigo-400 hover:text-indigo-300">
-            <i class="fa-solid fa-eye mr-1"></i> View
-          </button>
-          <button onclick="deleteSavedItem(${index})" class="text-xs text-rose-400 hover:text-rose-300">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
+        <button class="card-menu-btn btn-hover" onclick="openItemActionSheet(${index})" title="More options">
+          <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
+        </button>
       </div>
     `;
+
+    let pressTimer = null;
+    let moved = false;
+
+    div.addEventListener('touchstart', () => {
+      moved = false;
+      pressTimer = setTimeout(() => {
+        if (!moved) {
+          if (navigator.vibrate) navigator.vibrate(15);
+          openItemActionSheet(index);
+        }
+      }, 500);
+    }, { passive: true });
+
+    div.addEventListener('touchmove', () => {
+      moved = true;
+      clearTimeout(pressTimer);
+    }, { passive: true });
+
+    div.addEventListener('touchend', () => clearTimeout(pressTimer));
 
     container.appendChild(div);
   });
 }
-
 function loadSavedItem(index) {
   const saved = safeLocalStorageGet('acadhub_saved', []);
   const item = saved[index];
@@ -1775,6 +1794,159 @@ if (document.readyState === 'loading') {
   initializeApp();
 }
 
+// ============================================================
+// SAVED ITEM ACTION SHEET
+// ============================================================
+function openItemActionSheet(index) {
+  actionSheetIndex = index;
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[index];
+  if (!item) return;
+
+  document.getElementById('actionSheetTitle').textContent = item.title || 'Untitled Reviewer';
+  document.getElementById('itemActionSheet').classList.remove('hidden');
+}
+
+function closeActionSheet() {
+  document.getElementById('itemActionSheet').classList.add('hidden');
+}
+
+function closeActionSheetBackdrop(e) {
+  if (e.target.id === 'itemActionSheet') closeActionSheet();
+}
+
+function actionViewItem() {
+  if (actionSheetIndex === null) return;
+  const index = actionSheetIndex;
+  closeActionSheet();
+  loadSavedItem(index);
+}
+
+function actionDeleteItem() {
+  if (actionSheetIndex === null) return;
+  const index = actionSheetIndex;
+  closeActionSheet();
+  deleteSavedItem(index);
+}
+
+// ---- Edit Name ----
+function openEditNameSheet() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  closeActionSheet();
+  document.getElementById('editNameInput').value = item.title || '';
+  document.getElementById('editNameSheet').classList.remove('hidden');
+  setTimeout(() => document.getElementById('editNameInput').focus(), 100);
+}
+
+function closeEditNameSheet() {
+  document.getElementById('editNameSheet').classList.add('hidden');
+}
+
+function closeEditNameSheetBackdrop(e) {
+  if (e.target.id === 'editNameSheet') closeEditNameSheet();
+}
+
+async function saveEditedName() {
+  const newName = document.getElementById('editNameInput').value.trim();
+  if (!newName) {
+    showNotification('Name cannot be empty.', 'warning');
+    return;
+  }
+  if (actionSheetIndex === null) return;
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  item.title = newName;
+  safeLocalStorageSet('acadhub_saved', saved);
+
+  if (firebaseAvailable && auth && auth.currentUser && item.id) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('library').doc(item.id).set({ title: newName }, { merge: true });
+    } catch (err) {
+      console.error('Error updating name in Firebase:', err);
+      showNotification('Renamed locally, but cloud sync failed.', 'warning');
+    }
+  }
+
+  closeEditNameSheet();
+  renderSavedList();
+  showNotification('Name updated.', 'success');
+}
+
+// ---- Subject / Category ----
+function openSubjectSheet() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  closeActionSheet();
+  document.getElementById('subjectNameInput').value = item.subject?.name || '';
+
+  const swatchContainer = document.getElementById('subjectColorSwatches');
+  swatchContainer.innerHTML = '';
+  let selectedColor = item.subject?.color || SUBJECT_COLORS[0];
+
+  SUBJECT_COLORS.forEach(color => {
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'w-8 h-8 rounded-full border-2 transition btn-hover';
+    swatch.style.background = color;
+    swatch.style.borderColor = (color === selectedColor) ? '#fff' : 'transparent';
+    swatch.onclick = () => {
+      selectedColor = color;
+      swatchContainer.querySelectorAll('button').forEach(b => b.style.borderColor = 'transparent');
+      swatch.style.borderColor = '#fff';
+      swatchContainer.dataset.selected = color;
+    };
+    swatchContainer.appendChild(swatch);
+  });
+  swatchContainer.dataset.selected = selectedColor;
+
+  document.getElementById('subjectSheet').classList.remove('hidden');
+}
+
+function closeSubjectSheet() {
+  document.getElementById('subjectSheet').classList.add('hidden');
+}
+
+function closeSubjectSheetBackdrop(e) {
+  if (e.target.id === 'subjectSheet') closeSubjectSheet();
+}
+
+async function saveSubjectDetails() {
+  if (actionSheetIndex === null) return;
+
+  const name = document.getElementById('subjectNameInput').value.trim();
+  const color = document.getElementById('subjectColorSwatches').dataset.selected || SUBJECT_COLORS[0];
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  item.subject = name ? { name, color } : null;
+  safeLocalStorageSet('acadhub_saved', saved);
+
+  if (firebaseAvailable && auth && auth.currentUser && item.id) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('library').doc(item.id).set({ subject: item.subject }, { merge: true });
+    } catch (err) {
+      console.error('Error updating subject in Firebase:', err);
+      showNotification('Saved locally, but cloud sync failed.', 'warning');
+    }
+  }
+
+  closeSubjectSheet();
+  renderSavedList();
+  showNotification('Subject updated.', 'success');
+}
+
 // Export all functions to window
 window.switchTab = switchTab;
 window.initTabListeners = initTabListeners;
@@ -1824,7 +1996,19 @@ window.submitEval = submitEval;
 window.hideWakeUpOverlay = hideWakeUpOverlay;
 window.enableTabButtons = enableTabButtons;
 window.updateAccentColor = updateAccentColor;
-
+window.openItemActionSheet = openItemActionSheet;
+window.closeActionSheet = closeActionSheet;
+window.closeActionSheetBackdrop = closeActionSheetBackdrop;
+window.actionViewItem = actionViewItem;
+window.actionDeleteItem = actionDeleteItem;
+window.openEditNameSheet = openEditNameSheet;
+window.closeEditNameSheet = closeEditNameSheet;
+window.closeEditNameSheetBackdrop = closeEditNameSheetBackdrop;
+window.saveEditedName = saveEditedName;
+window.openSubjectSheet = openSubjectSheet;
+window.closeSubjectSheet = closeSubjectSheet;
+window.closeSubjectSheetBackdrop = closeSubjectSheetBackdrop;
+window.saveSubjectDetails = saveSubjectDetails;
 
 console.log('✅ All functions exported and ready');
 console.log('✅ Backend integration complete');

@@ -157,11 +157,16 @@ html.light .quiz-option:hover {
 
 .saved-card {
   transition: background 0.15s, border-color 0.15s;
+  position: relative;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 .saved-card:hover {
   background: var(--bg-hover);
   border-color: rgba(255, 255, 255, 0.2);
 }
+
+
 html.light .saved-card:hover {
   border-color: rgba(0, 0, 0, 0.15);
 }
@@ -795,4 +800,45 @@ html.light #wakeUpOverlay .animate-spin {
   pointer-events: auto !important;
   cursor: pointer !important;
   opacity: 1 !important;
+}
+
+/* ============ ACTION SHEETS (bottom sheet menus) ============ */
+.sheet-slide-up {
+  animation: sheetSlideUp 0.25s ease-out;
+}
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.subject-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+
+.card-menu-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.card-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+html.light .card-menu-btn {
+  background: rgba(0, 0, 0, 0.06);
+}
+html.light .card-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
 }

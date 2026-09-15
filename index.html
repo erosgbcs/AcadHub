@@ -471,6 +471,57 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== SAVED ITEM ACTION SHEET ===== -->
+<div id="itemActionSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onclick="closeActionSheetBackdrop(event)">
+  <div class="glass-card w-full max-w-md rounded-b-none sm:rounded-2xl p-5 pb-8 sheet-slide-up" onclick="event.stopPropagation()">
+    <div class="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
+    <p id="actionSheetTitle" class="text-sm font-semibold mb-4 truncate"></p>
+    <div class="space-y-1">
+      <button onclick="actionViewItem()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
+        <i class="fa-solid fa-eye w-4 text-indigo-400"></i> View
+      </button>
+      <button onclick="openEditNameSheet()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
+        <i class="fa-solid fa-pen w-4 text-cyan-400"></i> Edit Name
+      </button>
+      <button onclick="openSubjectSheet()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
+        <i class="fa-solid fa-tag w-4 text-amber-400"></i> Subject / Category
+      </button>
+      <button onclick="actionDeleteItem()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-500/10 transition text-sm text-left text-rose-400 btn-hover">
+        <i class="fa-solid fa-trash w-4"></i> Delete
+      </button>
+    </div>
+    <button onclick="closeActionSheet()" class="w-full mt-3 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
+  </div>
+</div>
+
+<!-- ===== EDIT NAME SHEET ===== -->
+<div id="editNameSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onclick="closeEditNameSheetBackdrop(event)">
+  <div class="glass-card w-full max-w-md rounded-b-none sm:rounded-2xl p-5 pb-8 sheet-slide-up" onclick="event.stopPropagation()">
+    <div class="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
+    <p class="text-sm font-semibold mb-4"><i class="fa-solid fa-pen mr-2"></i>Edit Name</p>
+    <input type="text" id="editNameInput" maxlength="80" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm mb-4" />
+    <div class="flex gap-2">
+      <button onclick="closeEditNameSheet()" class="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
+      <button onclick="saveEditedName()" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SUBJECT / CATEGORY SHEET ===== -->
+<div id="subjectSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onclick="closeSubjectSheetBackdrop(event)">
+  <div class="glass-card w-full max-w-md rounded-b-none sm:rounded-2xl p-5 pb-8 sheet-slide-up" onclick="event.stopPropagation()">
+    <div class="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
+    <p class="text-sm font-semibold mb-4"><i class="fa-solid fa-tag mr-2"></i>Subject / Category</p>
+    <input type="text" id="subjectNameInput" maxlength="30" placeholder="e.g. Math, Biology..." class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm mb-4" />
+    <p class="text-xs opacity-60 mb-2">Choose a color</p>
+    <div id="subjectColorSwatches" class="flex flex-wrap gap-2 mb-4"></div>
+    <div class="flex gap-2">
+      <button onclick="closeSubjectSheet()" class="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
+      <button onclick="saveSubjectDetails()" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">Save</button>
+    </div>
+  </div>
+</div>
   <!-- ===== FIREBASE SDK ===== -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
