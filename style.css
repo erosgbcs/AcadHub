@@ -803,14 +803,6 @@ html.light #wakeUpOverlay .animate-spin {
 }
 
 /* ============ ACTION SHEETS (bottom sheet menus) ============ */
-.sheet-slide-up {
-  animation: sheetSlideUp 0.25s ease-out;
-}
-@keyframes sheetSlideUp {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
 .subject-pill {
   display: inline-flex;
   align-items: center;
@@ -842,3 +834,35 @@ html.light .card-menu-btn {
 html.light .card-menu-btn:hover {
   background: rgba(0, 0, 0, 0.1);
 }
+
+/* ============ iOS MODAL/SHEET ANIMATION HELPERS ============ */
+
+[data-modal] {
+  transition: opacity 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+[data-modal].is-closing {
+  pointer-events: none;
+}
+
+[data-modal].hidden {
+  display: none !important;
+}
+
+[data-modal] * {
+  will-change: transform, opacity;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  [data-modal] *,
+  .animate-ios-fade-in,
+  .animate-ios-pop-in,
+  .animate-ios-sheet-up {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Remove the old bottom-sheet animation (now handled by Tailwind) */
+/* Delete the old .sheet-slide-up and @keyframes sheetSlideUp rules */

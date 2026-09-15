@@ -8,6 +8,7 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="tailwind.config.js"></script>
 
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
@@ -70,11 +71,11 @@
 
     <!-- ===== TABS ===== -->
     <div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
-  <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">AI Reviewer</button>
-  <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
-  <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
-  <button id="tabCalendar" onclick="switchTab('calendar')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Calendar</button>
-</div>
+      <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">AI Reviewer</button>
+      <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
+      <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
+      <button id="tabCalendar" onclick="switchTab('calendar')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Calendar</button>
+    </div>
 
     <!-- ===== VIEWS CONTAINER ===== -->
     <div id="viewsContainer" class="flex-1 space-y-4 sm:space-y-6 order-3">
@@ -145,7 +146,6 @@
                 <input id="fileInput" type="file" accept=".pdf,.docx,.txt,application/pdf" multiple onchange="updateFileName(this)" />
               </label>
 
-              <!-- selected file chips -->
               <div id="fileListContainer" class="hidden mt-2 space-y-1"></div>
               <button type="button" id="clearFilesBtn" onclick="clearSelectedFiles('reviewer')"
                       class="hidden mt-2 text-xs text-rose-400 hover:underline btn-hover">
@@ -158,7 +158,7 @@
               <textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="text-sm"></textarea>
             </div>
 
-            <!-- ===== QUICK SUMMARIZE — ADD THIS ===== -->
+            <!-- ===== QUICK SUMMARIZE ===== -->
             <div class="border-t border-white/10 pt-3 sm:pt-4">
               <div class="flex items-center justify-between mb-2">
                 <label class="text-xs font-semibold"><i class="fa-solid fa-bolt mr-1"></i>Quick Summarize</label>
@@ -180,7 +180,6 @@
                 <ul id="previewSummaryList" class="space-y-1 opacity-80"></ul>
               </div>
             </div>
-            <!-- ===== END QUICK SUMMARIZE ===== -->
 
             <div>
               <label class="block text-xs font-semibold mb-1"><i class="fa-solid fa-clone mr-1"></i>Number of Flashcards</label>
@@ -188,7 +187,7 @@
             </div>
 
             <div>
-              <label class="block text-xs font-semibold mb-2"><i class="fa-solid fa-circle-question mr-1"></i>Quiz Types & Questions per Type</label>
+              <label class="block text-xs font-semibold mb-2"><i class="fa-solid fa-circle-question mr-1"></i>Quiz Types &amp; Questions per Type</label>
               <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 <div class="flex items-center gap-2"><input type="checkbox" id="useTrueFalse" checked class="accent-indigo-500" /><label class="text-xs">True/False</label><input type="number" id="numTrueFalse" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
                 <div class="flex items-center gap-2"><input type="checkbox" id="useIdentification" checked class="accent-indigo-500" /><label class="text-xs">Identification</label><input type="number" id="numIdentification" value="3" min="0" max="10" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
@@ -219,12 +218,12 @@
           </div>
         </div>
 
-<div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
-  <div class="flex justify-end">
-    <button id="saveToLibraryBtn" onclick="saveToLibrary()" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition btn-hover">
-      <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
-    </button>
-  </div>
+        <div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
+          <div class="flex justify-end">
+            <button id="saveToLibraryBtn" onclick="saveToLibrary()" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition btn-hover">
+              <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
+            </button>
+          </div>
           <p id="generationQuality" class="text-xs text-right opacity-60"></p>
           <div class="glass-card border-l-4 border-l-indigo-500">
             <h3 class="text-sm font-bold uppercase text-indigo-400 mb-3"><i class="fa-solid fa-thumbtack mr-2"></i>Key Concepts</h3>
@@ -271,7 +270,6 @@
             <textarea id="testNotes" rows="4" placeholder="Paste your study notes here..." class="text-sm"></textarea>
           </div>
 
-          <!-- ===== MULTI-FILE UPLOAD (TEST) ===== -->
           <div class="mb-3 sm:mb-4">
             <label class="block text-xs font-semibold mb-1">
               Upload Documents (optional)
@@ -339,7 +337,7 @@
       <!-- ===== VIEW: CALENDAR ===== -->
       <div id="viewCalendar" class="hidden space-y-4 sm:space-y-6">
         <div class="glass-card">
-          <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-calendar-days mr-2"></i>Calendar & Deadlines</h2>
+          <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-calendar-days mr-2"></i>Calendar &amp; Deadlines</h2>
           <div class="flex items-center justify-between mb-4 p-3 bg-white/5 rounded-xl border border-white/10">
             <div>
               <label class="text-sm font-semibold"><i class="fa-solid fa-bell mr-2"></i>Deadline Reminders</label>
@@ -392,7 +390,7 @@
   </footer>
 
   <!-- ===== PROFILE MODAL ===== -->
-  <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div id="profileModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto relative">
       <button onclick="closeProfileModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
         <i class="fa-solid fa-times"></i>
@@ -408,17 +406,17 @@
           <input type="checkbox" id="agreeTerms" class="mt-0.5 accent-indigo-500" />
           <span class="text-xs opacity-70 leading-relaxed">I understand that my name is <strong>strictly confidential</strong> and will only be visible to the developer. It will not be shared, sold, or displayed publicly.</span>
         </label>
-  <button id="saveProfileBtn" onclick="saveVisitorName()" 
-        class="btn-primary w-full text-base py-3 btn-hover" 
-        title="Save profile">
-  Save
-</button>
+        <button id="saveProfileBtn" onclick="saveVisitorName()"
+          class="btn-primary w-full text-base py-3 btn-hover"
+          title="Save profile">
+          Save
+        </button>
       </div>
     </div>
   </div>
 
   <!-- ===== EVALUATION MODAL ===== -->
-  <div id="evalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div id="evalModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="glass-card w-80 p-6 relative">
       <button onclick="toggleEvalModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
         <i class="fa-solid fa-times"></i>
@@ -441,7 +439,7 @@
   </div>
 
   <!-- ===== AUTH MODAL ===== -->
-  <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div id="authModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto relative">
       <button onclick="closeAuthModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
         <i class="fa-solid fa-times"></i>
@@ -468,7 +466,7 @@
   </div>
 
   <!-- ===== SETTINGS MODAL ===== -->
-  <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div id="settingsModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="glass-card w-80 p-6 relative">
       <button onclick="closeSettingsModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
         <i class="fa-solid fa-times"></i>
@@ -483,7 +481,8 @@
         </div>
         <div>
           <label class="block text-xs font-semibold mb-1">Accent Color</label>
-<input type="color" id="accentPicker" value="#6366f1" onchange="updateAccentColor(this.value)" class="w-full h-10 rounded-lg cursor-pointer" />        </div>
+          <input type="color" id="accentPicker" value="#6366f1" onchange="updateAccentColor(this.value)" class="w-full h-10 rounded-lg cursor-pointer" />
+        </div>
         <div>
           <label class="block text-xs font-semibold mb-1">Tab Position</label>
           <select id="tabPositionSelect" onchange="changeTabPosition(this.value)" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
@@ -495,81 +494,81 @@
       </div>
     </div>
   </div>
-<!-- ===== QUICK SUMMARY SHEET ===== -->
-<div id="quickSummarySheet" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onclick="closeQuickSummarySheetBackdrop(event)">
-  <div class="glass-card w-full max-w-md rounded-b-none sm:rounded-2xl p-5 pb-8 sheet-slide-up max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
-    <div class="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
-    <div class="flex items-center justify-between mb-4">
-      <p class="text-sm font-semibold"><i class="fa-solid fa-bolt mr-2"></i>Quick Summary</p>
-      <button onclick="closeQuickSummarySheet()" class="text-xs opacity-50 hover:opacity-100 btn-hover"><i class="fa-solid fa-times"></i></button>
-    </div>
-    <div id="quickSummaryLoading" class="hidden text-center py-8">
-      <i class="fa-solid fa-spinner animate-spin text-indigo-400 text-xl"></i>
-      <p class="text-xs mt-2 opacity-60">Summarizing...</p>
-    </div>
-    <ul id="quickSummaryList" class="space-y-2 text-sm"></ul>
-    <p id="quickSummaryEmpty" class="hidden text-xs opacity-50 text-center py-6">No summary yet. Paste notes or upload a file, then tap Quick Summarize.</p>
-    <button id="saveQuickSummaryBtn" onclick="saveQuickSummaryToLibrary()" class="hidden w-full mt-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">
-      <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
-    </button>
-  </div>
-</div>  <!-- ===== SAVED ITEM ACTION SHEET ===== -->
-<div id="itemActionSheet" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeActionSheetBackdrop(event)">
-  <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
 
-    
-    <p id="actionSheetTitle" class="text-sm font-semibold mb-4 truncate"></p>
-    <div class="space-y-1">
-      <button onclick="actionViewItem()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
-        <i class="fa-solid fa-eye w-4 text-indigo-400"></i> View
-      </button>
-      <button onclick="openEditNameSheet()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
-        <i class="fa-solid fa-pen w-4 text-cyan-400"></i> Edit Name
-      </button>
-      <button onclick="openSubjectSheet()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
-        <i class="fa-solid fa-tag w-4 text-amber-400"></i> Subject / Category
-      </button>
-      <button onclick="actionDeleteItem()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-500/10 transition text-sm text-left text-rose-400 btn-hover">
-        <i class="fa-solid fa-trash w-4"></i> Delete
+  <!-- ===== QUICK SUMMARY SHEET (now centered) ===== -->
+  <div id="quickSummarySheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeQuickSummarySheetBackdrop(event)">
+    <div class="glass-card w-full max-w-md rounded-2xl p-5 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-sm font-semibold"><i class="fa-solid fa-bolt mr-2"></i>Quick Summary</p>
+        <button onclick="closeQuickSummarySheet()" class="text-xs opacity-50 hover:opacity-100 btn-hover"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div id="quickSummaryLoading" class="hidden text-center py-8">
+        <i class="fa-solid fa-spinner animate-spin text-indigo-400 text-xl"></i>
+        <p class="text-xs mt-2 opacity-60">Summarizing...</p>
+      </div>
+      <ul id="quickSummaryList" class="space-y-2 text-sm"></ul>
+      <p id="quickSummaryEmpty" class="hidden text-xs opacity-50 text-center py-6">No summary yet. Paste notes or upload a file, then tap Quick Summarize.</p>
+      <button id="saveQuickSummaryBtn" onclick="saveQuickSummaryToLibrary()" class="hidden w-full mt-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">
+        <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
       </button>
     </div>
-    <button onclick="closeActionSheet()" class="w-full mt-3 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
   </div>
-</div>
 
-<!-- ===== EDIT NAME SHEET ===== -->
-<div id="editNameSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onclick="closeEditNameSheetBackdrop(event)">
-  <div class="glass-card w-full max-w-md rounded-b-none sm:rounded-2xl p-5 pb-8 sheet-slide-up" onclick="event.stopPropagation()">
-    <div class="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
-    <p class="text-sm font-semibold mb-4"><i class="fa-solid fa-pen mr-2"></i>Edit Name</p>
-    <input type="text" id="editNameInput" maxlength="80" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm mb-4" />
-    <div class="flex gap-2">
-      <button onclick="closeEditNameSheet()" class="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
-      <button onclick="saveEditedName()" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">Save</button>
+  <!-- ===== SAVED ITEM ACTION SHEET (now centered) ===== -->
+  <div id="itemActionSheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeActionSheetBackdrop(event)">
+    <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
+      <p id="actionSheetTitle" class="text-sm font-semibold mb-4 truncate"></p>
+      <div class="space-y-1">
+        <button onclick="actionViewItem()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
+          <i class="fa-solid fa-eye w-4 text-indigo-400"></i> View
+        </button>
+        <button onclick="openEditNameSheet()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
+          <i class="fa-solid fa-pen w-4 text-cyan-400"></i> Edit Name
+        </button>
+        <button onclick="openSubjectSheet()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
+          <i class="fa-solid fa-tag w-4 text-amber-400"></i> Subject / Category
+        </button>
+        <button onclick="actionDeleteItem()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-500/10 transition text-sm text-left text-rose-400 btn-hover">
+          <i class="fa-solid fa-trash w-4"></i> Delete
+        </button>
+      </div>
+      <button onclick="closeActionSheet()" class="w-full mt-3 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
     </div>
   </div>
-</div>
 
-<!-- ===== SUBJECT / CATEGORY SHEET ===== -->
-<div id="subjectSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onclick="closeSubjectSheetBackdrop(event)">
-  <div class="glass-card w-full max-w-md rounded-b-none sm:rounded-2xl p-5 pb-8 sheet-slide-up" onclick="event.stopPropagation()">
-    <div class="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
-    <p class="text-sm font-semibold mb-4"><i class="fa-solid fa-tag mr-2"></i>Subject / Category</p>
-    <input type="text" id="subjectNameInput" maxlength="30" placeholder="e.g. Math, Biology..." class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm mb-4" />
-    <p class="text-xs opacity-60 mb-2">Choose a color</p>
-    <div id="subjectColorSwatches" class="flex flex-wrap gap-2 mb-4"></div>
-    <div class="flex gap-2">
-      <button onclick="closeSubjectSheet()" class="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
-      <button onclick="saveSubjectDetails()" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">Save</button>
+  <!-- ===== EDIT NAME SHEET (now centered) ===== -->
+  <div id="editNameSheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeEditNameSheetBackdrop(event)">
+    <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
+      <p class="text-sm font-semibold mb-4"><i class="fa-solid fa-pen mr-2"></i>Edit Name</p>
+      <input type="text" id="editNameInput" maxlength="80" class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm mb-4" />
+      <div class="flex gap-2">
+        <button onclick="closeEditNameSheet()" class="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
+        <button onclick="saveEditedName()" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">Save</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- ===== SUBJECT / CATEGORY SHEET (now centered) ===== -->
+  <div id="subjectSheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeSubjectSheetBackdrop(event)">
+    <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
+      <p class="text-sm font-semibold mb-4"><i class="fa-solid fa-tag mr-2"></i>Subject / Category</p>
+      <input type="text" id="subjectNameInput" maxlength="30" placeholder="e.g. Math, Biology..." class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm mb-4" />
+      <p class="text-xs opacity-60 mb-2">Choose a color</p>
+      <div id="subjectColorSwatches" class="flex flex-wrap gap-2 mb-4"></div>
+      <div class="flex gap-2">
+        <button onclick="closeSubjectSheet()" class="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold btn-hover">Cancel</button>
+        <button onclick="saveSubjectDetails()" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold btn-hover">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== FIREBASE SDK ===== -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <!-- ===== CUSTOM JS ===== -->
+  <script src="animations.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
