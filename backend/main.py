@@ -244,7 +244,52 @@ async def generate_with_gemini(
     result["quality"] = assess_quality(result, text)
     return result
 
+def build_summary_prompt(text: str) -> str:
+    return f"""Summarize the notes below into a JSON object with exactly one key:
+summary: an array of concise, standalone bullet-point strings (max 8 items)
 
+Each bullet should capture one key idea from the notes, written clearly and briefly.
+
+NOTES:
+{text}
+"""
+
+
+async def generate_summary_with_gemini(text: str, api_key: str) -> list[str]:
+    prompt = build_summary_prompt(text)
+    request_body = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+        f"?key={urllib.parse.quote(api_key)}",
+        data=request_body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    def call_gemini() -> dict[str, Any]:
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            raise HTTPException(status_code=502, detail=f"Gemini request failed: {detail[:300]}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise HTTPException(status_code=502, detail="Gemini could not be reached.") from exc
+
+    response = await asyncio.to_thread(call_gemini)
+    try:
+        generated_text = response["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise HTTPException(status_code=502, detail="Gemini returned no generated content.") from exc
+
+    parsed = parse_json_response(generated_text)
+    summary = parsed.get("summary", [])
+    if not isinstance(summary, list):
+        return []
+    return [str(item) for item in summary][:8]
 async def generate_with_deepseek(
     text: str,
     api_key: str,
@@ -353,10 +398,20 @@ async def reviewer(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @app.post("/api/summary")
-async def summary(notes: str = Form("")) -> dict[str, Any]:
-    text = await read_notes(notes, None)
-    return {"summary": split_sentences(text)[:8]}
+async def summary(
+    notes: str | None = Form(None),
+    file: UploadFile | None = File(None),
+    api_key: str | None = Form(None),
+    provider: str = Form("local"),
+) -> dict[str, Any]:
+    text = await read_notes(notes, file)
 
+    if provider.lower() == "gemini":
+        if not api_key:
+            raise HTTPException(status_code=400, detail="A Gemini API key is required.")
+        return {"summary": await generate_summary_with_gemini(text, api_key)}
+
+    return {"summary": split_sentences(text)[:8]}
 
 @app.post("/api/flashcards")
 async def flashcards(notes: str = Form(""), num_flashcards: int = Form(10)) -> dict[str, Any]:

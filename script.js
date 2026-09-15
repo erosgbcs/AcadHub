@@ -1432,6 +1432,153 @@ function loadSavedItem(index) {
   currentResults = item.data;
   document.getElementById('saveToLibraryBtn').classList.add('hidden');
 }
+
+// ============================================================
+// QUICK SUMMARIZE (Gemini)
+// ============================================================
+let previewDebounceTimer = null;
+
+function toggleQuickSummaryKey() {
+  const container = document.getElementById('quickSummaryKeyContainer');
+  container.classList.toggle('hidden');
+  if (!container.classList.contains('hidden')) {
+    document.getElementById('quickSummaryApiKey').value = safeLocalStorageGet('quick_summary_gemini_key', '');
+  }
+}
+
+function getQuickSummaryApiKey() {
+  const input = document.getElementById('quickSummaryApiKey');
+  const typed = input ? input.value.trim() : '';
+  if (typed) {
+    safeLocalStorageSet('quick_summary_gemini_key', typed);
+    return typed;
+  }
+  return safeLocalStorageGet('quick_summary_gemini_key', '');
+}
+
+async function requestSummaryOnly(apiKey) {
+  const notes = document.getElementById('studyNotes').value.trim();
+  const fileInput = document.getElementById('fileInput');
+  const hasFile = fileInput.files.length > 0;
+
+  if (!notes && !hasFile) return null;
+
+  const formData = new FormData();
+  if (notes) formData.append('notes', notes);
+  if (hasFile) formData.append('file', fileInput.files[0]);
+  formData.append('api_key', apiKey);
+  formData.append('provider', 'gemini');
+
+  const result = await apiCall(API_ENDPOINTS.summary, { formData });
+  return Array.isArray(result.summary) ? result.summary : [];
+}
+
+function renderQuickSummaryList(summary, targetId) {
+  const list = document.getElementById(targetId);
+  if (!list) return;
+  list.innerHTML = '';
+
+  (summary || []).forEach((point, index) => {
+    const li = document.createElement('li');
+    if (targetId === 'quickSummaryList') {
+      li.className = 'bg-white/5 p-3 rounded-lg reveal-item';
+      li.innerHTML = `<span class="text-indigo-400 font-semibold mr-2">${index + 1}.</span>${point}`;
+    } else {
+      li.textContent = `• ${point}`;
+    }
+    list.appendChild(li);
+  });
+}
+
+async function quickSummarize() {
+  const notes = document.getElementById('studyNotes').value.trim();
+  const fileInput = document.getElementById('fileInput');
+  const hasFile = fileInput.files.length > 0;
+
+  if (!notes && !hasFile) {
+    showNotification('Please paste notes or upload a document first.', 'warning');
+    return;
+  }
+
+  const apiKey = getQuickSummaryApiKey();
+  if (!apiKey) {
+    showNotification('Please enter your Gemini API key (tap "Gemini Key").', 'error');
+    document.getElementById('quickSummaryKeyContainer').classList.remove('hidden');
+    return;
+  }
+
+  openQuickSummarySheet();
+  document.getElementById('quickSummaryLoading').classList.remove('hidden');
+  document.getElementById('quickSummaryList').innerHTML = '';
+  document.getElementById('quickSummaryEmpty').classList.add('hidden');
+
+  try {
+    const summary = await requestSummaryOnly(apiKey);
+    renderQuickSummaryList(summary, 'quickSummaryList');
+
+    if (!summary || summary.length === 0) {
+      document.getElementById('quickSummaryEmpty').classList.remove('hidden');
+    } else {
+      renderQuickSummaryList(summary, 'previewSummaryList');
+      document.getElementById('previewSummaryBox').classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('Quick summarize error:', err);
+    showNotification(err.message || 'Error generating quick summary.', 'error');
+    closeQuickSummarySheet();
+  } finally {
+    document.getElementById('quickSummaryLoading').classList.add('hidden');
+  }
+}
+
+function openQuickSummarySheet() {
+  document.getElementById('quickSummarySheet').classList.remove('hidden');
+}
+
+function closeQuickSummarySheet() {
+  document.getElementById('quickSummarySheet').classList.add('hidden');
+}
+
+function closeQuickSummarySheetBackdrop(e) {
+  if (e.target.id === 'quickSummarySheet') closeQuickSummarySheet();
+}
+
+// ---- Auto live preview (debounced, no popup) ----
+function scheduleLivePreview() {
+  clearTimeout(previewDebounceTimer);
+  previewDebounceTimer = setTimeout(runLivePreview, 1200);
+}
+
+async function runLivePreview() {
+  const notes = document.getElementById('studyNotes').value.trim();
+  const fileInput = document.getElementById('fileInput');
+  const hasFile = fileInput.files.length > 0;
+
+  if (!notes && !hasFile) {
+    document.getElementById('previewSummaryBox').classList.add('hidden');
+    return;
+  }
+
+  const apiKey = getQuickSummaryApiKey();
+  if (!apiKey) return;
+
+  try {
+    const summary = await requestSummaryOnly(apiKey);
+    if (summary && summary.length > 0) {
+      renderQuickSummaryList(summary, 'previewSummaryList');
+      document.getElementById('previewSummaryBox').classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('Live preview error:', err);
+  }
+}
+
+function initQuickSummaryListeners() {
+  const notesEl = document.getElementById('studyNotes');
+  const fileEl = document.getElementById('fileInput');
+  if (notesEl) notesEl.addEventListener('input', scheduleLivePreview);
+  if (fileEl) fileEl.addEventListener('change', scheduleLivePreview);
+}
 // ============================================================
 // AUTHENTICATION
 // ============================================================
@@ -1773,6 +1920,7 @@ if (accentPicker) accentPicker.value = savedAccent;
   updateProviderUI();
   updateSettingsUI();
   initProfileModal();
+  initQuickSummaryListeners();
 
   // FIXED: Force enable tab buttons
   setTimeout(() => {
@@ -2009,6 +2157,13 @@ window.openSubjectSheet = openSubjectSheet;
 window.closeSubjectSheet = closeSubjectSheet;
 window.closeSubjectSheetBackdrop = closeSubjectSheetBackdrop;
 window.saveSubjectDetails = saveSubjectDetails;
+window.toggleQuickSummaryKey = toggleQuickSummaryKey;
+window.quickSummarize = quickSummarize;
+window.openQuickSummarySheet = openQuickSummarySheet;
+window.closeQuickSummarySheet = closeQuickSummarySheet;
+window.closeQuickSummarySheetBackdrop = closeQuickSummarySheetBackdrop;
+
+
 
 console.log('✅ All functions exported and ready');
 console.log('✅ Backend integration complete');
