@@ -514,9 +514,10 @@
     </button>
   </div>
 </div>  <!-- ===== SAVED ITEM ACTION SHEET ===== -->
-<div id="itemActionSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onclick="closeActionSheetBackdrop(event)">
-  <div class="glass-card w-full max-w-md rounded-b-none sm:rounded-2xl p-5 pb-8 sheet-slide-up" onclick="event.stopPropagation()">
-    <div class="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
+<div id="itemActionSheet" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeActionSheetBackdrop(event)">
+  <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
+
+    
     <p id="actionSheetTitle" class="text-sm font-semibold mb-4 truncate"></p>
     <div class="space-y-1">
       <button onclick="actionViewItem()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition text-sm text-left btn-hover">
