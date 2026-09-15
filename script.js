@@ -79,6 +79,7 @@ let currentQuestionIndex = 0;
 let testScore = 0;
 let testDifficulty = 'easy';
 let currentResults = null;
+let lastQuickSummary = null;
 let offlineQueue = [];
 let isOnline = navigator.onLine;
 let backendAvailable = false;
@@ -1029,17 +1030,15 @@ function revealAnswer(btn) {
 // ============================================================
 // SAVE TO LIBRARY
 // ============================================================
-async function saveToLibrary() {
-  if (!currentResults) {
-    showNotification('No results to save.', 'warning');
-    return;
-  }
-
+// ============================================================
+// SAVE TO LIBRARY (shared helper)
+// ============================================================
+async function persistLibraryItem(title, data) {
   const saveItem = {
     id: generateId(),
-    title: 'Reviewer ' + new Date().toLocaleDateString(),
+    title,
     date: new Date().toISOString(),
-    data: currentResults
+    data
   };
 
   const saved = safeLocalStorageGet('acadhub_saved', []);
@@ -1048,7 +1047,7 @@ async function saveToLibrary() {
 
   if (!savedOk) {
     showNotification('Could not save — local storage is full. Try deleting old reviewers.', 'error');
-    return;
+    return false;
   }
 
   if (firebaseAvailable && auth && auth.currentUser) {
@@ -1058,14 +1057,23 @@ async function saveToLibrary() {
       console.error('Error saving to Firebase:', err);
       showNotification('Saved locally, but cloud sync failed.', 'warning');
       renderSavedList();
-      return;
+      return true;
     }
   }
 
   showNotification('Saved to library!', 'success');
   renderSavedList();
+  return true;
 }
-// TEST MY LIMITS
+
+async function saveToLibrary() {
+  if (!currentResults) {
+    showNotification('No results to save.', 'warning');
+    return;
+  }
+
+  await persistLibraryItem('Reviewer ' + new Date().toLocaleDateString(), currentResults);
+}// TEST MY LIMITS
 function setDifficulty(difficulty) {
   testDifficulty = difficulty;
 
@@ -1516,11 +1524,17 @@ async function quickSummarize() {
     const summary = await requestSummaryOnly(apiKey);
     renderQuickSummaryList(summary, 'quickSummaryList');
 
+    const saveBtn = document.getElementById('saveQuickSummaryBtn');
+
     if (!summary || summary.length === 0) {
       document.getElementById('quickSummaryEmpty').classList.remove('hidden');
+      lastQuickSummary = null;
+      saveBtn.classList.add('hidden');
     } else {
       renderQuickSummaryList(summary, 'previewSummaryList');
       document.getElementById('previewSummaryBox').classList.remove('hidden');
+      lastQuickSummary = summary;
+      saveBtn.classList.remove('hidden');
     }
   } catch (err) {
     console.error('Quick summarize error:', err);
@@ -1619,7 +1633,23 @@ function updateAuthUI() {
 
   document.getElementById('authError').classList.add('hidden');
 }
+async function saveQuickSummaryToLibrary() {
+  if (!lastQuickSummary || lastQuickSummary.length === 0) {
+    showNotification('No summary to save.', 'warning');
+    return;
+  }
 
+  const data = {
+    summary: lastQuickSummary,
+    flashcards: [],
+    quiz: {},
+    quality: null,
+    timestamp: new Date().toISOString()
+  };
+
+  const ok = await persistLibraryItem('Quick Summary ' + new Date().toLocaleDateString(), data);
+  if (ok) closeQuickSummarySheet();
+}
 function toggleAuthMode() {
   isSignUpMode = !isSignUpMode;
   updateAuthUI();
@@ -2162,7 +2192,7 @@ window.quickSummarize = quickSummarize;
 window.openQuickSummarySheet = openQuickSummarySheet;
 window.closeQuickSummarySheet = closeQuickSummarySheet;
 window.closeQuickSummarySheetBackdrop = closeQuickSummarySheetBackdrop;
-
+window.saveQuickSummaryToLibrary = saveQuickSummaryToLibrary;
 
 
 console.log('✅ All functions exported and ready');
