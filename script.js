@@ -660,61 +660,146 @@ function toggleApiKeyVisibility() {
   }
 }
 
-// FILE HANDLING
-function updateFileName(input) {
-  const file = input.files[0];
-  const display = document.getElementById('fileNameDisplay');
+// ============================================================
+// MULTI-FILE HANDLING (shared by Reviewer + Test modes)
+// ============================================================
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 10;
+const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md', '.rtf', '.html', '.htm'];
 
-  if (file) {
-    if (file.size > 10 * 1024 * 1024) {
-      showNotification('File too large. Maximum size is 10MB.', 'error');
-      input.value = '';
-      display.textContent = 'Drop file or click to browse';
-      return;
-    }
+const fileStore = {
+  reviewer: [],
+  test: []
+};
 
-    const allowedExtensions = ['.pdf', '.docx', '.txt', '.md', '.rtf', '.html', '.htm'];
-    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
-    
-    if (!allowedExtensions.includes(fileExt)) {
-      showNotification('Invalid file type. Please upload PDF, DOCX, TXT, MD, RTF, or HTML files.', 'error');
-      input.value = '';
-      display.textContent = 'Drop file or click to browse';
-      return;
-    }
+function getFileRefs(mode) {
+  const isTest = mode === 'test';
+  return {
+    input:   document.getElementById(isTest ? 'testFileInput'        : 'fileInput'),
+    list:    document.getElementById(isTest ? 'testFileListContainer': 'fileListContainer'),
+    clear:   document.getElementById(isTest ? 'clearTestFilesBtn'    : 'clearFilesBtn'),
+    drop:    document.getElementById(isTest ? 'testFileDropZone'     : 'fileDropZone'),
+    display: document.getElementById(isTest ? 'testFileNameDisplay'  : 'fileNameDisplay')
+  };
+}
 
-    display.textContent = file.name;
-  } else {
-    display.textContent = 'Drop file or click to browse';
+function validateFile(file) {
+  if (file.size > MAX_FILE_SIZE) {
+    return `"${file.name}" is too large (max 10MB)`;
   }
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return `"${file.name}" has an unsupported type`;
+  }
+  return null;
+}
+
+function handleFilesAdded(mode, fileList) {
+  if (!fileStore[mode]) fileStore[mode] = [];
+  const errors = [];
+  const files = Array.from(fileList || []);
+
+  for (const file of files) {
+    if (fileStore[mode].length >= MAX_FILES) {
+      errors.push(`Maximum ${MAX_FILES} files allowed`);
+      break;
+    }
+    const err = validateFile(file);
+    if (err) { errors.push(err); continue; }
+
+    // skip duplicates (same name + size)
+    const dup = fileStore[mode].some(f => f.name === file.name && f.size === file.size);
+    if (dup) continue;
+
+    fileStore[mode].push(file);
+  }
+
+  if (errors.length) showNotification(errors[0], 'error');
+  renderFileList(mode);
+}
+
+function removeFile(mode, index) {
+  if (!fileStore[mode]) return;
+  fileStore[mode].splice(index, 1);
+  renderFileList(mode);
+}
+
+function clearSelectedFiles(mode) {
+  if (!fileStore[mode]) return;
+  fileStore[mode] = [];
+  const { input } = getFileRefs(mode);
+  if (input) input.value = '';
+  renderFileList(mode);
+}
+
+function renderFileList(mode) {
+  const { list, clear, display } = getFileRefs(mode);
+  if (!list) return;
+
+  list.innerHTML = '';
+  const files = fileStore[mode] || [];
+
+  if (files.length === 0) {
+    list.classList.add('hidden');
+    if (clear) clear.classList.add('hidden');
+    if (display) display.textContent = 'Drop files or click to browse';
+    return;
+  }
+
+  list.classList.remove('hidden');
+  if (clear) clear.classList.remove('hidden');
+  if (display) {
+    display.textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected`;
+  }
+
+  files.forEach((file, index) => {
+    const item = document.createElement('div');
+    item.className = 'flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs';
+    item.innerHTML = `
+      <i class="fa-solid fa-file-lines text-indigo-400 shrink-0"></i>
+      <span class="truncate flex-1">${file.name}</span>
+      <span class="opacity-50 shrink-0">${(file.size / 1024).toFixed(0)} KB</span>
+      <button type="button"
+              onclick="removeFile('${mode}', ${index})"
+              class="text-rose-400 hover:text-rose-300 shrink-0 btn-hover"
+              title="Remove">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// ---- Drag & drop ----
+function handleDragOver(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  event.currentTarget.classList.add('drag-over');
+}
+
+function handleDragLeave(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  event.currentTarget.classList.remove('drag-over');
+}
+
+function handleDrop(event, mode) {
+  event.preventDefault();
+  event.stopPropagation();
+  event.currentTarget.classList.remove('drag-over');
+  const files = event.dataTransfer?.files;
+  if (files && files.length) handleFilesAdded(mode, files);
+}
+
+// ---- Input change handlers (called from HTML onchange) ----
+function updateFileName(input) {
+  handleFilesAdded('reviewer', input.files);
+  input.value = ''; // reset so the same file can be re-picked after removal
 }
 
 function updateTestFileName(input) {
-  const file = input.files[0];
-  const display = document.getElementById('testFileNameDisplay');
-
-  if (file) {
-    if (file.size > 10 * 1024 * 1024) {
-      showNotification('File too large. Maximum size is 10MB.', 'error');
-      input.value = '';
-      display.textContent = 'Drop file or click to browse';
-      return;
-    }
-
-    const allowedExtensions = ['.pdf', '.docx', '.txt', '.md', '.rtf', '.html', '.htm'];
-    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
-    
-    if (!allowedExtensions.includes(fileExt)) {
-      showNotification('Invalid file type. Please upload PDF, DOCX, TXT, MD, RTF, or HTML files.', 'error');
-      input.value = '';
-      display.textContent = 'Drop file or click to browse';
-      return;
-    }
-
-    display.textContent = file.name;
-  } else {
-    display.textContent = 'Drop file or click to browse';
-  }
+  handleFilesAdded('test', input.files);
+  input.value = '';
 }
 
 // AI REVIEWER - MAIN GENERATION FUNCTION
@@ -724,9 +809,9 @@ async function handleGenerate() {
   const progressContainer = document.getElementById('progressContainer');
   const resultsContainer = document.getElementById('resultsContainer');
 
-  const notes = document.getElementById('studyNotes').value.trim();
-  const fileInput = document.getElementById('fileInput');
-  const hasFile = fileInput.files.length > 0;
+const notes = document.getElementById('studyNotes').value.trim();
+const selectedFiles = fileStore.reviewer;
+const hasFile = selectedFiles.length > 0;
 
   if (!notes && !hasFile) {
     showNotification('Please paste notes or upload a document.', 'warning');
@@ -748,8 +833,10 @@ async function handleGenerate() {
 
   try {
     const formData = new FormData();
-    if (notes) formData.append('notes', notes);
-    if (hasFile) formData.append('file', fileInput.files[0]);
+if (notes) formData.append('notes', notes);
+if (hasFile) {
+  selectedFiles.forEach(f => formData.append('file', f, f.name));
+}
 
     const quizTypes = {
       truefalse: document.getElementById('useTrueFalse').checked ? parseInt(document.getElementById('numTrueFalse').value) || 0 : 0,
@@ -1094,17 +1181,20 @@ function setDifficulty(difficulty) {
 
 async function startTest() {
   const notes = document.getElementById('testNotes').value.trim();
-  const fileInput = document.getElementById('testFileInput');
-  const hasFile = fileInput.files.length > 0;
+const selectedFiles = fileStore.test;
+const hasFile = selectedFiles.length > 0;
 
+  
   if (!notes && !hasFile) {
     showNotification('Please paste notes or upload a document.', 'warning');
     return;
   }
 
   const formData = new FormData();
-  if (notes) formData.append('notes', notes);
-  if (hasFile) formData.append('file', fileInput.files[0]);
+if (notes) formData.append('notes', notes);
+if (hasFile) {
+  selectedFiles.forEach(f => formData.append('file', f, f.name));
+}
   formData.append('difficulty', testDifficulty);
   formData.append('use_internet', document.getElementById('useTestInternet').checked);
 
@@ -1272,8 +1362,8 @@ function resetTest() {
   document.getElementById('startTestBtn').classList.remove('hidden');
   document.getElementById('testQuizContainer').classList.add('hidden');
   document.getElementById('testNotes').value = '';
-  document.getElementById('testFileInput').value = '';
-  document.getElementById('testFileNameDisplay').textContent = 'Drop file or click to browse';
+document.getElementById('testFileInput').value = '';
+clearSelectedFiles('test');
 
   testScore = 0;
   currentQuestionIndex = 0;
@@ -2193,6 +2283,15 @@ window.openQuickSummarySheet = openQuickSummarySheet;
 window.closeQuickSummarySheet = closeQuickSummarySheet;
 window.closeQuickSummarySheetBackdrop = closeQuickSummarySheetBackdrop;
 window.saveQuickSummaryToLibrary = saveQuickSummaryToLibrary;
+window.removeFile = removeFile;
+window.clearSelectedFiles = clearSelectedFiles;
+window.handleFilesAdded = handleFilesAdded;
+window.renderFileList = renderFileList;
+window.handleDragOver = handleDragOver;
+window.handleDragLeave = handleDragLeave;
+window.handleDrop = handleDrop;
+
+
 
 
 console.log('✅ All functions exported and ready');
