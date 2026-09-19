@@ -82,6 +82,25 @@
 
       <!-- ===== VIEW: AI REVIEWER ===== -->
       <div id="viewReviewer" class="space-y-4 sm:space-y-6">
+        <div id="sharedBanner" class="hidden glass-card border-l-4 border-l-amber-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
+      <i class="fa-solid fa-share-nodes"></i>
+    </div>
+    <div>
+      <p class="text-sm font-semibold">Viewing a shared reviewer</p>
+      <p id="sharedBannerMeta" class="text-xs opacity-70">Save it to keep it in your library.</p>
+    </div>
+  </div>
+  <div class="flex gap-2 w-full sm:w-auto">
+    <button onclick="saveSharedToLibrary()" class="flex-1 sm:flex-none px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition btn-hover">
+      <i class="fa-solid fa-bookmark mr-2"></i>Save to my library
+    </button>
+    <button onclick="dismissSharedReviewer()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition btn-hover" title="Dismiss">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+</div>
         <div class="glass-card">
           <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Generate Study Materials</h2>
           <form onsubmit="return false;" class="space-y-3 sm:space-y-4">
@@ -219,11 +238,14 @@
         </div>
 
         <div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
-          <div class="flex justify-end">
-            <button id="saveToLibraryBtn" onclick="saveToLibrary()" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition btn-hover">
-              <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
-            </button>
-          </div>
+<div class="flex justify-end gap-2">
+  <button id="shareReviewerBtn" onclick="openShareModal()" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition btn-hover">
+    <i class="fa-solid fa-share-nodes mr-2"></i>Share
+  </button>
+  <button id="saveToLibraryBtn" onclick="saveToLibrary()" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg transition btn-hover">
+    <i class="fa-solid fa-bookmark mr-2"></i>Save to Library
+  </button>
+</div>
           <p id="generationQuality" class="text-xs text-right opacity-60"></p>
           <div class="glass-card border-l-4 border-l-indigo-500">
             <h3 class="text-sm font-bold uppercase text-indigo-400 mb-3"><i class="fa-solid fa-thumbtack mr-2"></i>Key Concepts</h3>
@@ -437,7 +459,36 @@
       <button onclick="submitEval()" class="btn-primary w-full text-base py-3 btn-hover">Submit</button>
     </div>
   </div>
+<!-- ===== SHARE MODAL ===== -->
+<div id="shareModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeShareModalBackdrop(event)">
+  <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-semibold"><i class="fa-solid fa-share-nodes mr-2"></i>Share this reviewer</p>
+      <button onclick="closeShareModal()" class="text-xs opacity-50 hover:opacity-100 btn-hover"><i class="fa-solid fa-times"></i></button>
+    </div>
+    <p class="text-xs opacity-70 mb-4">Anyone with this link can view the reviewer. They can save it to their own library.</p>
 
+    <div id="shareLoading" class="hidden text-center py-6">
+      <i class="fa-solid fa-spinner animate-spin text-indigo-400 text-xl"></i>
+      <p class="text-xs mt-2 opacity-60">Creating link...</p>
+    </div>
+
+    <div id="shareResult" class="hidden">
+      <div class="flex items-center gap-2">
+        <input type="text" id="shareLinkInput" readonly class="text-xs flex-1" />
+        <button onclick="copyShareLink()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg btn-hover shrink-0">
+          <i class="fa-solid fa-copy"></i>
+        </button>
+      </div>
+      <div id="shareModeNote" class="text-xs opacity-60 mt-2"></div>
+      <button id="shareNativeBtn" onclick="shareNative()" class="hidden w-full mt-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold btn-hover">
+        <i class="fa-solid fa-share-nodes mr-2"></i>Share via...
+      </button>
+    </div>
+
+    <p id="shareError" class="hidden text-xs text-rose-400 mt-3"></p>
+  </div>
+</div>
   <!-- ===== AUTH MODAL ===== -->
   <div id="authModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="glass-card w-96 p-8 max-h-[90vh] overflow-y-auto relative">
@@ -569,6 +620,7 @@
 
   <!-- ===== CUSTOM JS ===== -->
   <script src="animations.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

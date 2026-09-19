@@ -880,8 +880,12 @@ if (hasFile) {
     };
 
     resultsContainer.classList.remove('hidden');
-    document.getElementById('saveToLibraryBtn').classList.remove('hidden');
-
+document.getElementById('saveToLibraryBtn').classList.remove('hidden');
+document.getElementById('shareReviewerBtn').classList.remove('hidden');
+// Clear any shared-view state — this is a fresh local reviewer
+currentSharedReviewer = null;
+const sharedBanner = document.getElementById('sharedBanner');
+if (sharedBanner) sharedBanner.classList.add('hidden');
     showNotification('Study materials generated successfully!', 'success');
 
   } catch (err) {
@@ -893,7 +897,311 @@ if (hasFile) {
     progressContainer.classList.add('hidden');
   }
 }
+// ============================================================
+// SHARE FEATURE — Firebase with URL-encoded fallback
+// ============================================================
+const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const SHARE_URL_PREFIX = 'u.';                 // marks URL-encoded payloads
+const SHARE_COLLECTION = 'shared_reviewers';
 
+let currentSharedReviewer = null;   // { title, data } when viewing a shared link
+let currentSharedLink = '';
+
+// ---- URL-safe base64 helpers ----
+function bytesToBase64Url(bytes) {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlToBytes(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function encodeSharePayload(obj) {
+  const json = JSON.stringify(obj);
+  const utf8 = new TextEncoder().encode(json);
+  const compressed = (typeof pako !== 'undefined')
+    ? pako.deflate(utf8, { level: 9 })
+    : utf8;
+  return SHARE_URL_PREFIX + bytesToBase64Url(compressed);
+}
+
+function decodeSharePayload(encoded) {
+  const payload = encoded.startsWith(SHARE_URL_PREFIX)
+    ? encoded.slice(SHARE_URL_PREFIX.length)
+    : encoded;
+
+  const bytes = base64UrlToBytes(payload);
+  const inflated = (typeof pako !== 'undefined')
+    ? pako.inflate(bytes)
+    : bytes;
+  const json = new TextDecoder().decode(inflated);
+  return JSON.parse(json);
+}
+
+// ---- Build a shareable link (Firebase first, URL fallback) ----
+async function buildShareableLink(title, data) {
+  const baseUrl = window.location.origin + window.location.pathname;
+
+  // Try Firebase first
+  if (firebaseAvailable && db) {
+    try {
+      const docRef = db.collection(SHARE_COLLECTION).doc();
+      await docRef.set({
+        title: title || 'Shared Reviewer',
+        data,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + SHARE_TTL_MS,
+      });
+      return { url: `${baseUrl}?share=${docRef.id}`, mode: 'firebase' };
+    } catch (err) {
+      console.warn('Firebase share failed, falling back to URL encoding:', err);
+    }
+  }
+
+  // Fallback: URL-encoded payload
+  const encoded = encodeSharePayload({ title: title || 'Shared Reviewer', data });
+  const url = `${baseUrl}?share=${encoded}`;
+
+  if (url.length > 7500) {
+    throw new Error('Reviewer is too large to share as a link. Try generating fewer items.');
+  }
+
+  return { url, mode: 'url' };
+}
+
+// ---- Share modal ----
+function openShareModal() {
+  if (!currentResults) {
+    showNotification('Nothing to share yet.', 'warning');
+    return;
+  }
+  document.getElementById('shareModal').classList.remove('hidden');
+  document.getElementById('shareResult').classList.add('hidden');
+  document.getElementById('shareError').classList.add('hidden');
+  document.getElementById('shareLoading').classList.remove('hidden');
+  document.getElementById('shareLinkInput').value = '';
+  document.getElementById('shareModeNote').textContent = '';
+  document.getElementById('shareNativeBtn').classList.add('hidden');
+  createShareLink();
+}
+
+function closeShareModal() {
+  document.getElementById('shareModal').classList.add('hidden');
+}
+
+function closeShareModalBackdrop(e) {
+  if (e.target.id === 'shareModal') closeShareModal();
+}
+
+async function createShareLink() {
+  try {
+    const title = 'Shared Reviewer ' + new Date().toLocaleDateString();
+    const { url, mode } = await buildShareableLink(title, currentResults);
+
+    currentSharedLink = url;
+    document.getElementById('shareLinkInput').value = url;
+    document.getElementById('shareModeNote').textContent = mode === 'firebase'
+      ? 'Link expires in 30 days.'
+      : 'Link contains the reviewer data — no expiration. Works offline.';
+
+    if (navigator.share) {
+      document.getElementById('shareNativeBtn').classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('Share link creation failed:', err);
+    document.getElementById('shareError').textContent = err.message || 'Could not create share link.';
+    document.getElementById('shareError').classList.remove('hidden');
+  } finally {
+    document.getElementById('shareLoading').classList.add('hidden');
+    document.getElementById('shareResult').classList.remove('hidden');
+  }
+}
+
+async function copyShareLink() {
+  const input = document.getElementById('shareLinkInput');
+  const url = input.value;
+  if (!url) return;
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      input.select();
+      document.execCommand('copy');
+      input.setSelectionRange(0, 0);
+    }
+    showNotification('Link copied!', 'success');
+  } catch (err) {
+    console.error('Copy failed:', err);
+    input.select();
+    showNotification('Long-press the field to copy.', 'info');
+  }
+}
+
+async function shareNative() {
+  if (!currentSharedLink) return;
+  try {
+    await navigator.share({
+      title: 'AcadHub Reviewer',
+      text: 'Check out this study reviewer I made on AcadHub',
+      url: currentSharedLink,
+    });
+  } catch (err) {
+    // User cancelled — no error needed
+    if (err.name !== 'AbortError') {
+      console.warn('Native share failed:', err);
+    }
+  }
+}
+
+// ---- Receiving side ----
+function getShareParamFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('share');
+}
+
+function removeShareParamFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('share');
+  window.history.replaceState({}, '', url.toString());
+}
+
+async function checkForSharedReviewer() {
+  const shareParam = getShareParamFromUrl();
+  if (!shareParam) return;
+
+  try {
+    let title = 'Shared Reviewer';
+    let data = null;
+
+    if (shareParam.startsWith(SHARE_URL_PREFIX)) {
+      // URL-encoded payload
+      const parsed = decodeSharePayload(shareParam);
+      title = parsed.title || title;
+      data = parsed.data;
+    } else {
+      // Firebase doc ID
+      if (!firebaseAvailable || !db) {
+        throw new Error('This link requires an internet connection.');
+      }
+      const snap = await db.collection(SHARE_COLLECTION).doc(shareParam).get();
+      if (!snap.exists) {
+        throw new Error('This shared reviewer no longer exists.');
+      }
+      const doc = snap.data();
+      if (doc.expiresAtMs && Date.now() > doc.expiresAtMs) {
+        throw new Error('This shared reviewer has expired.');
+      }
+      title = doc.title || title;
+      data = doc.data;
+    }
+
+    if (!data || !data.summary) {
+      throw new Error('The shared reviewer is empty or invalid.');
+    }
+
+    currentSharedReviewer = { title, data };
+    showSharedReviewer();
+  } catch (err) {
+    console.error('Shared reviewer load failed:', err);
+    showNotification(err.message || 'Could not load shared reviewer.', 'error');
+    removeShareParamFromUrl();
+  }
+}
+
+function showSharedReviewer() {
+  if (!currentSharedReviewer) return;
+
+  const { title, data } = currentSharedReviewer;
+
+  // Show the reviewer view and results
+  switchTab('reviewer');
+  const resultsContainer = document.getElementById('resultsContainer');
+  resultsContainer.classList.remove('hidden');
+
+  // Render
+  renderSummary(data.summary);
+  renderFlashcards(data.flashcards);
+  renderQuiz(data.quiz);
+
+  if (data.quality) {
+    const qualityEl = document.getElementById('generationQuality');
+    if (qualityEl) {
+      qualityEl.textContent = `Generation quality: ${data.quality.score}% (source and answer consistency)`;
+    }
+  }
+
+  // Set current results so Save / Share work
+  currentResults = {
+    summary: data.summary || [],
+    flashcards: data.flashcards || [],
+    quiz: data.quiz || {},
+    quality: data.quality || null,
+  };
+
+  // Reveal the banner
+  const banner = document.getElementById('sharedBanner');
+  const meta = document.getElementById('sharedBannerMeta');
+  if (banner) {
+    banner.classList.remove('hidden', 'is-dismissing');
+    if (meta) {
+      meta.textContent = `${title} · Save it to keep it in your library.`;
+    }
+    banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Share button visible? No — hide it, this is someone else's reviewer
+  const shareBtn = document.getElementById('shareReviewerBtn');
+  if (shareBtn) shareBtn.classList.add('hidden');
+
+  // Save button hidden — banner has its own Save
+  const saveBtn = document.getElementById('saveToLibraryBtn');
+  if (saveBtn) saveBtn.classList.add('hidden');
+
+  showNotification('Shared reviewer loaded!', 'success');
+}
+
+async function saveSharedToLibrary() {
+  if (!currentSharedReviewer) return;
+
+  const { title, data } = currentSharedReviewer;
+  const ok = await persistLibraryItem(title, data);
+
+  if (ok) {
+    dismissSharedReviewer();
+    // Restore normal action buttons
+    const shareBtn = document.getElementById('shareReviewerBtn');
+    if (shareBtn) shareBtn.classList.remove('hidden');
+    const saveBtn = document.getElementById('saveToLibraryBtn');
+    if (saveBtn) saveBtn.classList.remove('hidden');
+  }
+}
+
+function dismissSharedReviewer() {
+  const banner = document.getElementById('sharedBanner');
+  if (banner) {
+    banner.classList.add('is-dismissing');
+    setTimeout(() => banner.classList.add('hidden'), 300);
+  }
+
+  currentSharedReviewer = null;
+  removeShareParamFromUrl();
+
+  // Reset the results view to a clean state
+  const resultsContainer = document.getElementById('resultsContainer');
+  if (resultsContainer) resultsContainer.classList.add('hidden');
+  currentResults = null;
+
+  const qualityEl = document.getElementById('generationQuality');
+  if (qualityEl) qualityEl.textContent = '';
+}
 // TRANSFORM BACKEND RESPONSE
 function transformBackendResponse(backendData) {
   const summary = backendData.summary || [];
@@ -1528,7 +1836,9 @@ function loadSavedItem(index) {
   renderQuiz(item.data.quiz);
 
   currentResults = item.data;
-  document.getElementById('saveToLibraryBtn').classList.add('hidden');
+document.getElementById('saveToLibraryBtn').classList.add('hidden');
+// Allow sharing items loaded from the library too
+document.getElementById('shareReviewerBtn').classList.remove('hidden');
 }
 
 // ============================================================
@@ -2052,6 +2362,8 @@ if (accentPicker) accentPicker.value = savedAccent;
     enableTabButtons();
   });
 
+ // Check for a shared reviewer in the URL
+checkForSharedReviewer();
   console.log('✅ AcadHub Suite initialized successfully');
 }
 
@@ -2290,6 +2602,18 @@ window.renderFileList = renderFileList;
 window.handleDragOver = handleDragOver;
 window.handleDragLeave = handleDragLeave;
 window.handleDrop = handleDrop;
+window.openShareModal = openShareModal;
+window.closeShareModal = closeShareModal;
+window.closeShareModalBackdrop = closeShareModalBackdrop;
+window.copyShareLink = copyShareLink;
+window.shareNative = shareNative;
+window.saveSharedToLibrary = saveSharedToLibrary;
+window.dismissSharedReviewer = dismissSharedReviewer;
+window.checkForSharedReviewer = checkForSharedReviewer;
+
+
+
+
 
 
 

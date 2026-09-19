@@ -864,5 +864,26 @@ html.light .card-menu-btn:hover {
   }
 }
 
-/* Remove the old bottom-sheet animation (now handled by Tailwind) */
-/* Delete the old .sheet-slide-up and @keyframes sheetSlideUp rules */
+/* ============ SHARE FEATURE ============ */
+
+#sharedBanner {
+  animation: reveal 0.3s ease-out forwards;
+}
+
+#sharedBanner.is-dismissing {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#shareLinkInput {
+  font-family: 'Inter', system-ui, monospace;
+  cursor: text;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+html.light #shareLinkInput {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
