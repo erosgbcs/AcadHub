@@ -883,6 +883,10 @@ if (hasFile) {
 document.getElementById('saveToLibraryBtn').classList.remove('hidden');
 document.getElementById('shareReviewerBtn').classList.remove('hidden');
 // Clear any shared-view state — this is a fresh local reviewer
+updateResultsNavCounts();
+initResultsNav();
+    
+    
 currentSharedReviewer = null;
 const sharedBanner = document.getElementById('sharedBanner');
 if (sharedBanner) sharedBanner.classList.add('hidden');
@@ -1166,6 +1170,10 @@ function showSharedReviewer() {
   if (saveBtn) saveBtn.classList.add('hidden');
 
   showNotification('Shared reviewer loaded!', 'success');
+  updateResultsNavCounts();
+initResultsNav();
+
+  
 }
 
 async function saveSharedToLibrary() {
@@ -1201,6 +1209,71 @@ function dismissSharedReviewer() {
 
   const qualityEl = document.getElementById('generationQuality');
   if (qualityEl) qualityEl.textContent = '';
+}
+
+// ============================================================
+// RESULTS NAV — sticky section navigation
+// ============================================================
+const RESULTS_SECTION_IDS = ['summary', 'flashcards', 'quiz'];
+let activeResultsSection = 'summary';
+let resultsObserver = null;
+let resultsNavBound = false;
+
+function getResultsSectionEl(id) {
+  return document.getElementById('section' + id.charAt(0).toUpperCase() + id.slice(1));
+}
+
+function setActiveResultsNav(id) {
+  if (activeResultsSection === id) return;
+  activeResultsSection = id;
+  document.querySelectorAll('.results-nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === id);
+  });
+}
+
+function updateResultsNavCounts() {
+  const summaryCount = document.querySelectorAll('#summaryList > li').length;
+  const flashcardCount = document.querySelectorAll('#flashcardGrid > .flashcard').length;
+  const quizCount = document.querySelectorAll('#quizContainer > div').length;
+
+  const map = { summary: summaryCount, flashcards: flashcardCount, quiz: quizCount };
+  document.querySelectorAll('.results-nav-count').forEach(el => {
+    const key = el.dataset.count;
+    if (key in map) el.textContent = map[key];
+  });
+}
+
+function initResultsNav() {
+  if (!resultsNavBound) {
+    document.querySelectorAll('.results-nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.section;
+        const el = getResultsSectionEl(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setActiveResultsNav(id);
+      });
+    });
+    resultsNavBound = true;
+  }
+
+  if (resultsObserver) resultsObserver.disconnect();
+  resultsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.dataset.sectionId;
+        if (id) setActiveResultsNav(id);
+      }
+    });
+  }, {
+    root: null,
+    rootMargin: '-40% 0px -55% 0px',
+    threshold: 0
+  });
+
+  RESULTS_SECTION_IDS.forEach(id => {
+    const el = getResultsSectionEl(id);
+    if (el) resultsObserver.observe(el);
+  });
 }
 // TRANSFORM BACKEND RESPONSE
 function transformBackendResponse(backendData) {
@@ -1839,6 +1912,9 @@ function loadSavedItem(index) {
 document.getElementById('saveToLibraryBtn').classList.add('hidden');
 // Allow sharing items loaded from the library too
 document.getElementById('shareReviewerBtn').classList.remove('hidden');
+updateResultsNavCounts();
+initResultsNav();
+  
 }
 
 // ============================================================
@@ -2610,8 +2686,8 @@ window.shareNative = shareNative;
 window.saveSharedToLibrary = saveSharedToLibrary;
 window.dismissSharedReviewer = dismissSharedReviewer;
 window.checkForSharedReviewer = checkForSharedReviewer;
-
-
+window.initResultsNav = initResultsNav;
+window.updateResultsNavCounts = updateResultsNavCounts;
 
 
 
