@@ -488,104 +488,11 @@ function initTabListeners() {
   });
 }
 
-// PROFILE MANAGEMENT
-function showProfileModal() {
-  // If Firebase is available and user is logged in, show auth modal
-  if (firebaseAvailable && auth && auth.currentUser) {
-    document.getElementById('authModal').classList.remove('hidden');
-    updateAuthUI();
-    return;
-  }
 
-  // Otherwise show the simple profile modal
-  if (safeLocalStorageGet('profile_saved') !== 'true') {
-    document.getElementById('profileModal').classList.remove('hidden');
-  } else {
-    // If profile already saved, show auth modal (even without Firebase)
-    document.getElementById('authModal').classList.remove('hidden');
-  }
-}
-
-function closeProfileModal() {
-  document.getElementById('profileModal').classList.add('hidden');
-}
-
-function initProfileModal() {
-  const firstNameInput = document.getElementById('visitorFirstName');
-  const lastNameInput = document.getElementById('visitorLastName');
-  const agreeTerms = document.getElementById('agreeTerms');
-  const saveBtn = document.getElementById('saveProfileBtn');
-
-  if (!firstNameInput || !lastNameInput || !agreeTerms || !saveBtn) return;
-
-  function validateProfileForm() {
-    const firstName = firstNameInput.value.trim();
-    const lastName = lastNameInput.value.trim();
-
-    if (firstName.length >= 2 && lastName.length >= 2 && agreeTerms.checked) {
-      saveBtn.disabled = false;
-      saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-      saveBtn.title = 'Save profile';
-    } else {
-      saveBtn.disabled = true;
-      saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
-      if (!firstName || !lastName) {
-        saveBtn.title = 'Enter your first and last name';
-      } else if (firstName.length < 2 || lastName.length < 2) {
-        saveBtn.title = 'Name must be at least 2 characters';
-      } else if (!agreeTerms.checked) {
-        saveBtn.title = 'Please agree to the privacy terms';
-      }
-    }
-  }
-
-  firstNameInput.addEventListener('input', validateProfileForm);
-  lastNameInput.addEventListener('input', validateProfileForm);
-  agreeTerms.addEventListener('change', validateProfileForm);
-  validateProfileForm();
-}
-
-function saveVisitorName() {
-  const firstName = document.getElementById('visitorFirstName').value.trim();
-  const lastName = document.getElementById('visitorLastName').value.trim();
-  const agreeTerms = document.getElementById('agreeTerms').checked;
-  const saveBtn = document.getElementById('saveProfileBtn');
-
-  if (!firstName || !lastName) {
-    showNotification('Please enter your first and last name.', 'error');
-    return;
-  }
-
-  if (firstName.length < 2 || lastName.length < 2) {
-    showNotification('Name must be at least 2 characters long.', 'error');
-    return;
-  }
-
-  if (!agreeTerms) {
-    showNotification('Please agree to the privacy terms.', 'error');
-    return;
-  }
-
-  // Save locally
-  const fullName = firstName + ' ' + lastName;
-  safeLocalStorageSet('profile_name', fullName);
-  safeLocalStorageSet('profile_saved', 'true');
-
-  // Save to Firebase only if available and user is logged in
-  if (firebaseAvailable && auth && auth.currentUser) {
-    try {
-      db.collection('users').doc(auth.currentUser.uid).set({
-        firstName,
-        lastName,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    } catch (err) {
-      console.error('Error saving to Firebase:', err);
-    }
-  }
-
-  closeProfileModal();
-  showNotification(`Welcome, ${firstName}! Your profile has been saved.`, 'success');
+// AUTH MODAL (login / signup only)
+function openAuthModal() {
+  document.getElementById('authModal').classList.remove('hidden');
+  updateAuthUI();
 }
 // SETTINGS MANAGEMENT
 function toggleSettingsModal() {
@@ -3347,11 +3254,6 @@ const firestoreLibrary = await loadFromFirestore('library');
             if (accentPicker) accentPicker.value = userData.accentColor;
           }
 
-          if (userData.firstName && userData.lastName) {
-            const fullName = `${userData.firstName} ${userData.lastName}`;
-            safeLocalStorageSet('profile_name', fullName);
-            safeLocalStorageSet('profile_saved', 'true');
-          }
         }
 
         // Re-render UI
@@ -3428,24 +3330,24 @@ function toggleEvalModal() {
 
 function submitEval() {
   const suggestions = document.getElementById('evalSuggestions').value;
-  const profileName = safeLocalStorageGet('profile_name', 'Anonymous');
-  
+  const user = (firebaseAvailable && auth) ? auth.currentUser : null;
+  const profileName = user ? (user.displayName || user.email || 'Anonymous') : 'Anonymous';
+
   console.log('Evaluation submitted:', { rating: selectedRating, suggestions, profileName });
-  
-  if (firebaseAvailable && auth && auth.currentUser) {
-  db.collection('evaluations').add({
-    rating: selectedRating,
-    suggestions,
-    profileName,
-    userId: auth.currentUser.uid,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  }).catch(err => console.error('Error saving evaluation:', err));
+
+  if (user) {
+    db.collection('evaluations').add({
+      rating: selectedRating,
+      suggestions,
+      profileName,
+      userId: user.uid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err => console.error('Error saving evaluation:', err));
   }
-  
+
   toggleEvalModal();
   showNotification('Thank you for your feedback!', 'success');
 }
-
 function revealGCash() {
   document.getElementById('gcashHidden').classList.add('hidden');
   document.getElementById('gcashFull').classList.remove('hidden');
@@ -3502,7 +3404,6 @@ renderNotesList();
 renderSubjectFilters();
 updateProviderUI();
   updateSettingsUI();
-  initProfileModal();
   initQuickSummaryListeners();
 
   // FIXED: Force enable tab buttons
@@ -3688,12 +3589,9 @@ async function saveSubjectDetails() {
 // Export all functions to window
 window.switchTab = switchTab;
 window.initTabListeners = initTabListeners;
-window.showProfileModal = showProfileModal;
-window.closeProfileModal = closeProfileModal;
-window.saveVisitorName = saveVisitorName;
-window.initProfileModal = initProfileModal;
-window.toggleSettingsModal = toggleSettingsModal;
 window.closeSettingsModal = closeSettingsModal;
+window.openAuthModal = openAuthModal;
+window.toggleSettingsModal = toggleSettingsModal;
 window.toggleTheme = toggleTheme;
 window.changeTabPosition = changeTabPosition;
 window.updateSettingsUI = updateSettingsUI;
