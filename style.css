@@ -1393,3 +1393,44 @@ html.light .status-dot.offline { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
 #sharedBanner.hidden {
   display: none !important;
 }
+/* ============ SPLASH PROGRESS BAR ============ */
+.splash-progress {
+  width: 220px;
+  margin-top: 1.5rem;
+  text-align: center;
+  opacity: 0;
+  animation: splashFadeUp 0.5s ease 1.3s forwards;
+}
+
+.splash-progress-bar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+.splash-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6366f1 0%, #818cf8 50%, #06b6d4 100%);
+  border-radius: 9999px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+}
+
+.splash-progress-text {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+/* Light mode */
+html.light .splash-progress-bar {
+  background: rgba(0, 0, 0, 0.06);
+}
+html.light .splash-progress-text {
+  color: #94a3b8;
+}
