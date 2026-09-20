@@ -194,12 +194,16 @@ function hideSplashScreen() {
 
   setTimeout(() => {
     completeSplashProgress();
+    
+    // ✅ FIX: Stop the carousel before hiding the splash screen
+    stopTipCarousel(); 
+    
     setTimeout(() => {
       splash.classList.add('splash-hide');
       setTimeout(() => splash.remove(), 500);
     }, 250);
   }, waitFor);
-}// ============================================================
+}
 // NOTIFICATION SYSTEM
 // ============================================================
 function showNotification(message, type = 'success') {
@@ -3556,6 +3560,7 @@ function initializeApp() {
   console.log('🚀 Initializing AcadHub Suite...');
   console.log('📡 Backend URL:', API_BASE_URL);
 startSplashProgress();
+  startTipCarousel();
   // Check backend health
   checkBackendHealth().then(available => {
     backendAvailable = available;
@@ -3762,4 +3767,54 @@ async function saveSubjectDetails() {
   closeSubjectSheet();
   renderSavedList();
   showNotification('Subject updated.', 'success');
+}
+
+/* ============ SPLASH FOOTER TIP CAROUSEL ============ */
+const studyTips = [
+  "Loading study tools…",
+  "Did you know? Spaced repetition can boost retention by up to 200%.",
+  "Tip: Upload PDFs to generate instant AI quizzes.",
+  "Did you know? Teaching concepts to others is the best way to learn.",
+  "Tip: Use the Pomodoro technique for focused study sessions.",
+  "Syncing your flashcards...",
+  "Did you know? Sleep is crucial for memory consolidation.",
+  "Preparing your workspace..."
+];
+
+let tipIndex = 0;
+let tipInterval = null;
+const footerTextEl = document.getElementById('splashFooterText');
+
+function startTipCarousel() {
+  // Wait 1.5 seconds before starting the rotation (lets the splash screen finish its intro animation)
+  setTimeout(() => {
+    tipInterval = setInterval(() => {
+      if (!footerTextEl) return;
+
+      // 1. Fade out current text
+      footerTextEl.classList.add('fade-out');
+      
+      // 2. Wait for fade out to finish (400ms matches CSS), then change text and fade in
+      setTimeout(() => {
+        tipIndex = (tipIndex + 1) % studyTips.length;
+        footerTextEl.textContent = studyTips[tipIndex];
+        
+        footerTextEl.classList.remove('fade-out');
+        footerTextEl.classList.add('fade-in');
+        
+        // 3. Clean up the fade-in class after transition
+        setTimeout(() => {
+          footerTextEl.classList.remove('fade-in');
+        }, 400);
+      }, 400);
+      
+    }, 4000); // Changes every 4 seconds
+  }, 1500);
+}
+
+function stopTipCarousel() {
+  if (tipInterval) {
+    clearInterval(tipInterval);
+    tipInterval = null;
+  }
 }

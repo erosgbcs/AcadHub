@@ -1458,3 +1458,26 @@ html.light .splash-progress-text {
     height: 8px; /* Slightly thicker on mobile for visibility */
   }
 }
+/* ============ SPLASH FOOTER TIP CAROUSEL ============ */
+#splashFooterText {
+  display: inline-block;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  will-change: opacity, transform;
+}
+
+#splashFooterText.fade-out {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+#splashFooterText.fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Ensure it respects reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  #splashFooterText {
+    transition: none !important;
+  }
+}
