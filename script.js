@@ -104,6 +104,21 @@ function safeLocalStorageSet(key, value) {
     return false;
   }
 }
+// ---- Compose the share message ----
+function buildShareMessage() {
+  const authorName = (currentSharedAuthor && currentSharedAuthor.name) ? currentSharedAuthor.name : 'Anonymous';
+  const subjectName = (currentSharedSubject && currentSharedSubject.name) ? currentSharedSubject.name : null;
+
+  const lines = [];
+  lines.push('Hey! Try to check out this study reviewer 👇');
+  lines.push('');
+  if (currentSharedTitle) lines.push(`📘 ${currentSharedTitle}`);
+  lines.push(`✍️ Made by ${authorName}`);
+  if (subjectName) lines.push(`🏷️ Subject: ${subjectName}`);
+  lines.push('');
+  lines.push(currentSharedLink);
+  return lines.join('\n');
+}
 
 function safeLocalStorageGet(key, defaultValue = null) {
   try {
@@ -989,7 +1004,7 @@ async function createShareLink() {
 
     const author = await getCurrentAuthorInfo();
     const { url, mode } = await buildShareableLink({ title, author, subject }, currentResults);
-
+// ---- Compose the share message ----
    currentSharedLink = url;
 currentSharedTitle = title;
 currentSharedAuthor = author;
@@ -1018,18 +1033,7 @@ async function copyShareLink() {
   const url = input.value;
   if (!url) return;
 
-  const authorName = (currentSharedAuthor && currentSharedAuthor.name) ? currentSharedAuthor.name : 'Anonymous';
-  const subjectName = (currentSharedSubject && currentSharedSubject.name) ? currentSharedSubject.name : null;
-
-  const lines = [
-    currentSharedTitle ? `📘 ${currentSharedTitle}` : 'Check out this study reviewer I made on AcadHub',
-    `✍️ Made by ${authorName}`,
-  ];
-  if (subjectName) lines.push(`🏷️ Subject: ${subjectName}`);
-  lines.push('');
-  lines.push(url);
-
-  const text = lines.join('\n');
+  const text = buildShareMessage();
 
   try {
     if (navigator.clipboard && window.isSecureContext) {
@@ -1048,21 +1052,12 @@ async function copyShareLink() {
     showNotification('Long-press the link field to copy.', 'info');
   }
 }
+
+
 async function shareNative() {
   if (!currentSharedLink) return;
 
-  const authorName = (currentSharedAuthor && currentSharedAuthor.name) ? currentSharedAuthor.name : 'Anonymous';
-  const subjectName = (currentSharedSubject && currentSharedSubject.name) ? currentSharedSubject.name : null;
-
-  const lines = [
-    currentSharedTitle ? `📘 ${currentSharedTitle}` : 'Check out this study reviewer I made on AcadHub',
-    `✍️ Made by ${authorName}`,
-  ];
-  if (subjectName) lines.push(`🏷️ Subject: ${subjectName}`);
-  lines.push('');
-  lines.push(currentSharedLink);
-
-  const shareText = lines.join('\n');
+  const shareText = buildShareMessage();
 
   try {
     await navigator.share({
@@ -1076,6 +1071,7 @@ async function shareNative() {
     }
   }
 }
+
 // ---- Receiving side ----
 function getShareParamFromUrl() {
   const params = new URLSearchParams(window.location.search);
