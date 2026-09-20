@@ -73,7 +73,8 @@ const API_ENDPOINTS = {
 // ============================================================
 let isSignUpMode = false;
 let selectedRating = 0;
-let currentTab = 'reviewer';
+let currentTab = 'notes';
+
 let testQuestions = [];
 let currentQuestionIndex = 0;
 let testScore = 0;
@@ -395,13 +396,15 @@ function switchTab(tab) {
     view.classList.add('hidden');
   });
 
-  const viewMap = {
-    'reviewer': 'viewReviewer',
-    'library': 'viewLibrary',
-    'test': 'viewTest',
-    'calendar': 'viewCalendar'
-  };
+const viewMap = {
+  'notes': 'viewNotes',
+  'reviewer': 'viewReviewer',
+  'library': 'viewLibrary',
+  'test': 'viewTest',
+  'calendar': 'viewCalendar'
+};
 
+   
   const viewId = viewMap[tab];
   if (viewId) {
     const viewElement = document.getElementById(viewId);
@@ -416,13 +419,15 @@ function switchTab(tab) {
     btn.classList.add('tab-inactive');
   });
 
-  const tabMap = {
-    'reviewer': 'tabReviewer',
-    'library': 'tabLibrary',
-    'test': 'tabTest',
-    'calendar': 'tabCalendar'
-  };
+const tabMap = {
+  'notes': 'tabNotes',
+  'reviewer': 'tabReviewer',
+  'library': 'tabLibrary',
+  'test': 'tabTest',
+  'calendar': 'tabCalendar'
+};
 
+  
   const tabId = tabMap[tab];
   if (tabId) {
     const tabButton = document.getElementById(tabId);
@@ -433,10 +438,10 @@ function switchTab(tab) {
   }
 
   // Refresh data for certain tabs
-  if (tab === 'library') renderSavedList();
-  if (tab === 'calendar') renderCalendar();
+if (tab === 'library') renderSavedList();
+if (tab === 'calendar') renderCalendar();
+if (tab === 'notes') { renderNotesList(); renderSubjectFilters(); }
 }
-
 // FIXED: Improved initTabListeners with direct onclick
 function initTabListeners() {
   const tabMappings = {
@@ -882,7 +887,8 @@ if (hasFile) {
     resultsContainer.classList.remove('hidden');
 document.getElementById('saveToLibraryBtn').classList.remove('hidden');
 document.getElementById('shareReviewerBtn').classList.remove('hidden');
-// Clear any shared-view state — this is a fresh local reviewer
+document.getElementById('saveAsNoteBtn').classList.remove('hidden');    
+    // Clear any shared-view state — this is a fresh local reviewer
 updateResultsNavCounts();
 initResultsNav();
     
@@ -1161,15 +1167,14 @@ function showSharedReviewer() {
     banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // Share button visible? No — hide it, this is someone else's reviewer
-  const shareBtn = document.getElementById('shareReviewerBtn');
-  if (shareBtn) shareBtn.classList.add('hidden');
-
   // Save button hidden — banner has its own Save
-  const saveBtn = document.getElementById('saveToLibraryBtn');
-  if (saveBtn) saveBtn.classList.add('hidden');
+const saveBtn = document.getElementById('saveToLibraryBtn');
+if (saveBtn) saveBtn.classList.add('hidden');
 
-  showNotification('Shared reviewer loaded!', 'success');
+const noteBtn = document.getElementById('saveAsNoteBtn');
+if (noteBtn) noteBtn.classList.add('hidden');
+
+showNotification('Shared reviewer loaded!', 'success');
   updateResultsNavCounts();
 initResultsNav();
 
@@ -1275,6 +1280,670 @@ function initResultsNav() {
     if (el) resultsObserver.observe(el);
   });
 }
+// ============================================================
+// NOTES FEATURE
+// ============================================================
+let currentEditingNoteId = null;
+let currentEditingNoteIsNew = false;
+let currentNoteSubjectId = null;
+let currentNoteIsPinned = false;
+let noteAutosaveTimer = null;
+let noteLastSavedSnapshot = null;
+let currentFilterSubjectId = 'all';
+let currentNoteSearchQuery = '';
+let currentActionNoteId = null;
+let editingSubjectId = null;
+let editingSubjectColor = SUBJECT_COLORS[0];
+
+function getNotes() { return safeLocalStorageGet('acadhub_notes', []); }
+function setNotes(notes) { safeLocalStorageSet('acadhub_notes', notes); }
+function getNoteSubjects() { return safeLocalStorageGet('acadhub_note_subjects', []); }
+function setNoteSubjects(subs) { safeLocalStorageSet('acadhub_note_subjects', subs); }
+function getNoteSubject(id) {
+  if (!id) return null;
+  return getNoteSubjects().find(s => s.id === id) || null;
+}
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function formatRelativeTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 60) return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return 'Yesterday';
+  if (day < 30) return `${day} days ago`;
+  return d.toLocaleDateString();
+}
+
+// ---- List ----
+function renderNotesList() {
+  const container = document.getElementById('notesList');
+  const emptyMsg = document.getElementById('emptyNotes');
+  const noResults = document.getElementById('noSearchResults');
+  if (!container) return;
+
+  const allNotes = getNotes();
+  const subjects = getNoteSubjects();
+
+  const sorted = [...allNotes].sort((a, b) => {
+    if (!!a.pinned !== !!b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+    return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+  });
+
+  let filtered = sorted;
+  if (currentFilterSubjectId === 'uncategorized') {
+    filtered = filtered.filter(n => !n.subjectId);
+  } else if (currentFilterSubjectId !== 'all') {
+    filtered = filtered.filter(n => n.subjectId === currentFilterSubjectId);
+  }
+
+  if (currentNoteSearchQuery) {
+    const q = currentNoteSearchQuery.toLowerCase();
+    filtered = filtered.filter(n =>
+      (n.title || '').toLowerCase().includes(q) ||
+      (n.body || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (allNotes.length === 0) {
+    container.innerHTML = '';
+    if (emptyMsg) emptyMsg.classList.remove('hidden');
+    if (noResults) noResults.classList.add('hidden');
+    return;
+  }
+  if (emptyMsg) emptyMsg.classList.add('hidden');
+
+  if (filtered.length === 0 && currentNoteSearchQuery) {
+    container.innerHTML = '';
+    if (noResults) {
+      noResults.classList.remove('hidden');
+      const t = document.getElementById('searchTermDisplay');
+      if (t) t.textContent = `"${currentNoteSearchQuery}"`;
+    }
+    return;
+  }
+  if (noResults) noResults.classList.add('hidden');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<p class="text-sm opacity-50 text-center py-6">No notes in this category.</p>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(note => {
+    const subject = note.subjectId ? subjects.find(s => s.id === note.subjectId) : null;
+    const subjectPill = subject
+      ? `<span class="note-subject-pill" style="background:${subject.color}22; color:${subject.color}; border:1px solid ${subject.color}55;"><span class="note-subject-dot" style="background:${subject.color};"></span>${escapeHtml(subject.name)}</span>`
+      : `<span class="note-subject-pill" style="background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);"><span class="note-subject-dot" style="background:#94a3b8;"></span>Uncategorized</span>`;
+
+    const preview = (note.body || '').trim() || 'Empty note';
+    const pinIcon = note.pinned ? '<i class="fa-solid fa-thumbtack text-amber-400 text-xs mr-1.5"></i>' : '';
+
+    return `
+      <div class="note-card bg-white/5 border border-white/10 rounded-lg p-3" onclick="openNoteEditor('${note.id}')">
+        <div class="flex items-start gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium truncate">${pinIcon}${escapeHtml(note.title || 'Untitled note')}</p>
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
+              ${subjectPill}
+              <span class="text-xs opacity-50">${formatRelativeTime(note.updatedAt)}</span>
+            </div>
+            <p class="text-xs opacity-70 mt-2 line-clamp-2">${escapeHtml(preview)}</p>
+          </div>
+          <button class="card-menu-btn btn-hover shrink-0" onclick="event.stopPropagation(); openNoteActionSheet('${note.id}')" title="More">
+            <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSubjectFilters() {
+  const container = document.getElementById('noteSubjectFilters');
+  if (!container) return;
+
+  const subjects = getNoteSubjects();
+  const notes = getNotes();
+  const uncategorizedCount = notes.filter(n => !n.subjectId).length;
+
+  const pills = [];
+  pills.push(`<button class="subject-filter-pill ${currentFilterSubjectId === 'all' ? 'active' : ''}" onclick="setNoteFilter('all')"><i class="fa-solid fa-layer-group"></i> All <span class="opacity-60">${notes.length}</span></button>`);
+
+  subjects.forEach(s => {
+    const count = notes.filter(n => n.subjectId === s.id).length;
+    if (count === 0 && currentFilterSubjectId !== s.id) return;
+    pills.push(`<button class="subject-filter-pill ${currentFilterSubjectId === s.id ? 'active' : ''}" onclick="setNoteFilter('${s.id}')"><span class="note-subject-dot" style="background:${s.color};"></span>${escapeHtml(s.name)} <span class="opacity-60">${count}</span></button>`);
+  });
+
+  if (uncategorizedCount > 0) {
+    pills.push(`<button class="subject-filter-pill ${currentFilterSubjectId === 'uncategorized' ? 'active' : ''}" onclick="setNoteFilter('uncategorized')"><span class="note-subject-dot" style="background:#94a3b8;"></span>Uncategorized <span class="opacity-60">${uncategorizedCount}</span></button>`);
+  }
+
+  pills.push(`<button class="subject-filter-pill" onclick="openEditSubject(null)" title="Manage subjects"><i class="fa-solid fa-plus"></i></button>`);
+  container.innerHTML = pills.join('');
+}
+
+function setNoteFilter(id) {
+  currentFilterSubjectId = id;
+  renderSubjectFilters();
+  renderNotesList();
+}
+
+function onNoteSearchInput() {
+  currentNoteSearchQuery = document.getElementById('noteSearchInput').value.trim();
+  renderNotesList();
+}
+
+function clearNoteSearch() {
+  document.getElementById('noteSearchInput').value = '';
+  currentNoteSearchQuery = '';
+  renderNotesList();
+}
+
+// ---- Editor ----
+function openNoteEditor(noteId) {
+  const isNew = !noteId;
+  const notes = getNotes();
+  const note = isNew ? null : notes.find(n => n.id === noteId);
+  if (!isNew && !note) return;
+
+  currentEditingNoteId = isNew ? generateId() : noteId;
+  currentEditingNoteIsNew = isNew;
+  currentNoteSubjectId = note?.subjectId || null;
+  currentNoteIsPinned = note?.pinned || false;
+
+  document.getElementById('noteTitleInput').value = note?.title || '';
+  document.getElementById('noteBodyInput').value = note?.body || '';
+
+  noteLastSavedSnapshot = JSON.stringify({
+    title: note?.title || '', body: note?.body || '',
+    subjectId: currentNoteSubjectId, pinned: currentNoteIsPinned
+  });
+
+  updateNoteSubjectUI();
+  updateNotePinUI();
+  updateNoteWordCount();
+  setNoteSaveStatus(isNew ? 'New note' : 'Saved');
+
+  document.getElementById('noteEditorSheet').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (isNew) setTimeout(() => document.getElementById('noteTitleInput').focus(), 100);
+  attachNoteEditorListeners();
+}
+
+function attachNoteEditorListeners() {
+  const titleEl = document.getElementById('noteTitleInput');
+  const bodyEl = document.getElementById('noteBodyInput');
+  if (titleEl.dataset.listenersAttached) return;
+  titleEl.addEventListener('input', onNoteEditorInput);
+  bodyEl.addEventListener('input', onNoteEditorInput);
+  titleEl.dataset.listenersAttached = 'true';
+}
+
+function onNoteEditorInput() {
+  updateNoteWordCount();
+  setNoteSaveStatus('Unsaved changes');
+  clearTimeout(noteAutosaveTimer);
+  noteAutosaveTimer = setTimeout(autosaveNote, 1500);
+}
+
+function updateNoteWordCount() {
+  const body = document.getElementById('noteBodyInput').value;
+  const words = body.trim() ? body.trim().split(/\s+/).length : 0;
+  document.getElementById('noteWordCount').textContent = `${words} words · ${body.length} characters`;
+}
+
+function setNoteSaveStatus(text) {
+  const el = document.getElementById('noteSaveStatus');
+  if (el) el.textContent = text;
+}
+
+async function autosaveNote() {
+  if (!currentEditingNoteId) return;
+  const title = document.getElementById('noteTitleInput').value.trim();
+  const body = document.getElementById('noteBodyInput').value;
+  const snapshot = JSON.stringify({ title, body, subjectId: currentNoteSubjectId, pinned: currentNoteIsPinned });
+  if (snapshot === noteLastSavedSnapshot) return;
+  await doSaveNote({ title, body, silent: true });
+  noteLastSavedSnapshot = snapshot;
+}
+
+async function doSaveNote({ title, body, silent }) {
+  const notes = getNotes();
+  const now = new Date().toISOString();
+  let note = notes.find(n => n.id === currentEditingNoteId);
+  const isNew = !note;
+
+  if (isNew) {
+    note = { id: currentEditingNoteId, subjectId: currentNoteSubjectId, title: title || '', body: body || '', pinned: currentNoteIsPinned, createdAt: now, updatedAt: now };
+    notes.unshift(note);
+  } else {
+    note.title = title || '';
+    note.body = body || '';
+    note.subjectId = currentNoteSubjectId;
+    note.pinned = currentNoteIsPinned;
+    note.updatedAt = now;
+    const idx = notes.findIndex(n => n.id === currentEditingNoteId);
+    if (idx > 0) { const [n] = notes.splice(idx, 1); notes.unshift(n); }
+  }
+  setNotes(notes);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try { await db.collection('users').doc(auth.currentUser.uid).collection('notes').doc(note.id).set(note); }
+    catch (err) { console.error('Firestore note save failed:', err); }
+  }
+
+  if (!silent) { setNoteSaveStatus('Saved'); showNotification('Note saved.', 'success'); }
+  else setNoteSaveStatus('Saved ' + formatRelativeTime(now));
+
+  renderNotesList();
+  renderSubjectFilters();
+}
+
+async function saveNoteNow() {
+  const title = document.getElementById('noteTitleInput').value.trim();
+  const body = document.getElementById('noteBodyInput').value;
+  if (!title && !body) { closeNoteEditor(); return; }
+  clearTimeout(noteAutosaveTimer);
+  await doSaveNote({ title, body, silent: false });
+  closeNoteEditor();
+}
+
+function closeNoteEditor() {
+  const title = document.getElementById('noteTitleInput').value.trim();
+  const body = document.getElementById('noteBodyInput').value;
+  const snapshot = JSON.stringify({ title, body, subjectId: currentNoteSubjectId, pinned: currentNoteIsPinned });
+  if (snapshot !== noteLastSavedSnapshot && (title || body)) {
+    if (!confirm('You have unsaved changes. Discard them?')) return;
+  }
+  document.getElementById('noteEditorSheet').classList.add('hidden');
+  document.body.style.overflow = '';
+  clearTimeout(noteAutosaveTimer);
+  currentEditingNoteId = null;
+  currentEditingNoteIsNew = false;
+}
+
+function closeNoteEditorBackdrop(e) {
+  if (e.target.id === 'noteEditorSheet') closeNoteEditor();
+}
+
+function updateNoteSubjectUI() {
+  const dot = document.getElementById('noteSubjectDot');
+  const name = document.getElementById('noteSubjectName');
+  if (!dot || !name) return;
+  if (currentNoteSubjectId) {
+    const subj = getNoteSubject(currentNoteSubjectId);
+    if (subj) { dot.style.background = subj.color; name.textContent = subj.name; return; }
+  }
+  dot.style.background = '#94a3b8';
+  name.textContent = 'Uncategorized';
+}
+
+function updateNotePinUI() {
+  const btn = document.getElementById('notePinBtn');
+  if (!btn) return;
+  btn.classList.toggle('active', !!currentNoteIsPinned);
+}
+
+function toggleNotePin() {
+  currentNoteIsPinned = !currentNoteIsPinned;
+  updateNotePinUI();
+  onNoteEditorInput();
+}
+
+// ---- Subject picker ----
+function openSubjectPicker() {
+  const list = document.getElementById('subjectPickerList');
+  const subjects = getNoteSubjects();
+  const notes = getNotes();
+
+  const items = [];
+  items.push(`
+    <button onclick="pickSubject(null)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-sm text-left">
+      <span class="note-subject-dot" style="background:#94a3b8;"></span>
+      <span class="flex-1">Uncategorized</span>
+      ${currentNoteSubjectId === null ? '<i class="fa-solid fa-check text-emerald-400 text-xs"></i>' : ''}
+    </button>
+  `);
+
+  subjects.forEach(s => {
+    const count = notes.filter(n => n.subjectId === s.id).length;
+    items.push(`
+      <div class="flex items-center gap-1">
+        <button onclick="pickSubject('${s.id}')" class="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-sm text-left">
+          <span class="note-subject-dot" style="background:${s.color};"></span>
+          <span class="flex-1">${escapeHtml(s.name)} <span class="opacity-50 text-xs">(${count})</span></span>
+          ${currentNoteSubjectId === s.id ? '<i class="fa-solid fa-check text-emerald-400 text-xs"></i>' : ''}
+        </button>
+        <button onclick="openEditSubject('${s.id}')" class="p-2 text-xs opacity-50 hover:opacity-100" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="deleteSubject('${s.id}')" class="p-2 text-xs opacity-50 hover:opacity-100 text-rose-400" title="Delete"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    `);
+  });
+
+  list.innerHTML = items.join('');
+  document.getElementById('subjectPickerSheet').classList.remove('hidden');
+}
+
+function closeSubjectPicker() {
+  document.getElementById('subjectPickerSheet').classList.add('hidden');
+}
+
+function closeSubjectPickerBackdrop(e) {
+  if (e.target.id === 'subjectPickerSheet') closeSubjectPicker();
+}
+
+function pickSubject(id) {
+  currentNoteSubjectId = id;
+  updateNoteSubjectUI();
+  onNoteEditorInput();
+  closeSubjectPicker();
+}
+
+// ---- Edit subject ----
+function openEditSubject(id) {
+  editingSubjectId = id;
+  const existing = id ? getNoteSubject(id) : null;
+  document.getElementById('editSubjectTitle').textContent = existing ? 'Edit Subject' : 'New Subject';
+  document.getElementById('editSubjectNameInput').value = existing?.name || '';
+  editingSubjectColor = existing?.color || SUBJECT_COLORS[0];
+  renderSubjectColorSwatches();
+  closeSubjectPicker();
+  document.getElementById('editSubjectSheet').classList.remove('hidden');
+  setTimeout(() => document.getElementById('editSubjectNameInput').focus(), 100);
+}
+
+function renderSubjectColorSwatches() {
+  const container = document.getElementById('editSubjectColorSwatches');
+  container.innerHTML = '';
+  SUBJECT_COLORS.forEach(color => {
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'w-8 h-8 rounded-full border-2 transition btn-hover';
+    swatch.style.background = color;
+    swatch.style.borderColor = (color === editingSubjectColor) ? '#fff' : 'transparent';
+    swatch.onclick = () => { editingSubjectColor = color; renderSubjectColorSwatches(); };
+    container.appendChild(swatch);
+  });
+}
+
+function closeEditSubject() {
+  document.getElementById('editSubjectSheet').classList.add('hidden');
+  editingSubjectId = null;
+}
+
+function closeEditSubjectBackdrop(e) {
+  if (e.target.id === 'editSubjectSheet') closeEditSubject();
+}
+
+async function saveSubject() {
+  const name = document.getElementById('editSubjectNameInput').value.trim();
+  if (!name) { showNotification('Please enter a subject name.', 'warning'); return; }
+  const subjects = getNoteSubjects();
+  let savedSubj = null;
+
+  if (editingSubjectId) {
+    const subj = subjects.find(s => s.id === editingSubjectId);
+    if (subj) { subj.name = name; subj.color = editingSubjectColor; savedSubj = subj; }
+  } else {
+    savedSubj = { id: generateId(), name, color: editingSubjectColor };
+    subjects.push(savedSubj);
+  }
+  setNoteSubjects(subjects);
+
+  if (firebaseAvailable && auth && auth.currentUser && savedSubj) {
+    try { await db.collection('users').doc(auth.currentUser.uid).collection('note_subjects').doc(savedSubj.id).set(savedSubj); }
+    catch (err) { console.error(err); }
+  }
+
+  const wasEditing = !!editingSubjectId;
+  closeEditSubject();
+  updateNoteSubjectUI();
+  renderSubjectFilters();
+  renderNotesList();
+  showNotification(wasEditing ? 'Subject updated.' : 'Subject created.', 'success');
+}
+
+async function deleteSubject(id) {
+  if (!confirm('Delete this subject? Notes in it will become Uncategorized.')) return;
+  const subjects = getNoteSubjects();
+  const idx = subjects.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  subjects.splice(idx, 1);
+  setNoteSubjects(subjects);
+
+  const notes = getNotes();
+  notes.forEach(n => { if (n.subjectId === id) n.subjectId = null; });
+  setNotes(notes);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      const uid = auth.currentUser.uid;
+      await db.collection('users').doc(uid).collection('note_subjects').doc(id).delete();
+      for (const n of notes) {
+        if (n.subjectId === null) await db.collection('users').doc(uid).collection('notes').doc(n.id).set({ subjectId: null }, { merge: true });
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  if (currentNoteSubjectId === id) { currentNoteSubjectId = null; updateNoteSubjectUI(); }
+  closeSubjectPicker();
+  renderSubjectFilters();
+  renderNotesList();
+  showNotification('Subject deleted.', 'info');
+}
+
+// ---- Note action sheet ----
+function openNoteActionSheet(noteId) {
+  const note = getNotes().find(n => n.id === noteId);
+  if (!note) return;
+  currentActionNoteId = noteId;
+  document.getElementById('noteActionTitle').textContent = note.title || 'Untitled note';
+  document.getElementById('noteActionPinText').textContent = note.pinned ? 'Unpin' : 'Pin to top';
+  document.getElementById('noteActionSheet').classList.remove('hidden');
+}
+
+function closeNoteActionSheet() {
+  document.getElementById('noteActionSheet').classList.add('hidden');
+}
+
+function closeNoteActionSheetBackdrop(e) {
+  if (e.target.id === 'noteActionSheet') closeNoteActionSheet();
+}
+
+function actionEditNote() {
+  const id = currentActionNoteId;
+  closeNoteActionSheet();
+  if (id) openNoteEditor(id);
+}
+
+async function actionTogglePin() {
+  const id = currentActionNoteId;
+  if (!id) return;
+  const notes = getNotes();
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  note.pinned = !note.pinned;
+  note.updatedAt = new Date().toISOString();
+  setNotes(notes);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try { await db.collection('users').doc(auth.currentUser.uid).collection('notes').doc(id).set({ pinned: note.pinned, updatedAt: note.updatedAt }, { merge: true }); }
+    catch (err) { console.error(err); }
+  }
+  closeNoteActionSheet();
+  renderNotesList();
+  showNotification(note.pinned ? 'Pinned.' : 'Unpinned.', 'success');
+}
+
+function actionChangeSubject() {
+  const id = currentActionNoteId;
+  if (!id) return;
+  closeNoteActionSheet();
+  openNoteEditor(id);
+  setTimeout(() => openSubjectPicker(), 200);
+}
+
+async function actionDuplicateNote() {
+  const id = currentActionNoteId;
+  if (!id) return;
+  const notes = getNotes();
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  const copy = { ...note, id: generateId(), title: (note.title || 'Untitled') + ' (copy)', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  notes.unshift(copy);
+  setNotes(notes);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try { await db.collection('users').doc(auth.currentUser.uid).collection('notes').doc(copy.id).set(copy); }
+    catch (err) { console.error(err); }
+  }
+  closeNoteActionSheet();
+  renderNotesList();
+  renderSubjectFilters();
+  showNotification('Duplicated.', 'success');
+}
+
+async function actionShareNote() {
+  const id = currentActionNoteId;
+  if (!id) return;
+  const note = getNotes().find(n => n.id === id);
+  if (!note) return;
+  const text = `${note.title || 'Note'}\n\n${note.body || ''}`;
+  closeNoteActionSheet();
+
+  if (navigator.share) {
+    try { await navigator.share({ title: note.title || 'Note', text }); } catch (e) {}
+  } else if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); showNotification('Copied to clipboard.', 'success'); }
+    catch (e) { showNotification('Could not copy.', 'error'); }
+  } else showNotification('Sharing not available.', 'info');
+}
+
+async function actionDeleteNote() {
+  const id = currentActionNoteId;
+  if (!id) return;
+  if (!confirm('Delete this note?')) return;
+  const notes = getNotes();
+  const idx = notes.findIndex(n => n.id === id);
+  if (idx === -1) return;
+  notes.splice(idx, 1);
+  setNotes(notes);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try { await db.collection('users').doc(auth.currentUser.uid).collection('notes').doc(id).delete(); }
+    catch (err) { console.error(err); }
+  }
+  closeNoteActionSheet();
+  renderNotesList();
+  renderSubjectFilters();
+  showNotification('Note deleted.', 'info');
+}
+
+// ---- Save as Note (from reviewer) ----
+function openSaveAsNote() {
+  if (!currentResults) { showNotification('Nothing to save.', 'warning'); return; }
+  const r = currentResults;
+  document.getElementById('saveAsNoteTitle').value = 'Reviewer — ' + new Date().toLocaleDateString();
+
+  const select = document.getElementById('saveAsNoteSubject');
+  const subjects = getNoteSubjects();
+  select.innerHTML = '<option value="">Uncategorized</option>' +
+    subjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+
+  const summaryCount = (r.summary || []).length;
+  const fCount = (r.flashcards || []).length;
+  const q = r.quiz || {};
+  const qTotal = (q.trueFalse?.length || 0) + (q.identification?.length || 0) + (q.multipleChoice?.length || 0) + (q.enumeration?.length || 0);
+
+  document.getElementById('saveAsNoteSummaryCount').textContent = summaryCount;
+  document.getElementById('saveAsNoteFlashcardsCount').textContent = fCount;
+  document.getElementById('saveAsNoteQuizCount').textContent = qTotal;
+
+  document.getElementById('saveAsNoteIncludeSummary').checked = summaryCount > 0;
+  document.getElementById('saveAsNoteIncludeFlashcards').checked = fCount > 0;
+  document.getElementById('saveAsNoteIncludeQuiz').checked = qTotal > 0;
+
+  document.getElementById('saveAsNoteSheet').classList.remove('hidden');
+}
+
+function closeSaveAsNote() {
+  document.getElementById('saveAsNoteSheet').classList.add('hidden');
+}
+
+function closeSaveAsNoteBackdrop(e) {
+  if (e.target.id === 'saveAsNoteSheet') closeSaveAsNote();
+}
+
+async function confirmSaveAsNote() {
+  if (!currentResults) return;
+  const title = document.getElementById('saveAsNoteTitle').value.trim() || 'Reviewer';
+  const subjectId = document.getElementById('saveAsNoteSubject').value || null;
+  const includeSummary = document.getElementById('saveAsNoteIncludeSummary').checked;
+  const includeFlashcards = document.getElementById('saveAsNoteIncludeFlashcards').checked;
+  const includeQuiz = document.getElementById('saveAsNoteIncludeQuiz').checked;
+
+  const body = formatReviewerAsNote(currentResults, { includeSummary, includeFlashcards, includeQuiz });
+  const now = new Date().toISOString();
+  const note = { id: generateId(), subjectId, title, body, pinned: false, createdAt: now, updatedAt: now };
+  const notes = getNotes();
+  notes.unshift(note);
+  setNotes(notes);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try { await db.collection('users').doc(auth.currentUser.uid).collection('notes').doc(note.id).set(note); }
+    catch (err) { console.error(err); }
+  }
+  closeSaveAsNote();
+  renderNotesList();
+  renderSubjectFilters();
+  showNotification('Saved as note!', 'success');
+}
+
+function formatReviewerAsNote(results, { includeSummary, includeFlashcards, includeQuiz }) {
+  const lines = [];
+  if (includeSummary && results.summary?.length) {
+    lines.push('## Key Concepts');
+    results.summary.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    lines.push('');
+  }
+  if (includeFlashcards && results.flashcards?.length) {
+    lines.push('## Flashcards');
+    results.flashcards.forEach(c => lines.push(`- ${c.front} — ${c.back}`));
+    lines.push('');
+  }
+  if (includeQuiz) {
+    const q = results.quiz || {};
+    const hasAny = (q.trueFalse?.length || 0) + (q.identification?.length || 0) + (q.multipleChoice?.length || 0) + (q.enumeration?.length || 0);
+    if (hasAny) {
+      lines.push('## Practice Quiz');
+      let n = 0;
+      (q.trueFalse || []).forEach(x => { n++; lines.push(`${n}. ${x.question}`); lines.push(`   Answer: ${x.answer ? 'True' : 'False'}`); });
+      (q.identification || []).forEach(x => { n++; lines.push(`${n}. ${x.question}`); lines.push(`   Answer: ${x.answer}`); });
+      (q.multipleChoice || []).forEach(x => {
+        n++;
+        lines.push(`${n}. ${x.question}`);
+        (x.options || []).forEach((o, i) => lines.push(`   ${String.fromCharCode(65 + i)}. ${o}`));
+        const correct = x.options && x.correct >= 0 ? x.options[x.correct] : '?';
+        lines.push(`   Answer: ${correct}`);
+      });
+      (q.enumeration || []).forEach(x => { n++; lines.push(`${n}. ${x.question}`); lines.push(`   Answer: ${x.answer}`); });
+    }
+  }
+  return lines.join('\n').trim();
+}
+
+  
 // TRANSFORM BACKEND RESPONSE
 function transformBackendResponse(backendData) {
   const summary = backendData.summary || [];
@@ -1912,6 +2581,8 @@ function loadSavedItem(index) {
 document.getElementById('saveToLibraryBtn').classList.add('hidden');
 // Allow sharing items loaded from the library too
 document.getElementById('shareReviewerBtn').classList.remove('hidden');
+document.getElementById('saveAsNoteBtn').classList.remove('hidden');
+  
 updateResultsNavCounts();
 initResultsNav();
   
@@ -2241,13 +2912,25 @@ if (firebaseAvailable && auth) {
   // 🔥 Run migration to fix old Firestore document IDs
   await migrateFirestoreData(user);
 
-  // Load collections from Firestore
-  const firestoreLibrary = await loadFromFirestore('library');
+// Load collections from Firestore
+const firestoreLibrary = await loadFromFirestore('library');
 
-        // ---- Library (just replace with Firestore if available) ----
-        if (firestoreLibrary.length > 0) {
-          safeLocalStorageSet('acadhub_saved', firestoreLibrary);
-        }
+      // ---- Library (just replace with Firestore if available) ----
+      if (firestoreLibrary.length > 0) {
+        safeLocalStorageSet('acadhub_saved', firestoreLibrary);
+      }
+
+      // ---- Notes + note_subjects ----
+      const firestoreNotes = await loadFromFirestore('notes');
+      const firestoreNoteSubjects = await loadFromFirestore('note_subjects');
+      if (firestoreNotes.length > 0) {
+        safeLocalStorageSet('acadhub_notes', firestoreNotes);
+      }
+      if (firestoreNoteSubjects.length > 0) {
+        safeLocalStorageSet('acadhub_note_subjects', firestoreNoteSubjects);
+      }
+      renderNotesList();
+      renderSubjectFilters();
 
         // ---- Load user document (settings & profile) ----
         const userDoc = await db.collection('users').doc(user.uid).get();
@@ -2422,8 +3105,10 @@ if (accentPicker) accentPicker.value = savedAccent;
 
   // Render initial views
   renderSavedList();
-  renderCalendar();
-  updateProviderUI();
+renderCalendar();
+renderNotesList();
+renderSubjectFilters();
+updateProviderUI();
   updateSettingsUI();
   initProfileModal();
   initQuickSummaryListeners();
@@ -2688,7 +3373,38 @@ window.dismissSharedReviewer = dismissSharedReviewer;
 window.checkForSharedReviewer = checkForSharedReviewer;
 window.initResultsNav = initResultsNav;
 window.updateResultsNavCounts = updateResultsNavCounts;
-
+window.openNoteEditor = openNoteEditor;
+window.closeNoteEditor = closeNoteEditor;
+window.closeNoteEditorBackdrop = closeNoteEditorBackdrop;
+window.saveNoteNow = saveNoteNow;
+window.toggleNotePin = toggleNotePin;
+window.openSubjectPicker = openSubjectPicker;
+window.closeSubjectPicker = closeSubjectPicker;
+window.closeSubjectPickerBackdrop = closeSubjectPickerBackdrop;
+window.pickSubject = pickSubject;
+window.openEditSubject = openEditSubject;
+window.closeEditSubject = closeEditSubject;
+window.closeEditSubjectBackdrop = closeEditSubjectBackdrop;
+window.saveSubject = saveSubject;
+window.deleteSubject = deleteSubject;
+window.openNoteActionSheet = openNoteActionSheet;
+window.closeNoteActionSheet = closeNoteActionSheet;
+window.closeNoteActionSheetBackdrop = closeNoteActionSheetBackdrop;
+window.actionEditNote = actionEditNote;
+window.actionTogglePin = actionTogglePin;
+window.actionChangeSubject = actionChangeSubject;
+window.actionDuplicateNote = actionDuplicateNote;
+window.actionShareNote = actionShareNote;
+window.actionDeleteNote = actionDeleteNote;
+window.openSaveAsNote = openSaveAsNote;
+window.closeSaveAsNote = closeSaveAsNote;
+window.closeSaveAsNoteBackdrop = closeSaveAsNoteBackdrop;
+window.confirmSaveAsNote = confirmSaveAsNote;
+window.renderNotesList = renderNotesList;
+window.renderSubjectFilters = renderSubjectFilters;
+window.setNoteFilter = setNoteFilter;
+window.onNoteSearchInput = onNoteSearchInput;
+window.clearNoteSearch = clearNoteSearch;
 
 
 
