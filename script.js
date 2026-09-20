@@ -235,36 +235,36 @@ async function apiCall(endpoint, options = {}) {
 async function checkBackendHealth() {
   const statusEl = document.getElementById('backendStatus');
 
+  const setStatus = (state) => {
+    if (!statusEl) return;
+    statusEl.className = 'status-dot ' + state;
+    statusEl.title =
+      state === 'online'  ? 'Backend online' :
+      state === 'offline' ? 'Backend offline — using local mode' :
+                            'Checking connection…';
+  };
+
+  setStatus('checking');
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+
     const response = await fetch(API_BASE_URL + API_ENDPOINTS.health, {
       method: 'GET',
       signal: controller.signal
     });
-    
+
     clearTimeout(timeoutId);
     backendAvailable = response.ok;
-    if (statusEl) {
-      statusEl.innerHTML = backendAvailable
-        ? '<i class="fa-solid fa-circle mr-1"></i> ONLINE'
-        : '<i class="fa-solid fa-circle mr-1"></i> OFFLINE'
-      statusEl.className = backendAvailable
-        ? 'px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold'
-        : 'px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold';
-    }
+    setStatus(backendAvailable ? 'online' : 'offline');
     return backendAvailable;
   } catch (err) {
     backendAvailable = false;
-    if (statusEl) {
-      statusEl.innerHTML = '<i class="fa-solid fa-circle mr-1"></i> OFFLINE'
-      statusEl.className = 'px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold';
-    }
+    setStatus('offline');
     return false;
   }
 }
-
 // ============================================================
 // WAKE-UP OVERLAY - FIXED VERSION
 // ============================================================
@@ -1053,49 +1053,6 @@ function removeShareParamFromUrl() {
   const url = new URL(window.location.href);
   url.searchParams.delete('share');
   window.history.replaceState({}, '', url.toString());
-}
-
-async function checkForSharedReviewer() {
-  const shareParam = getShareParamFromUrl();
-  if (!shareParam) return;
-
-  try {
-    let payload = null;
-
-    if (shareParam.startsWith(SHARE_URL_PREFIX)) {
-      payload = decodeSharePayload(shareParam);
-    } else {
-      if (!firebaseAvailable || !db) {
-        throw new Error('This link requires an internet connection.');
-      }
-      const snap = await db.collection(SHARE_COLLECTION).doc(shareParam).get();
-      if (!snap.exists) throw new Error('This shared reviewer no longer exists.');
-      const doc = snap.data();
-      if (doc.expiresAtMs && Date.now() > doc.expiresAtMs) {
-        throw new Error('This shared reviewer has expired.');
-      }
-      payload = doc;
-    }
-
-    const data = payload.data || payload;
-    if (!data || !data.summary) {
-      throw new Error('The shared reviewer is empty or invalid.');
-    }
-
-    currentSharedReviewer = {
-      title: payload.title || 'Shared Reviewer',
-      author: payload.author || null,
-      subject: payload.subject || null,
-      createdAtMs: payload.createdAtMs || null,
-      data,
-    };
-
-    showSharedReviewer();
-  } catch (err) {
-    console.error('Shared reviewer load failed:', err);
-    showNotification(err.message || 'Could not load shared reviewer.', 'error');
-    removeShareParamFromUrl();
-  }
 }
 
 function showSharedReviewer() {
@@ -3313,8 +3270,8 @@ if (firebaseAvailable && auth) {
       document.getElementById('userIcon').classList.remove('fa-user');
       document.getElementById('userIcon').classList.add('fa-user-check');
       document.getElementById('profileButton').title = 'Logged in as ' + user.email;
-      document.getElementById('logoutButton').classList.remove('hidden');
-
+const _logoutBtn = document.getElementById('logoutButton');
+if (_logoutBtn) _logoutBtn.classList.remove('hidden');
       try {
   // 🔥 Run migration to fix old Firestore document IDs
   await migrateFirestoreData(user);
@@ -3377,7 +3334,8 @@ const firestoreLibrary = await loadFromFirestore('library');
       document.getElementById('userIcon').classList.remove('fa-user-check');
       document.getElementById('userIcon').classList.add('fa-user');
       document.getElementById('profileButton').title = 'Login / Sign Up';
-      document.getElementById('logoutButton').classList.add('hidden');
+const _logoutBtn2 = document.getElementById('logoutButton');
+if (_logoutBtn2) _logoutBtn2.classList.add('hidden');
     }
 
     updateAuthUI();
@@ -3497,35 +3455,36 @@ function initializeApp() {
   const savedTheme = safeLocalStorageGet('theme', 'dark');
   document.documentElement.classList.remove('dark', 'light');
   document.documentElement.classList.add(savedTheme);
+
   // Load saved accent color
-const savedAccent = safeLocalStorageGet('accent_color', '#6366f1');
-document.documentElement.style.setProperty('--accent', savedAccent);
-const accentPicker = document.getElementById('accentPicker');
-if (accentPicker) accentPicker.value = savedAccent;
+  const savedAccent = safeLocalStorageGet('accent_color', '#6366f1');
+  document.documentElement.style.setProperty('--accent', savedAccent);
+  const accentPicker = document.getElementById('accentPicker');
+  if (accentPicker) accentPicker.value = savedAccent;
+
   // Load saved data
   offlineQueue = safeLocalStorageGet('offline_queue', []);
 
   // Render initial views
   renderSavedList();
-renderCalendar();
-renderNotesList();
-renderSubjectFilters();
-updateProviderUI();
+  renderCalendar();
+  renderNotesList();
+  renderSubjectFilters();
+  updateProviderUI();
   updateSettingsUI();
   initQuickSummaryListeners();
 
-  // FIXED: Force enable tab buttons
+  // Force enable tab buttons
   setTimeout(() => {
     enableTabButtons();
     console.log('✅ Tab buttons force-enabled');
   }, 100);
-  
+
   window.addEventListener('load', () => {
     enableTabButtons();
   });
 
-
-    // Check for a shared reviewer in the URL
+  // Check for a shared reviewer in the URL
   checkForSharedReviewer();
 
   // Fade out the splash screen once everything is ready
@@ -3540,291 +3499,3 @@ if (document.readyState === 'loading') {
 } else {
   initializeApp();
 }
-
-// ============================================================
-// SAVED ITEM ACTION SHEET
-// ============================================================
-function openItemActionSheet(index) {
-  actionSheetIndex = index;
-  const saved = safeLocalStorageGet('acadhub_saved', []);
-  const item = saved[index];
-  if (!item) return;
-
-  document.getElementById('actionSheetTitle').textContent = item.title || 'Untitled Reviewer';
-  document.getElementById('itemActionSheet').classList.remove('hidden');
-}
-
-function closeActionSheet() {
-  document.getElementById('itemActionSheet').classList.add('hidden');
-}
-
-function closeActionSheetBackdrop(e) {
-  if (e.target.id === 'itemActionSheet') closeActionSheet();
-}
-
-function actionViewItem() {
-  if (actionSheetIndex === null) return;
-  const index = actionSheetIndex;
-  closeActionSheet();
-  loadSavedItem(index);
-}
-
-function actionDeleteItem() {
-  if (actionSheetIndex === null) return;
-  const index = actionSheetIndex;
-  closeActionSheet();
-  deleteSavedItem(index);
-}
-
-// ---- Edit Name ----
-function openEditNameSheet() {
-  const saved = safeLocalStorageGet('acadhub_saved', []);
-  const item = saved[actionSheetIndex];
-  if (!item) return;
-
-  closeActionSheet();
-  document.getElementById('editNameInput').value = item.title || '';
-  document.getElementById('editNameSheet').classList.remove('hidden');
-  setTimeout(() => document.getElementById('editNameInput').focus(), 100);
-}
-
-function closeEditNameSheet() {
-  document.getElementById('editNameSheet').classList.add('hidden');
-}
-
-function closeEditNameSheetBackdrop(e) {
-  if (e.target.id === 'editNameSheet') closeEditNameSheet();
-}
-
-async function saveEditedName() {
-  const newName = document.getElementById('editNameInput').value.trim();
-  if (!newName) {
-    showNotification('Name cannot be empty.', 'warning');
-    return;
-  }
-  if (actionSheetIndex === null) return;
-
-  const saved = safeLocalStorageGet('acadhub_saved', []);
-  const item = saved[actionSheetIndex];
-  if (!item) return;
-
-  item.title = newName;
-  safeLocalStorageSet('acadhub_saved', saved);
-
-  if (firebaseAvailable && auth && auth.currentUser && item.id) {
-    try {
-      await db.collection('users').doc(auth.currentUser.uid)
-        .collection('library').doc(item.id).set({ title: newName }, { merge: true });
-    } catch (err) {
-      console.error('Error updating name in Firebase:', err);
-      showNotification('Renamed locally, but cloud sync failed.', 'warning');
-    }
-  }
-
-  closeEditNameSheet();
-  renderSavedList();
-  showNotification('Name updated.', 'success');
-}
-
-// ---- Subject / Category ----
-function openSubjectSheet() {
-  const saved = safeLocalStorageGet('acadhub_saved', []);
-  const item = saved[actionSheetIndex];
-  if (!item) return;
-
-  closeActionSheet();
-  document.getElementById('subjectNameInput').value = item.subject?.name || '';
-
-  const swatchContainer = document.getElementById('subjectColorSwatches');
-  swatchContainer.innerHTML = '';
-  let selectedColor = item.subject?.color || SUBJECT_COLORS[0];
-
-  SUBJECT_COLORS.forEach(color => {
-    const swatch = document.createElement('button');
-    swatch.type = 'button';
-    swatch.className = 'w-8 h-8 rounded-full border-2 transition btn-hover';
-    swatch.style.background = color;
-    swatch.style.borderColor = (color === selectedColor) ? '#fff' : 'transparent';
-    swatch.onclick = () => {
-      selectedColor = color;
-      swatchContainer.querySelectorAll('button').forEach(b => b.style.borderColor = 'transparent');
-      swatch.style.borderColor = '#fff';
-      swatchContainer.dataset.selected = color;
-    };
-    swatchContainer.appendChild(swatch);
-  });
-  swatchContainer.dataset.selected = selectedColor;
-
-  document.getElementById('subjectSheet').classList.remove('hidden');
-}
-
-function closeSubjectSheet() {
-  document.getElementById('subjectSheet').classList.add('hidden');
-}
-
-function closeSubjectSheetBackdrop(e) {
-  if (e.target.id === 'subjectSheet') closeSubjectSheet();
-}
-
-async function saveSubjectDetails() {
-  if (actionSheetIndex === null) return;
-
-  const name = document.getElementById('subjectNameInput').value.trim();
-  const color = document.getElementById('subjectColorSwatches').dataset.selected || SUBJECT_COLORS[0];
-
-  const saved = safeLocalStorageGet('acadhub_saved', []);
-  const item = saved[actionSheetIndex];
-  if (!item) return;
-
-  item.subject = name ? { name, color } : null;
-  safeLocalStorageSet('acadhub_saved', saved);
-
-  if (firebaseAvailable && auth && auth.currentUser && item.id) {
-    try {
-      await db.collection('users').doc(auth.currentUser.uid)
-        .collection('library').doc(item.id).set({ subject: item.subject }, { merge: true });
-    } catch (err) {
-      console.error('Error updating subject in Firebase:', err);
-      showNotification('Saved locally, but cloud sync failed.', 'warning');
-    }
-  }
-
-  closeSubjectSheet();
-  renderSavedList();
-  showNotification('Subject updated.', 'success');
-}
-
-// Export all functions to window
-window.switchTab = switchTab;
-window.initTabListeners = initTabListeners;
-window.closeSettingsModal = closeSettingsModal;
-window.openAuthModal = openAuthModal;
-window.toggleSettingsModal = toggleSettingsModal;
-window.toggleTheme = toggleTheme;
-window.changeTabPosition = changeTabPosition;
-window.updateSettingsUI = updateSettingsUI;
-window.updateProviderUI = updateProviderUI;
-window.toggleAccuracyInfo = toggleAccuracyInfo;
-window.toggleApiKeyVisibility = toggleApiKeyVisibility;
-window.updateFileName = updateFileName;
-window.updateTestFileName = updateTestFileName;
-window.handleGenerate = handleGenerate;
-window.renderSummary = renderSummary;
-window.renderFlashcards = renderFlashcards;
-window.renderQuiz = renderQuiz;
-window.checkAnswer = checkAnswer;
-window.checkMCQAnswer = checkMCQAnswer;
-window.revealAnswer = revealAnswer;
-window.saveToLibrary = saveToLibrary;
-window.setDifficulty = setDifficulty;
-window.startTest = startTest;
-window.showTestQuestion = showTestQuestion;
-window.answerTestQuestion = answerTestQuestion;
-window.nextTestQuestion = nextTestQuestion;
-window.showTestResults = showTestResults;
-window.resetTest = resetTest;
-window.showReview = showReview;
-window.renderSavedList = renderSavedList;
-window.loadSavedItem = loadSavedItem;
-window.deleteSavedItem = deleteSavedItem;
-window.retryWakeUp = retryWakeUp;
-window.skipToDashboard = skipToDashboard;
-window.handleAuth = handleAuth;
-window.toggleAuthMode = toggleAuthMode;
-window.logout = logout;
-window.closeAuthModal = closeAuthModal;
-window.showNotification = showNotification;
-window.revealGCash = revealGCash;
-window.toggleEvalModal = toggleEvalModal;
-window.submitEval = submitEval;
-window.hideWakeUpOverlay = hideWakeUpOverlay;
-window.enableTabButtons = enableTabButtons;
-window.updateAccentColor = updateAccentColor;
-window.openItemActionSheet = openItemActionSheet;
-window.closeActionSheet = closeActionSheet;
-window.closeActionSheetBackdrop = closeActionSheetBackdrop;
-window.actionViewItem = actionViewItem;
-window.actionDeleteItem = actionDeleteItem;
-window.openEditNameSheet = openEditNameSheet;
-window.closeEditNameSheet = closeEditNameSheet;
-window.closeEditNameSheetBackdrop = closeEditNameSheetBackdrop;
-window.saveEditedName = saveEditedName;
-window.openSubjectSheet = openSubjectSheet;
-window.closeSubjectSheet = closeSubjectSheet;
-window.closeSubjectSheetBackdrop = closeSubjectSheetBackdrop;
-window.saveSubjectDetails = saveSubjectDetails;
-window.toggleQuickSummaryKey = toggleQuickSummaryKey;
-window.quickSummarize = quickSummarize;
-window.openQuickSummarySheet = openQuickSummarySheet;
-window.closeQuickSummarySheet = closeQuickSummarySheet;
-window.closeQuickSummarySheetBackdrop = closeQuickSummarySheetBackdrop;
-window.saveQuickSummaryToLibrary = saveQuickSummaryToLibrary;
-window.removeFile = removeFile;
-window.clearSelectedFiles = clearSelectedFiles;
-window.handleFilesAdded = handleFilesAdded;
-window.renderFileList = renderFileList;
-window.handleDragOver = handleDragOver;
-window.handleDragLeave = handleDragLeave;
-window.handleDrop = handleDrop;
-window.openShareModal = openShareModal;
-window.closeShareModal = closeShareModal;
-window.closeShareModalBackdrop = closeShareModalBackdrop;
-window.copyShareLink = copyShareLink;
-window.shareNative = shareNative;
-window.saveSharedToLibrary = saveSharedToLibrary;
-window.dismissSharedReviewer = dismissSharedReviewer;
-window.checkForSharedReviewer = checkForSharedReviewer;
-window.initResultsNav = initResultsNav;
-window.updateResultsNavCounts = updateResultsNavCounts;
-window.openNoteEditor = openNoteEditor;
-window.closeNoteEditor = closeNoteEditor;
-window.closeNoteEditorBackdrop = closeNoteEditorBackdrop;
-window.saveNoteNow = saveNoteNow;
-window.toggleNotePin = toggleNotePin;
-window.openSubjectPicker = openSubjectPicker;
-window.closeSubjectPicker = closeSubjectPicker;
-window.closeSubjectPickerBackdrop = closeSubjectPickerBackdrop;
-window.pickSubject = pickSubject;
-window.openEditSubject = openEditSubject;
-window.closeEditSubject = closeEditSubject;
-window.closeEditSubjectBackdrop = closeEditSubjectBackdrop;
-window.saveSubject = saveSubject;
-window.deleteSubject = deleteSubject;
-window.openNoteActionSheet = openNoteActionSheet;
-window.closeNoteActionSheet = closeNoteActionSheet;
-window.closeNoteActionSheetBackdrop = closeNoteActionSheetBackdrop;
-window.actionEditNote = actionEditNote;
-window.actionTogglePin = actionTogglePin;
-window.actionChangeSubject = actionChangeSubject;
-window.actionDuplicateNote = actionDuplicateNote;
-window.actionShareNote = actionShareNote;
-window.actionDeleteNote = actionDeleteNote;
-window.openSaveAsNote = openSaveAsNote;
-window.closeSaveAsNote = closeSaveAsNote;
-window.closeSaveAsNoteBackdrop = closeSaveAsNoteBackdrop;
-window.confirmSaveAsNote = confirmSaveAsNote;
-window.renderNotesList = renderNotesList;
-window.renderSubjectFilters = renderSubjectFilters;
-window.setNoteFilter = setNoteFilter;
-window.onNoteSearchInput = onNoteSearchInput;
-window.clearNoteSearch = clearNoteSearch;
-window.openStudyMode = openStudyMode;
-window.exitStudyMode = exitStudyMode;
-window.flipStudyCard = flipStudyCard;
-window.studyNext = studyNext;
-window.studyPrev = studyPrev;
-window.rateStudyCard = rateStudyCard;
-window.skipStudyCard = skipStudyCard;
-window.toggleStudyShuffle = toggleStudyShuffle;
-window.toggleStudyOptions = toggleStudyOptions;
-window.applyStudyOptions = applyStudyOptions;
-window.resetStudySession = resetStudySession;
-window.studyReviewMissed = studyReviewMissed;
-window.restartStudySession = restartStudySession;
-window.hideSplashScreen = hideSplashScreen;
-window.createShareLink = createShareLink;
-window.getCurrentAuthorInfo = getCurrentAuthorInfo;
-
-
-console.log('✅ All functions exported and ready');
-console.log('✅ Backend integration complete');

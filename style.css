@@ -236,11 +236,6 @@ html.light footer {
 html.light footer a {
   color: #6366f1 !important;
 }
-html.light #backendStatus {
-  background: rgba(16, 185, 129, 0.1) !important;
-  border-color: rgba(16, 185, 129, 0.25) !important;
-  color: #059669 !important;
-}
 html.light .bg-emerald-500\/10 {
   background: rgba(16, 185, 129, 0.1) !important;
 }
@@ -429,16 +424,6 @@ html.light #quizContainer > div {
 }
 
 /* Profile modal input overrides */
-html.light #profileModal input,
-html.light #authModal input {
-  background: rgba(0, 0, 0, 0.04) !important;
-  border-color: rgba(0, 0, 0, 0.12) !important;
-  color: #0f172a !important;
-}
-html.light #profileModal input::placeholder,
-html.light #authModal input::placeholder {
-  color: #64748b !important;
-}
 html.light #evalModal textarea {
   background: rgba(0, 0, 0, 0.04) !important;
   border-color: rgba(0, 0, 0, 0.12) !important;
@@ -1371,3 +1356,35 @@ html.light .splash-footer  { color: #94a3b8; }
     transform: none !important;
   }
 }
+/* ============ BACKEND STATUS DOT ============ */
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #94a3b8;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  cursor: help;
+  flex-shrink: 0;
+}
+.status-dot.checking {
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+  animation: statusPulse 1.4s ease-in-out infinite;
+}
+.status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  animation: none;
+}
+.status-dot.offline {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  animation: none;
+}
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+html.light .status-dot.online  { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); }
+html.light .status-dot.offline { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25); }

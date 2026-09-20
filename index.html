@@ -63,37 +63,41 @@
   <!-- ===== MAIN WRAPPER ===== -->
   <div id="mainWrapper" class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6 tab-position-top">
     <!-- ===== HEADER ===== -->
-    <div class="glass-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 header">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-lg sm:text-xl">
-          <i class="fa-solid fa-graduation-cap"></i>
-        </div>
-        <div>
-          <h1 class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AcadHub</h1>
-          <p class="text-xs text-gray-400">Study Suite</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end flex-wrap">
-        <button onclick="switchTab('library')" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition btn-hover">
-          <i class="fa-solid fa-bookmark mr-1"></i> Library
-        </button>
-<button onclick="openAuthModal()" id="profileButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition btn-hover" title="Account">          <i id="userIcon" class="fa-solid fa-user text-xs"></i>
-        </button>
-        <button onclick="toggleEvalModal()" id="evalButton" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition btn-hover">
-          <i class="fa-solid fa-star text-xs text-amber-400 mr-1"></i> Evaluate
-        </button>
-        <button onclick="toggleSettingsModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition btn-hover" title="Settings">
-          <i class="fa-solid fa-gear text-xs"></i>
-        </button>
-        <button onclick="logout()" id="logoutButton" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition btn-hover hidden" title="Logout">
-          <i class="fa-solid fa-sign-out-alt text-xs"></i>
-        </button>
-        <div id="backendStatus" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-          <i class="fa-solid fa-circle mr-1"></i> ONLINE
-        </div>
-      </div>
+<!-- ===== HEADER ===== -->
+<div class="glass-card flex items-center justify-between gap-2 sm:gap-3 header">
+  <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-lg sm:text-xl shrink-0">
+      <i class="fa-solid fa-graduation-cap"></i>
     </div>
+    <div class="min-w-0">
+      <h1 class="text-lg sm:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent truncate">AcadHub</h1>
+      <p class="text-xs text-gray-400 truncate">Study Suite</p>
+    </div>
+  </div>
 
+  <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+    <button onclick="switchTab('library')"
+            class="px-2 sm:px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold hover:bg-white/20 transition btn-hover"
+            title="Open Library">
+      <i class="fa-solid fa-bookmark"></i>
+      <span class="hidden sm:inline ml-1">Library</span>
+    </button>
+
+    <button onclick="openAuthModal()" id="profileButton"
+            class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition btn-hover"
+            title="Account">
+      <i id="userIcon" class="fa-solid fa-user text-xs"></i>
+    </button>
+
+    <button onclick="toggleSettingsModal()"
+            class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition btn-hover"
+            title="Settings">
+      <i class="fa-solid fa-gear text-xs"></i>
+    </button>
+
+    <span id="backendStatus" class="status-dot checking" title="Checking connection…" aria-label="Backend status"></span>
+  </div>
+</div>
     <!-- ===== TABS ===== -->
 <div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
   <button id="tabNotes" onclick="switchTab('notes')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover"><i class="fa-solid fa-book-open mr-1"></i>Notes</button>
@@ -656,10 +660,19 @@
     </div>
   </div>
 
-  <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8">
-    Developed by <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a> · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam
-  </footer>
-
+<footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8 space-y-3">
+  <div>
+    <button onclick="toggleEvalModal()"
+            class="text-indigo-400 hover:underline btn-hover text-xs">
+      <i class="fa-solid fa-star mr-1"></i>Rate this app
+    </button>
+  </div>
+  <div>
+    Developed by
+    <a href="https://github.com/erosgbcs" target="_blank" class="text-indigo-400 hover:underline">erosgbcs</a>
+    · gabrielagsamosam@gmail.com · FB: Gabriel Agsamosam
+  </div>
+</footer>
   <!-- ===== EVALUATION MODAL ===== -->
   <div id="evalModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="glass-card w-80 p-6 relative">
