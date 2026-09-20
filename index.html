@@ -316,11 +316,159 @@
     <ul id="summaryList" class="space-y-2 text-sm"></ul>
   </div>
 
-  <div id="sectionFlashcards" data-section-id="flashcards" class="glass-card border-l-4 border-l-cyan-500">
-    <h3 class="text-sm font-bold uppercase text-cyan-400 mb-3"><i class="fa-solid fa-clone mr-2"></i>Flashcards</h3>
-    <div id="flashcardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+<div id="sectionFlashcards" data-section-id="flashcards" class="glass-card border-l-4 border-l-cyan-500">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-sm font-bold uppercase text-cyan-400"><i class="fa-solid fa-clone mr-2"></i>Flashcards</h3>
+    <button id="studyModeBtn" onclick="openStudyMode()" class="hidden px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs rounded-lg transition btn-hover">
+      <i class="fa-solid fa-graduation-cap mr-1"></i>Study Mode
+    </button>
+  </div>
+  <div id="flashcardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+</div>
+          <!-- ===== FLASHCARD STUDY MODE OVERLAY ===== -->
+<div id="studyModeOverlay" class="hidden fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-md p-0 sm:p-4">
+  <div class="glass-card w-full h-full sm:max-w-2xl sm:h-auto sm:max-h-[92vh] flex flex-col sm:rounded-2xl" style="border-radius:0;" onclick="event.stopPropagation()">
+
+    <!-- Top bar -->
+    <div class="flex items-center justify-between p-3 sm:p-4 border-b border-white/10 shrink-0 gap-2">
+      <button onclick="exitStudyMode()" class="flex items-center gap-2 text-xs opacity-70 hover:opacity-100 px-2 py-1">
+        <i class="fa-solid fa-xmark"></i> <span class="hidden sm:inline">Exit</span>
+      </button>
+      <div class="text-xs sm:text-sm font-semibold opacity-80">
+        Card <span id="studyCurrent">1</span> / <span id="studyTotal">0</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button onclick="toggleStudyShuffle()" id="studyShuffleBtn" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center" title="Shuffle">
+          <i class="fa-solid fa-shuffle text-xs"></i>
+        </button>
+        <button onclick="toggleStudyOptions()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center" title="Options">
+          <i class="fa-solid fa-gear text-xs"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="px-4 pt-3 shrink-0">
+      <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div id="studyProgressFill" class="h-full bg-indigo-500 rounded-full transition-all duration-300" style="width:0%;"></div>
+      </div>
+    </div>
+
+    <!-- Card area -->
+    <div id="studyCardArea" class="flex-1 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      <div id="studyCard" class="w-full max-w-lg rounded-2xl bg-white/5 border border-white/10 p-6 sm:p-8 cursor-pointer select-none transition-transform" onclick="flipStudyCard()">
+        <div class="text-center space-y-4">
+          <p id="studyTerm" class="text-lg sm:text-xl font-bold leading-tight"></p>
+          <div id="studyDivider" class="hidden">
+            <div class="h-px bg-white/15 my-2"></div>
+            <p id="studyDefinition" class="text-sm sm:text-base leading-relaxed opacity-90"></p>
+          </div>
+          <p id="studyHint" class="text-xs opacity-40 pt-2">Tap to reveal</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom actions -->
+    <div id="studyActions" class="border-t border-white/10 p-3 sm:p-4 shrink-0">
+      <!-- Unrevealed state -->
+      <div id="studyUnrevealedActions" class="flex items-center justify-between gap-2">
+        <button onclick="studyPrev()" class="px-3 sm:px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs sm:text-sm font-semibold">
+          <i class="fa-solid fa-chevron-left mr-1"></i><span class="hidden sm:inline">Prev</span>
+        </button>
+        <button onclick="flipStudyCard()" class="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">
+          <i class="fa-solid fa-rotate mr-2"></i>Flip
+        </button>
+        <button onclick="studyNext()" class="px-3 sm:px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs sm:text-sm font-semibold">
+          <span class="hidden sm:inline">Next</span><i class="fa-solid fa-chevron-right ml-1"></i>
+        </button>
+      </div>
+      <!-- Revealed state (rating buttons) -->
+      <div id="studyRevealedActions" class="hidden grid grid-cols-4 gap-2">
+        <button onclick="rateStudyCard('forgot')" class="py-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 text-xs font-semibold transition">
+          <div class="text-lg">😕</div>
+          <div class="mt-1">Forgot</div>
+        </button>
+        <button onclick="rateStudyCard('hard')" class="py-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 text-xs font-semibold transition">
+          <div class="text-lg">🤔</div>
+          <div class="mt-1">Hard</div>
+        </button>
+        <button onclick="rateStudyCard('easy')" class="py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold transition">
+          <div class="text-lg">😊</div>
+          <div class="mt-1">Easy</div>
+        </button>
+        <button onclick="skipStudyCard()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold transition">
+          <div class="text-lg">↷</div>
+          <div class="mt-1">Skip</div>
+        </button>
+      </div>
+    </div>
   </div>
 
+  <!-- Options panel (hidden by default) -->
+  <div id="studyOptionsPanel" class="hidden absolute top-16 right-4 sm:right-8 w-64 glass-card rounded-2xl p-4 z-10">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-semibold">Study Options</p>
+      <button onclick="toggleStudyOptions()" class="text-xs opacity-50 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="space-y-3 text-xs">
+      <label class="flex items-center justify-between cursor-pointer">
+        <span class="flex items-center gap-2"><i class="fa-solid fa-shuffle opacity-60"></i> Shuffle cards</span>
+        <input type="checkbox" id="optShuffle" class="accent-indigo-500" onchange="applyStudyOptions()" />
+      </label>
+      <label class="flex items-center justify-between cursor-pointer">
+        <span class="flex items-center gap-2"><i class="fa-solid fa-repeat opacity-60"></i> Repeat forgotten</span>
+        <input type="checkbox" id="optRepeat" checked class="accent-indigo-500" onchange="applyStudyOptions()" />
+      </label>
+      <label class="flex items-center justify-between cursor-pointer">
+        <span class="flex items-center gap-2"><i class="fa-solid fa-eye-slash opacity-60"></i> Hide term when rated</span>
+        <input type="checkbox" id="optHideTerm" class="accent-indigo-500" onchange="applyStudyOptions()" />
+      </label>
+      <label class="flex items-center justify-between cursor-pointer">
+        <span class="flex items-center gap-2"><i class="fa-solid fa-keyboard opacity-60"></i> Keyboard hints</span>
+        <input type="checkbox" id="optKbHints" checked class="accent-indigo-500" onchange="applyStudyOptions()" />
+      </label>
+      <button onclick="resetStudySession()" class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold border border-white/10">
+        <i class="fa-solid fa-rotate-right mr-1"></i> Reset session
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STUDY MODE COMPLETE SCREEN ===== -->
+<div id="studyCompleteOverlay" class="hidden fixed inset-0 z-[121] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+  <div class="glass-card w-full max-w-md rounded-2xl p-6 text-center">
+    <div class="text-5xl mb-4">🎉</div>
+    <h3 class="text-xl font-bold mb-1">Session complete!</h3>
+    <p class="text-xs opacity-60 mb-6">Nice work. Here's how you did.</p>
+
+    <div class="space-y-2 mb-6">
+      <div class="flex items-center justify-between px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+        <span class="text-sm flex items-center gap-2">😊 Easy</span>
+        <span id="studySummaryEasy" class="text-sm font-bold text-emerald-400">0</span>
+      </div>
+      <div class="flex items-center justify-between px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+        <span class="text-sm flex items-center gap-2">🤔 Hard</span>
+        <span id="studySummaryHard" class="text-sm font-bold text-amber-400">0</span>
+      </div>
+      <div class="flex items-center justify-between px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+        <span class="text-sm flex items-center gap-2">😕 Forgot</span>
+        <span id="studySummaryForgot" class="text-sm font-bold text-rose-400">0</span>
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <button id="studyReviewMissedBtn" onclick="studyReviewMissed()" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">
+        <i class="fa-solid fa-rotate-left mr-2"></i>Review missed (<span id="studyMissedCount">0</span>)
+      </button>
+      <button onclick="restartStudySession()" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold">
+        <i class="fa-solid fa-redo mr-2"></i>Study again
+      </button>
+      <button onclick="exitStudyMode()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-semibold border border-white/10">
+        Exit Study Mode
+      </button>
+    </div>
+  </div>
+</div>
   <div id="sectionQuiz" data-section-id="quiz" class="glass-card border-l-4 border-l-teal-500">
     <h3 class="text-sm font-bold uppercase text-teal-400 mb-3"><i class="fa-solid fa-circle-question mr-2"></i>Practice Quiz</h3>
     <div id="quizContainer" class="space-y-3"></div>

@@ -734,7 +734,7 @@ html.light #wakeUpOverlay .animate-spin {
 }
 
 #viewsContainer {
-  z-index: 10;
+  z-index: auto;
 }
 
 /* Make sure tab buttons are always clickable even on mobile */
@@ -1041,3 +1041,70 @@ html.light #notePinBtn.active {
 }
 
 #noteSearchInput::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+/* ============ FLASHCARD STUDY MODE ============ */
+#studyModeOverlay,
+#studyCompleteOverlay {
+  animation: reveal 0.2s ease-out;
+}
+
+#studyCard {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#studyCard:active {
+  transform: scale(0.995);
+}
+
+#studyCard.swipe-left {
+  animation: studySlideLeft 0.25s ease-out;
+}
+#studyCard.swipe-right {
+  animation: studySlideRight 0.25s ease-out;
+}
+
+@keyframes studySlideLeft {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(-30px); opacity: 0; }
+}
+@keyframes studySlideRight {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(30px); opacity: 0; }
+}
+
+#studyShuffleBtn.active {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+}
+
+/* Badge on browse cards after rating */
+.flashcard .study-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.5rem;
+  line-height: 1;
+}
+.flashcard .study-badge.easy { color: #34d399; background: rgba(16,185,129,0.15); }
+.flashcard .study-badge.hard { color: #fbbf24; background: rgba(245,158,11,0.15); }
+.flashcard .study-badge.forgot { color: #f87171; background: rgba(239,68,68,0.15); }
+
+.flashcard { position: relative; }
+
+/* Light mode overrides */
+html.light #studyModeOverlay,
+html.light #studyCompleteOverlay {
+  background: rgba(0,0,0,0.5);
+}
+html.light #studyCard {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.08);
+}

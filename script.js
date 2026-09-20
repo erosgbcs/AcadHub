@@ -1942,7 +1942,368 @@ function formatReviewerAsNote(results, { includeSummary, includeFlashcards, incl
   }
   return lines.join('\n').trim();
 }
+// ============================================================
+// FLASHCARD STUDY MODE
+// ============================================================
+let studyQueue = [];
+let studyOriginalQueue = [];
+let studyIndex = 0;
+let studyRevealed = false;
+let studyRatings = {};
+let studySessionStats = { easy: 0, hard: 0, forgot: 0 };
+let studyShuffled = false;
+let studyTouchStartX = 0;
+let studyTouchStartY = 0;
+let studyKbBound = false;
 
+function flashcardKey(card) {
+  const term = String(card.front || card.term || '').trim().toLowerCase();
+  return term || String(card.back || card.definition || '').trim().toLowerCase();
+}
+
+function getFlashcardRatings() {
+  return safeLocalStorageGet('acadhub_flashcard_ratings', {});
+}
+function setFlashcardRatings(map) {
+  safeLocalStorageSet('acadhub_flashcard_ratings', map);
+}
+
+function openStudyMode() {
+  const flashcards = (currentResults && currentResults.flashcards) || [];
+  if (!flashcards.length) {
+    showNotification('No flashcards to study.', 'warning');
+    return;
+  }
+
+  studyQueue = flashcards.map((c, i) => ({
+    index: i,
+    front: c.front,
+    back: c.back,
+    key: flashcardKey(c)
+  }));
+  studyOriginalQueue = [...studyQueue];
+
+  const opts = getStudyOptions();
+  if (opts.shuffle) studyQueue = shuffleArray(studyQueue);
+
+  studyIndex = 0;
+  studyRevealed = false;
+  studySessionStats = { easy: 0, hard: 0, forgot: 0 };
+  studyShuffled = !!opts.shuffle;
+
+  const shuffleBtn = document.getElementById('studyShuffleBtn');
+  if (shuffleBtn) shuffleBtn.classList.toggle('active', studyShuffled);
+
+  syncStudyOptionsUI();
+
+  document.getElementById('studyModeOverlay').classList.remove('hidden');
+  document.getElementById('studyCompleteOverlay').classList.add('hidden');
+  document.body.style.overflow = 'hidden';
+
+  bindStudyKeyboard();
+  bindStudySwipe();
+  renderStudyCard();
+}
+
+function exitStudyMode() {
+  document.getElementById('studyModeOverlay').classList.add('hidden');
+  document.getElementById('studyCompleteOverlay').classList.add('hidden');
+  document.getElementById('studyOptionsPanel').classList.add('hidden');
+  document.body.style.overflow = '';
+
+  const flashcards = (currentResults && currentResults.flashcards) || [];
+  if (flashcards.length) renderFlashcards(flashcards);
+}
+
+function renderStudyCard() {
+  if (!studyQueue.length || studyIndex >= studyQueue.length) {
+    showStudyComplete();
+    return;
+  }
+
+  const card = studyQueue[studyIndex];
+  document.getElementById('studyTerm').textContent = card.front;
+  document.getElementById('studyDefinition').textContent = card.back;
+  document.getElementById('studyCurrent').textContent = studyIndex + 1;
+  document.getElementById('studyTotal').textContent = studyQueue.length;
+
+  const divider = document.getElementById('studyDivider');
+  const hint = document.getElementById('studyHint');
+  const unrevealed = document.getElementById('studyUnrevealedActions');
+  const revealed = document.getElementById('studyRevealedActions');
+
+  if (studyRevealed) {
+    divider.classList.remove('hidden');
+    hint.textContent = 'Rate how you did';
+    unrevealed.classList.add('hidden');
+    revealed.classList.remove('hidden');
+  } else {
+    divider.classList.add('hidden');
+    hint.textContent = 'Tap to reveal';
+    unrevealed.classList.remove('hidden');
+    revealed.classList.add('hidden');
+  }
+
+  const progressPct = Math.round((studyIndex / studyQueue.length) * 100);
+  document.getElementById('studyProgressFill').style.width = progressPct + '%';
+}
+
+function flipStudyCard() {
+  studyRevealed = !studyRevealed;
+  renderStudyCard();
+}
+
+function studyNext() {
+  if (studyIndex < studyQueue.length - 1) {
+    studyIndex++;
+    studyRevealed = false;
+    renderStudyCard();
+  } else {
+    showStudyComplete();
+  }
+}
+
+function studyPrev() {
+  if (studyIndex > 0) {
+    studyIndex--;
+    studyRevealed = false;
+    renderStudyCard();
+  }
+}
+
+function rateStudyCard(rating) {
+  const card = studyQueue[studyIndex];
+  if (!card) return;
+
+  studyRatings = getFlashcardRatings();
+  studyRatings[card.key] = rating;
+  setFlashcardRatings(studyRatings);
+
+  studySessionStats[rating]++;
+
+  const cardEl = document.getElementById('studyCard');
+  cardEl.classList.add('swipe-left');
+  setTimeout(() => {
+    cardEl.classList.remove('swipe-left');
+
+    const opts = getStudyOptions();
+
+    studyQueue.splice(studyIndex, 1);
+
+    if (rating === 'forgot' && opts.repeat) {
+      const pos = Math.min(studyIndex + 3, studyQueue.length);
+      studyQueue.splice(pos, 0, card);
+    } else if (rating === 'hard' && opts.repeat) {
+      const pos = Math.min(studyIndex + 6, studyQueue.length);
+      studyQueue.splice(pos, 0, card);
+    }
+
+    if (studyIndex >= studyQueue.length) studyIndex = Math.max(0, studyQueue.length - 1);
+
+    studyRevealed = false;
+
+    if (!studyQueue.length) {
+      showStudyComplete();
+    } else {
+      renderStudyCard();
+    }
+  }, 220);
+}
+
+function skipStudyCard() {
+  const card = studyQueue.splice(studyIndex, 1)[0];
+  studyQueue.push(card);
+  if (studyIndex >= studyQueue.length) studyIndex = 0;
+  studyRevealed = false;
+  renderStudyCard();
+}
+
+function showStudyComplete() {
+  const easy = studySessionStats.easy;
+  const hard = studySessionStats.hard;
+  const forgot = studySessionStats.forgot;
+
+  document.getElementById('studySummaryEasy').textContent = easy;
+  document.getElementById('studySummaryHard').textContent = hard;
+  document.getElementById('studySummaryForgot').textContent = forgot;
+  document.getElementById('studyMissedCount').textContent = hard + forgot;
+
+  const missedBtn = document.getElementById('studyReviewMissedBtn');
+  missedBtn.style.display = (hard + forgot > 0) ? 'block' : 'none';
+
+  document.getElementById('studyCompleteOverlay').classList.remove('hidden');
+}
+
+function studyReviewMissed() {
+  const missedKeys = Object.keys(studyRatings).filter(k =>
+    studyRatings[k] === 'forgot' || studyRatings[k] === 'hard'
+  );
+
+  const flashcards = (currentResults && currentResults.flashcards) || [];
+  studyQueue = flashcards
+    .map((c, i) => ({ index: i, front: c.front, back: c.back, key: flashcardKey(c) }))
+    .filter(c => missedKeys.includes(c.key));
+
+  if (!studyQueue.length) {
+    showNotification('No missed cards to review.', 'info');
+    return;
+  }
+
+  studyIndex = 0;
+  studyRevealed = false;
+  studySessionStats = { easy: 0, hard: 0, forgot: 0 };
+  document.getElementById('studyCompleteOverlay').classList.add('hidden');
+  renderStudyCard();
+}
+
+function restartStudySession() {
+  const flashcards = (currentResults && currentResults.flashcards) || [];
+  studyQueue = flashcards.map((c, i) => ({ index: i, front: c.front, back: c.back, key: flashcardKey(c) }));
+  if (studyShuffled) studyQueue = shuffleArray(studyQueue);
+  studyIndex = 0;
+  studyRevealed = false;
+  studySessionStats = { easy: 0, hard: 0, forgot: 0 };
+  document.getElementById('studyCompleteOverlay').classList.add('hidden');
+  renderStudyCard();
+}
+
+function resetStudySession() {
+  studyQueue = [...studyOriginalQueue];
+  if (studyShuffled) studyQueue = shuffleArray(studyQueue);
+  studyIndex = 0;
+  studyRevealed = false;
+  studySessionStats = { easy: 0, hard: 0, forgot: 0 };
+  document.getElementById('studyOptionsPanel').classList.add('hidden');
+  document.getElementById('studyCompleteOverlay').classList.add('hidden');
+  renderStudyCard();
+  showNotification('Session reset.', 'info');
+}
+
+function toggleStudyShuffle() {
+  studyShuffled = !studyShuffled;
+  const btn = document.getElementById('studyShuffleBtn');
+  btn.classList.toggle('active', studyShuffled);
+
+  const optShuffle = document.getElementById('optShuffle');
+  if (optShuffle) optShuffle.checked = studyShuffled;
+
+  const opts = getStudyOptions();
+  opts.shuffle = studyShuffled;
+  setStudyOptions(opts);
+
+  if (studyShuffled) {
+    studyQueue = shuffleArray(studyQueue);
+    studyIndex = 0;
+    studyRevealed = false;
+    renderStudyCard();
+  }
+}
+
+function toggleStudyOptions() {
+  const panel = document.getElementById('studyOptionsPanel');
+  panel.classList.toggle('hidden');
+}
+
+function getStudyOptions() {
+  return safeLocalStorageGet('acadhub_study_options', {
+    shuffle: false,
+    repeat: true,
+    hideTerm: false,
+    kbHints: true
+  });
+}
+
+function setStudyOptions(opts) {
+  safeLocalStorageSet('acadhub_study_options', opts);
+}
+
+function syncStudyOptionsUI() {
+  const opts = getStudyOptions();
+  const s = document.getElementById('optShuffle');
+  const r = document.getElementById('optRepeat');
+  const h = document.getElementById('optHideTerm');
+  const k = document.getElementById('optKbHints');
+  if (s) s.checked = !!opts.shuffle;
+  if (r) r.checked = opts.repeat !== false;
+  if (h) h.checked = !!opts.hideTerm;
+  if (k) k.checked = opts.kbHints !== false;
+}
+
+function applyStudyOptions() {
+  const opts = {
+    shuffle: document.getElementById('optShuffle').checked,
+    repeat: document.getElementById('optRepeat').checked,
+    hideTerm: document.getElementById('optHideTerm').checked,
+    kbHints: document.getElementById('optKbHints').checked,
+  };
+  setStudyOptions(opts);
+
+  if (opts.shuffle !== studyShuffled) {
+    studyShuffled = opts.shuffle;
+    document.getElementById('studyShuffleBtn').classList.toggle('active', studyShuffled);
+    studyQueue = shuffleArray(studyQueue);
+    studyIndex = 0;
+    renderStudyCard();
+  }
+}
+
+function bindStudyKeyboard() {
+  if (studyKbBound) return;
+  studyKbBound = true;
+  document.addEventListener('keydown', (e) => {
+    const overlay = document.getElementById('studyModeOverlay');
+    if (!overlay || overlay.classList.contains('hidden')) return;
+
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      flipStudyCard();
+    } else if (e.key === 'ArrowLeft') {
+      studyPrev();
+    } else if (e.key === 'ArrowRight') {
+      studyNext();
+    } else if (e.key === 'Escape') {
+      exitStudyMode();
+    } else if (studyRevealed && e.key === '1') {
+      rateStudyCard('forgot');
+    } else if (studyRevealed && e.key === '2') {
+      rateStudyCard('hard');
+    } else if (studyRevealed && e.key === '3') {
+      rateStudyCard('easy');
+    }
+  });
+}
+
+function bindStudySwipe() {
+  const area = document.getElementById('studyCardArea');
+  if (!area || area.dataset.swipeBound) return;
+  area.dataset.swipeBound = 'true';
+
+  area.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    studyTouchStartX = t.screenX;
+    studyTouchStartY = t.screenY;
+  }, { passive: true });
+
+  area.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    const dx = t.screenX - studyTouchStartX;
+    const dy = t.screenY - studyTouchStartY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    if (absX < 60 || absX < absY) return;
+
+    if (dx > 0) {
+      studyPrev();
+    } else {
+      if (studyRevealed) skipStudyCard();
+      else studyNext();
+    }
+  }, { passive: true });
+}
   
 // TRANSFORM BACKEND RESPONSE
 function transformBackendResponse(backendData) {
@@ -2022,10 +2383,17 @@ function renderFlashcards(flashcards) {
   const grid = document.getElementById('flashcardGrid');
   grid.innerHTML = '';
 
+  const studyBtn = document.getElementById('studyModeBtn');
+  if (studyBtn) {
+    studyBtn.classList.toggle('hidden', !flashcards || flashcards.length === 0);
+  }
+
   if (!flashcards || flashcards.length === 0) {
     grid.innerHTML = '<p class="text-sm opacity-50 text-center col-span-full">No flashcards generated.</p>';
     return;
   }
+
+  const ratings = getFlashcardRatings();
 
   flashcards.forEach((card, index) => {
     const div = document.createElement('div');
@@ -2045,10 +2413,18 @@ function renderFlashcards(flashcards) {
       </div>
     `;
 
+    const key = flashcardKey(card);
+    const rating = ratings[key];
+    if (rating) {
+      const badge = document.createElement('span');
+      badge.className = 'study-badge ' + rating;
+      badge.textContent = rating === 'easy' ? '✓' : rating === 'hard' ? '~' : '!';
+      div.appendChild(badge);
+    }
+
     grid.appendChild(div);
   });
 }
-
 function renderQuiz(quiz) {
   const container = document.getElementById('quizContainer');
   container.innerHTML = '';
@@ -3405,7 +3781,19 @@ window.renderSubjectFilters = renderSubjectFilters;
 window.setNoteFilter = setNoteFilter;
 window.onNoteSearchInput = onNoteSearchInput;
 window.clearNoteSearch = clearNoteSearch;
-
+window.openStudyMode = openStudyMode;
+window.exitStudyMode = exitStudyMode;
+window.flipStudyCard = flipStudyCard;
+window.studyNext = studyNext;
+window.studyPrev = studyPrev;
+window.rateStudyCard = rateStudyCard;
+window.skipStudyCard = skipStudyCard;
+window.toggleStudyShuffle = toggleStudyShuffle;
+window.toggleStudyOptions = toggleStudyOptions;
+window.applyStudyOptions = applyStudyOptions;
+window.resetStudySession = resetStudySession;
+window.studyReviewMissed = studyReviewMissed;
+window.restartStudySession = restartStudySession;
 
 
 
