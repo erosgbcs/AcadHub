@@ -1248,6 +1248,7 @@ html.light #studyCard {
   color: transparent;
   display: flex;
   gap: 0;
+  white-space: nowrap; /* NEW: Prevents wrapping on small screens */
   animation: splashTitleShine 2.5s ease-in-out 1.2s infinite;
 }
 
@@ -1262,13 +1263,23 @@ html.light #studyCard {
   transform: translateY(14px);
   animation: splashLetterIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
 }
-.splash-title span:nth-child(1) { animation-delay: 0.30s; }
-.splash-title span:nth-child(2) { animation-delay: 0.38s; }
-.splash-title span:nth-child(3) { animation-delay: 0.46s; }
-.splash-title span:nth-child(4) { animation-delay: 0.54s; }
-.splash-title span:nth-child(5) { animation-delay: 0.62s; }
-.splash-title span:nth-child(6) { animation-delay: 0.70s; }
-.splash-title span:nth-child(7) { animation-delay: 0.78s; }
+
+/* Existing delays */
+.splash-title span:nth-child(1) { animation-delay: 0.30s; } /* A */
+.splash-title span:nth-child(2) { animation-delay: 0.38s; } /* c */
+.splash-title span:nth-child(3) { animation-delay: 0.46s; } /* a */
+.splash-title span:nth-child(4) { animation-delay: 0.54s; } /* d */
+.splash-title span:nth-child(5) { animation-delay: 0.62s; } /* H */
+.splash-title span:nth-child(6) { animation-delay: 0.70s; } /* u */
+.splash-title span:nth-child(7) { animation-delay: 0.78s; } /* b */
+
+/* NEW delays for " Suite" */
+.splash-title span:nth-child(8)  { animation-delay: 0.86s; } /* (space) */
+.splash-title span:nth-child(9)  { animation-delay: 0.94s; } /* S */
+.splash-title span:nth-child(10) { animation-delay: 1.02s; } /* u */
+.splash-title span:nth-child(11) { animation-delay: 1.10s; } /* i */
+.splash-title span:nth-child(12) { animation-delay: 1.18s; } /* t */
+.splash-title span:nth-child(13) { animation-delay: 1.26s; } /* e */
 
 @keyframes splashLetterIn {
   to { opacity: 1; transform: translateY(0); }
