@@ -1458,11 +1458,3 @@ html.light .splash-progress-text {
     height: 7px; /* Slightly thicker on mobile for visibility */
   }
 }
-
-/* Reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-  .splash-progress-fill,
-  .splash-progress-fill::after {
-    animation: none !important;
-  }
-}
