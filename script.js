@@ -833,12 +833,35 @@ if (sharedBanner) sharedBanner.classList.add('hidden');
 // ============================================================
 // SHARE FEATURE — Firebase with URL-encoded fallback
 // ============================================================
-const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const SHARE_URL_PREFIX = 'u.';                 // marks URL-encoded payloads
+const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SHARE_URL_PREFIX = 'u.';
 const SHARE_COLLECTION = 'shared_reviewers';
 
-let currentSharedReviewer = null;   // { title, data } when viewing a shared link
+let currentSharedReviewer = null;
 let currentSharedLink = '';
+let cachedAuthorName = null;
+
+// ---- Author helper ----
+async function getCurrentAuthorInfo() {
+  if (!auth || !auth.currentUser) return { name: 'Anonymous', uid: null };
+  if (cachedAuthorName) return { name: cachedAuthorName, uid: auth.currentUser.uid };
+
+  const u = auth.currentUser;
+  try {
+    if (firebaseAvailable && db) {
+      const doc = await db.collection('users').doc(u.uid).get();
+      if (doc.exists) {
+        const d = doc.data();
+        const full = [d.firstName, d.lastName].filter(Boolean).join(' ').trim();
+        if (full) { cachedAuthorName = full; return { name: full, uid: u.uid }; }
+      }
+    }
+  } catch (e) { /* fall through */ }
+
+  const fallback = u.displayName || (u.email ? u.email.split('@')[0] : 'Anonymous');
+  cachedAuthorName = fallback;
+  return { name: fallback, uid: u.uid };
+}
 
 // ---- URL-safe base64 helpers ----
 function bytesToBase64Url(bytes) {
@@ -859,36 +882,33 @@ function base64UrlToBytes(s) {
 function encodeSharePayload(obj) {
   const json = JSON.stringify(obj);
   const utf8 = new TextEncoder().encode(json);
-  const compressed = (typeof pako !== 'undefined')
-    ? pako.deflate(utf8, { level: 9 })
-    : utf8;
+  const compressed = (typeof pako !== 'undefined') ? pako.deflate(utf8, { level: 9 }) : utf8;
   return SHARE_URL_PREFIX + bytesToBase64Url(compressed);
 }
 
 function decodeSharePayload(encoded) {
-  const payload = encoded.startsWith(SHARE_URL_PREFIX)
-    ? encoded.slice(SHARE_URL_PREFIX.length)
-    : encoded;
-
+  const payload = encoded.startsWith(SHARE_URL_PREFIX) ? encoded.slice(SHARE_URL_PREFIX.length) : encoded;
   const bytes = base64UrlToBytes(payload);
-  const inflated = (typeof pako !== 'undefined')
-    ? pako.inflate(bytes)
-    : bytes;
+  const inflated = (typeof pako !== 'undefined') ? pako.inflate(bytes) : bytes;
   const json = new TextDecoder().decode(inflated);
   return JSON.parse(json);
 }
 
-// ---- Build a shareable link (Firebase first, URL fallback) ----
-async function buildShareableLink(title, data) {
+// ---- Build link (meta = { title, author, subject }) ----
+async function buildShareableLink(meta, data) {
   const baseUrl = window.location.origin + window.location.pathname;
+  const payload = {
+    title: meta.title || 'Shared Reviewer',
+    author: meta.author || { name: 'Anonymous', uid: null },
+    subject: meta.subject || null,
+    data,
+  };
 
-  // Try Firebase first
   if (firebaseAvailable && db) {
     try {
       const docRef = db.collection(SHARE_COLLECTION).doc();
       await docRef.set({
-        title: title || 'Shared Reviewer',
-        data,
+        ...payload,
         createdAtMs: Date.now(),
         expiresAtMs: Date.now() + SHARE_TTL_MS,
       });
@@ -898,31 +918,46 @@ async function buildShareableLink(title, data) {
     }
   }
 
-  // Fallback: URL-encoded payload
-  const encoded = encodeSharePayload({ title: title || 'Shared Reviewer', data });
+  const encoded = encodeSharePayload(payload);
   const url = `${baseUrl}?share=${encoded}`;
-
   if (url.length > 7500) {
     throw new Error('Reviewer is too large to share as a link. Try generating fewer items.');
   }
-
   return { url, mode: 'url' };
 }
 
 // ---- Share modal ----
-function openShareModal() {
+async function openShareModal() {
   if (!currentResults) {
     showNotification('Nothing to share yet.', 'warning');
     return;
   }
+
   document.getElementById('shareModal').classList.remove('hidden');
+  document.getElementById('shareSetup').classList.remove('hidden');
   document.getElementById('shareResult').classList.add('hidden');
   document.getElementById('shareError').classList.add('hidden');
-  document.getElementById('shareLoading').classList.remove('hidden');
+  document.getElementById('shareLoading').classList.add('hidden');
   document.getElementById('shareLinkInput').value = '';
   document.getElementById('shareModeNote').textContent = '';
   document.getElementById('shareNativeBtn').classList.add('hidden');
-  createShareLink();
+
+  const titleInput = document.getElementById('shareTitleInput');
+  titleInput.value = currentResults.title || `Reviewer — ${new Date().toLocaleDateString()}`;
+
+  const select = document.getElementById('shareSubjectSelect');
+  const subjects = getNoteSubjects();
+  select.innerHTML = '<option value="">— No subject —</option>' +
+    subjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+
+  if (currentResults.subject && currentResults.subject.id) {
+    select.value = currentResults.subject.id;
+  }
+
+  const authorEl = document.getElementById('shareAuthorName');
+  authorEl.textContent = 'Loading…';
+  const author = await getCurrentAuthorInfo();
+  authorEl.textContent = author.name;
 }
 
 function closeShareModal() {
@@ -934,9 +969,23 @@ function closeShareModalBackdrop(e) {
 }
 
 async function createShareLink() {
+  document.getElementById('shareSetup').classList.add('hidden');
+  document.getElementById('shareLoading').classList.remove('hidden');
+  document.getElementById('shareResult').classList.add('hidden');
+  document.getElementById('shareError').classList.add('hidden');
+
   try {
-    const title = 'Shared Reviewer ' + new Date().toLocaleDateString();
-    const { url, mode } = await buildShareableLink(title, currentResults);
+    const title = document.getElementById('shareTitleInput').value.trim() || 'Shared Reviewer';
+    const subjectId = document.getElementById('shareSubjectSelect').value;
+
+    let subject = null;
+    if (subjectId) {
+      const found = getNoteSubject(subjectId);
+      if (found) subject = { id: found.id, name: found.name, color: found.color };
+    }
+
+    const author = await getCurrentAuthorInfo();
+    const { url, mode } = await buildShareableLink({ title, author, subject }, currentResults);
 
     currentSharedLink = url;
     document.getElementById('shareLinkInput').value = url;
@@ -951,6 +1000,7 @@ async function createShareLink() {
     console.error('Share link creation failed:', err);
     document.getElementById('shareError').textContent = err.message || 'Could not create share link.';
     document.getElementById('shareError').classList.remove('hidden');
+    document.getElementById('shareSetup').classList.remove('hidden');
   } finally {
     document.getElementById('shareLoading').classList.add('hidden');
     document.getElementById('shareResult').classList.remove('hidden');
@@ -987,7 +1037,6 @@ async function shareNative() {
       url: currentSharedLink,
     });
   } catch (err) {
-    // User cancelled — no error needed
     if (err.name !== 'AbortError') {
       console.warn('Native share failed:', err);
     }
@@ -1011,36 +1060,36 @@ async function checkForSharedReviewer() {
   if (!shareParam) return;
 
   try {
-    let title = 'Shared Reviewer';
-    let data = null;
+    let payload = null;
 
     if (shareParam.startsWith(SHARE_URL_PREFIX)) {
-      // URL-encoded payload
-      const parsed = decodeSharePayload(shareParam);
-      title = parsed.title || title;
-      data = parsed.data;
+      payload = decodeSharePayload(shareParam);
     } else {
-      // Firebase doc ID
       if (!firebaseAvailable || !db) {
         throw new Error('This link requires an internet connection.');
       }
       const snap = await db.collection(SHARE_COLLECTION).doc(shareParam).get();
-      if (!snap.exists) {
-        throw new Error('This shared reviewer no longer exists.');
-      }
+      if (!snap.exists) throw new Error('This shared reviewer no longer exists.');
       const doc = snap.data();
       if (doc.expiresAtMs && Date.now() > doc.expiresAtMs) {
         throw new Error('This shared reviewer has expired.');
       }
-      title = doc.title || title;
-      data = doc.data;
+      payload = doc;
     }
 
+    const data = payload.data || payload;
     if (!data || !data.summary) {
       throw new Error('The shared reviewer is empty or invalid.');
     }
 
-    currentSharedReviewer = { title, data };
+    currentSharedReviewer = {
+      title: payload.title || 'Shared Reviewer',
+      author: payload.author || null,
+      subject: payload.subject || null,
+      createdAtMs: payload.createdAtMs || null,
+      data,
+    };
+
     showSharedReviewer();
   } catch (err) {
     console.error('Shared reviewer load failed:', err);
@@ -1051,15 +1100,12 @@ async function checkForSharedReviewer() {
 
 function showSharedReviewer() {
   if (!currentSharedReviewer) return;
+  const { title, author, subject, createdAtMs, data } = currentSharedReviewer;
 
-  const { title, data } = currentSharedReviewer;
-
-  // Show the reviewer view and results
   switchTab('reviewer');
   const resultsContainer = document.getElementById('resultsContainer');
   resultsContainer.classList.remove('hidden');
 
-  // Render
   renderSummary(data.summary);
   renderFlashcards(data.flashcards);
   renderQuiz(data.quiz);
@@ -1071,48 +1117,70 @@ function showSharedReviewer() {
     }
   }
 
-  // Set current results so Save / Share work
   currentResults = {
+    title,
+    author,
+    subject,
     summary: data.summary || [],
     flashcards: data.flashcards || [],
     quiz: data.quiz || {},
     quality: data.quality || null,
   };
 
-  // Reveal the banner
   const banner = document.getElementById('sharedBanner');
+  const titleEl = document.getElementById('sharedBannerTitle');
+  const authorEl = document.getElementById('sharedBannerAuthor');
+  const subjectEl = document.getElementById('sharedBannerSubject');
+  const dateEl = document.getElementById('sharedBannerDate');
   const meta = document.getElementById('sharedBannerMeta');
+
+  if (titleEl) titleEl.textContent = title;
+
+  if (authorEl) {
+    const name = (author && author.name) ? author.name : 'Anonymous';
+    authorEl.innerHTML = `<i class="fa-solid fa-user"></i><span>By ${escapeHtml(name)}</span>`;
+  }
+
+  if (subjectEl) {
+    if (subject && subject.name) {
+      const color = subject.color || '#94a3b8';
+      subjectEl.classList.remove('hidden');
+      subjectEl.innerHTML = `<span class="note-subject-dot" style="background:${color};"></span>${escapeHtml(subject.name)}`;
+      subjectEl.style.background = color + '22';
+      subjectEl.style.color = color;
+      subjectEl.style.border = `1px solid ${color}55`;
+    } else {
+      subjectEl.classList.add('hidden');
+    }
+  }
+
+  if (dateEl) {
+    dateEl.textContent = createdAtMs ? new Date(createdAtMs).toLocaleDateString() : '';
+  }
+
+  if (meta) meta.textContent = 'Save it to keep it in your library.';
+
   if (banner) {
     banner.classList.remove('hidden', 'is-dismissing');
-    if (meta) {
-      meta.textContent = `${title} · Save it to keep it in your library.`;
-    }
     banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // Save button hidden — banner has its own Save
-const saveBtn = document.getElementById('saveToLibraryBtn');
-if (saveBtn) saveBtn.classList.add('hidden');
+  const saveBtn = document.getElementById('saveToLibraryBtn');
+  if (saveBtn) saveBtn.classList.add('hidden');
+  const noteBtn = document.getElementById('saveAsNoteBtn');
+  if (noteBtn) noteBtn.classList.add('hidden');
 
-const noteBtn = document.getElementById('saveAsNoteBtn');
-if (noteBtn) noteBtn.classList.add('hidden');
-
-showNotification('Shared reviewer loaded!', 'success');
+  showNotification('Shared reviewer loaded!', 'success');
   updateResultsNavCounts();
-initResultsNav();
-
-  
+  initResultsNav();
 }
 
 async function saveSharedToLibrary() {
   if (!currentSharedReviewer) return;
-
-  const { title, data } = currentSharedReviewer;
-  const ok = await persistLibraryItem(title, data);
-
+  const { title, data, author, subject } = currentSharedReviewer;
+  const ok = await persistLibraryItemWithMeta(title, data, { author, subject });
   if (ok) {
     dismissSharedReviewer();
-    // Restore normal action buttons
     const shareBtn = document.getElementById('shareReviewerBtn');
     if (shareBtn) shareBtn.classList.remove('hidden');
     const saveBtn = document.getElementById('saveToLibraryBtn');
@@ -1130,7 +1198,6 @@ function dismissSharedReviewer() {
   currentSharedReviewer = null;
   removeShareParamFromUrl();
 
-  // Reset the results view to a clean state
   const resultsContainer = document.getElementById('resultsContainer');
   if (resultsContainer) resultsContainer.classList.add('hidden');
   currentResults = null;
@@ -2502,6 +2569,41 @@ async function persistLibraryItem(title, data) {
   return true;
 }
 
+
+async function persistLibraryItemWithMeta(title, data, meta = {}) {
+  const saveItem = {
+    id: generateId(),
+    title,
+    date: new Date().toISOString(),
+    author: meta.author || null,
+    subject: meta.subject || null,
+    data,
+  };
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  saved.unshift(saveItem);
+  const ok = safeLocalStorageSet('acadhub_saved', saved);
+  if (!ok) {
+    showNotification('Could not save — local storage is full.', 'error');
+    return false;
+  }
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('library').doc(saveItem.id).set(saveItem);
+    } catch (err) {
+      console.error('Cloud save failed:', err);
+      showNotification('Saved locally, but cloud sync failed.', 'warning');
+      renderSavedList();
+      return true;
+    }
+  }
+
+  showNotification('Saved to library!', 'success');
+  renderSavedList();
+  return true;
+}
 async function saveToLibrary() {
   if (!currentResults) {
     showNotification('No results to save.', 'warning');
@@ -2876,8 +2978,14 @@ function loadSavedItem(index) {
   renderFlashcards(item.data.flashcards);
   renderQuiz(item.data.quiz);
 
-  currentResults = item.data;
-document.getElementById('saveToLibraryBtn').classList.add('hidden');
+currentResults = {
+  ...item.data,
+  title: item.title,
+  author: item.author || null,
+  subject: item.subject || null,
+};
+  
+ document.getElementById('saveToLibraryBtn').classList.add('hidden');
 // Allow sharing items loaded from the library too
 document.getElementById('shareReviewerBtn').classList.remove('hidden');
 document.getElementById('saveAsNoteBtn').classList.remove('hidden');
@@ -3714,7 +3822,8 @@ window.resetStudySession = resetStudySession;
 window.studyReviewMissed = studyReviewMissed;
 window.restartStudySession = restartStudySession;
 window.hideSplashScreen = hideSplashScreen;
-
+window.createShareLink = createShareLink;
+window.getCurrentAuthorInfo = getCurrentAuthorInfo;
 
 
 console.log('✅ All functions exported and ready');
