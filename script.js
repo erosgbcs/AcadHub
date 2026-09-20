@@ -840,6 +840,9 @@ const SHARE_COLLECTION = 'shared_reviewers';
 let currentSharedReviewer = null;
 let currentSharedLink = '';
 let cachedAuthorName = null;
+let currentSharedTitle = '';
+let currentSharedAuthor = null;
+let currentSharedSubject = null;
 
 // ---- Author helper ----
 async function getCurrentAuthorInfo() {
@@ -987,8 +990,11 @@ async function createShareLink() {
     const author = await getCurrentAuthorInfo();
     const { url, mode } = await buildShareableLink({ title, author, subject }, currentResults);
 
-    currentSharedLink = url;
-    document.getElementById('shareLinkInput').value = url;
+   currentSharedLink = url;
+currentSharedTitle = title;
+currentSharedAuthor = author;
+currentSharedSubject = subject;
+document.getElementById('shareLinkInput').value = url;
     document.getElementById('shareModeNote').textContent = mode === 'firebase'
       ? 'Link expires in 30 days.'
       : 'Link contains the reviewer data — no expiration. Works offline.';
@@ -1012,28 +1018,56 @@ async function copyShareLink() {
   const url = input.value;
   if (!url) return;
 
+  const authorName = (currentSharedAuthor && currentSharedAuthor.name) ? currentSharedAuthor.name : 'Anonymous';
+  const subjectName = (currentSharedSubject && currentSharedSubject.name) ? currentSharedSubject.name : null;
+
+  const lines = [
+    currentSharedTitle ? `📘 ${currentSharedTitle}` : 'Check out this study reviewer I made on AcadHub',
+    `✍️ Made by ${authorName}`,
+  ];
+  if (subjectName) lines.push(`🏷️ Subject: ${subjectName}`);
+  lines.push('');
+  lines.push(url);
+
+  const text = lines.join('\n');
+
   try {
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(text);
     } else {
+      input.value = text;
       input.select();
       document.execCommand('copy');
+      input.value = url;
       input.setSelectionRange(0, 0);
     }
-    showNotification('Link copied!', 'success');
+    showNotification('Message copied!', 'success');
   } catch (err) {
     console.error('Copy failed:', err);
     input.select();
-    showNotification('Long-press the field to copy.', 'info');
+    showNotification('Long-press the link field to copy.', 'info');
   }
 }
-
 async function shareNative() {
   if (!currentSharedLink) return;
+
+  const authorName = (currentSharedAuthor && currentSharedAuthor.name) ? currentSharedAuthor.name : 'Anonymous';
+  const subjectName = (currentSharedSubject && currentSharedSubject.name) ? currentSharedSubject.name : null;
+
+  const lines = [
+    currentSharedTitle ? `📘 ${currentSharedTitle}` : 'Check out this study reviewer I made on AcadHub',
+    `✍️ Made by ${authorName}`,
+  ];
+  if (subjectName) lines.push(`🏷️ Subject: ${subjectName}`);
+  lines.push('');
+  lines.push(currentSharedLink);
+
+  const shareText = lines.join('\n');
+
   try {
     await navigator.share({
-      title: 'AcadHub Reviewer',
-      text: 'Check out this study reviewer I made on AcadHub',
+      title: currentSharedTitle || 'AcadHub Reviewer',
+      text: shareText,
       url: currentSharedLink,
     });
   } catch (err) {
@@ -1042,7 +1076,6 @@ async function shareNative() {
     }
   }
 }
-
 // ---- Receiving side ----
 function getShareParamFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -3272,6 +3305,10 @@ async function logout() {
       console.error('Logout error:', err);
     }
   }
+  cachedAuthorName = null;
+  currentSharedTitle = '';
+  currentSharedAuthor = null;
+  currentSharedSubject = null;
   closeAuthModal();
   showNotification('Logged out successfully.', 'info');
 }
