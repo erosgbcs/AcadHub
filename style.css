@@ -1249,12 +1249,26 @@ html.light #studyCard {
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0 0 0.5rem;
-  background: linear-gradient(90deg, #a5b4fc 0%, #67e8f9 100%);
+  background: linear-gradient(
+    90deg,
+    #a5b4fc 0%,
+    #67e8f9 40%,
+    #ffffff 50%,
+    #67e8f9 60%,
+    #a5b4fc 100%
+  );
+  background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   display: flex;
   gap: 0;
+  animation: splashTitleShine 2.5s ease-in-out 1.2s infinite;
+}
+
+@keyframes splashTitleShine {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
 }
 
 .splash-title span {
