@@ -3543,3 +3543,156 @@ if (document.readyState === 'loading') {
 } else {
   initializeApp();
 }
+
+// ============================================================
+// SAVED ITEM ACTION SHEET
+// ============================================================
+function openItemActionSheet(index) {
+  actionSheetIndex = index;
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[index];
+  if (!item) return;
+
+  document.getElementById('actionSheetTitle').textContent = item.title || 'Untitled Reviewer';
+  document.getElementById('itemActionSheet').classList.remove('hidden');
+}
+
+function closeActionSheet() {
+  document.getElementById('itemActionSheet').classList.add('hidden');
+}
+
+function closeActionSheetBackdrop(e) {
+  if (e.target.id === 'itemActionSheet') closeActionSheet();
+}
+
+function actionViewItem() {
+  if (actionSheetIndex === null) return;
+  const index = actionSheetIndex;
+  closeActionSheet();
+  loadSavedItem(index);
+}
+
+function actionDeleteItem() {
+  if (actionSheetIndex === null) return;
+  const index = actionSheetIndex;
+  closeActionSheet();
+  deleteSavedItem(index);
+}
+
+// ---- Edit Name ----
+function openEditNameSheet() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  closeActionSheet();
+  document.getElementById('editNameInput').value = item.title || '';
+  document.getElementById('editNameSheet').classList.remove('hidden');
+  setTimeout(() => document.getElementById('editNameInput').focus(), 100);
+}
+
+function closeEditNameSheet() {
+  document.getElementById('editNameSheet').classList.add('hidden');
+}
+
+function closeEditNameSheetBackdrop(e) {
+  if (e.target.id === 'editNameSheet') closeEditNameSheet();
+}
+
+async function saveEditedName() {
+  const newName = document.getElementById('editNameInput').value.trim();
+  if (!newName) {
+    showNotification('Name cannot be empty.', 'warning');
+    return;
+  }
+  if (actionSheetIndex === null) return;
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  item.title = newName;
+  safeLocalStorageSet('acadhub_saved', saved);
+
+  if (firebaseAvailable && auth && auth.currentUser && item.id) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('library').doc(item.id).set({ title: newName }, { merge: true });
+    } catch (err) {
+      console.error('Error updating name in Firebase:', err);
+      showNotification('Renamed locally, but cloud sync failed.', 'warning');
+    }
+  }
+
+  closeEditNameSheet();
+  renderSavedList();
+  showNotification('Name updated.', 'success');
+}
+
+// ---- Subject / Category ----
+function openSubjectSheet() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  closeActionSheet();
+  document.getElementById('subjectNameInput').value = item.subject?.name || '';
+
+  const swatchContainer = document.getElementById('subjectColorSwatches');
+  swatchContainer.innerHTML = '';
+  let selectedColor = item.subject?.color || SUBJECT_COLORS[0];
+
+  SUBJECT_COLORS.forEach(color => {
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'w-8 h-8 rounded-full border-2 transition btn-hover';
+    swatch.style.background = color;
+    swatch.style.borderColor = (color === selectedColor) ? '#fff' : 'transparent';
+    swatch.onclick = () => {
+      selectedColor = color;
+      swatchContainer.querySelectorAll('button').forEach(b => b.style.borderColor = 'transparent');
+      swatch.style.borderColor = '#fff';
+      swatchContainer.dataset.selected = color;
+    };
+    swatchContainer.appendChild(swatch);
+  });
+  swatchContainer.dataset.selected = selectedColor;
+
+  document.getElementById('subjectSheet').classList.remove('hidden');
+}
+
+function closeSubjectSheet() {
+  document.getElementById('subjectSheet').classList.add('hidden');
+}
+
+function closeSubjectSheetBackdrop(e) {
+  if (e.target.id === 'subjectSheet') closeSubjectSheet();
+}
+
+async function saveSubjectDetails() {
+  if (actionSheetIndex === null) return;
+
+  const name = document.getElementById('subjectNameInput').value.trim();
+  const color = document.getElementById('subjectColorSwatches').dataset.selected || SUBJECT_COLORS[0];
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[actionSheetIndex];
+  if (!item) return;
+
+  item.subject = name ? { name, color } : null;
+  safeLocalStorageSet('acadhub_saved', saved);
+
+  if (firebaseAvailable && auth && auth.currentUser && item.id) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('library').doc(item.id).set({ subject: item.subject }, { merge: true });
+    } catch (err) {
+      console.error('Error updating subject in Firebase:', err);
+      showNotification('Saved locally, but cloud sync failed.', 'warning');
+    }
+  }
+
+  closeSubjectSheet();
+  renderSavedList();
+  showNotification('Subject updated.', 'success');
+}
