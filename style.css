@@ -1291,7 +1291,7 @@ html.light #studyCard {
 /* Footer text */
 .splash-footer {
   position: absolute;
-  bottom: 2rem;
+  bottom: 4rem;
   left: 0;
   right: 0;
   text-align: center;
@@ -1455,6 +1455,6 @@ html.light .splash-progress-text {
 /* Mobile adjustments */
 @media (max-width: 640px) {
   .splash-progress-bar {
-    height: 7px; /* Slightly thicker on mobile for visibility */
+    height: 8px; /* Slightly thicker on mobile for visibility */
   }
 }
