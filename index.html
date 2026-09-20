@@ -70,12 +70,13 @@
     </div>
 
     <!-- ===== TABS ===== -->
-    <div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
-      <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">AI Reviewer</button>
-      <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
-      <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
-      <button id="tabCalendar" onclick="switchTab('calendar')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Calendar</button>
-    </div>
+<div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
+  <button id="tabNotes" onclick="switchTab('notes')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover"><i class="fa-solid fa-book-open mr-1"></i>Notes</button>
+  <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">AI Reviewer</button>
+  <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
+  <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
+  <button id="tabCalendar" onclick="switchTab('calendar')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Calendar</button>
+</div>
 
     <!-- ===== VIEWS CONTAINER ===== -->
     <div id="viewsContainer" class="flex-1 space-y-4 sm:space-y-6 order-3">
