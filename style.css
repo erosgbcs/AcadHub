@@ -1364,13 +1364,9 @@ html.light .splash-footer  { color: #94a3b8; }
 html.light .status-dot.online  { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); }
 html.light .status-dot.offline { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25); }
 
-/* ============ SHARED BANNER VISIBILITY FIX ============ */
-#sharedBanner.hidden {
-  display: none !important;
-}
 /* ============ SPLASH PROGRESS BAR ============ */
 .splash-progress {
-  width: 220px;
+  width: 240px; /* Slightly wider for better visual balance */
   margin-top: 1.5rem;
   text-align: center;
   opacity: 0;
@@ -1378,40 +1374,95 @@ html.light .status-dot.offline { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
 }
 
 .splash-progress-bar {
-  height: 3px;
+  height: 6px; /* Upgraded from 3px to 6px */
   background: rgba(255, 255, 255, 0.08);
   border-radius: 9999px;
-  overflow: hidden;
+  overflow: hidden; /* Crucial for the shimmer effect */
+  position: relative;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
 }
 
 .splash-progress-fill {
   height: 100%;
   width: 0%;
+  /* Your existing gradient is perfect */
   background: linear-gradient(90deg, #6366f1 0%, #818cf8 50%, #06b6d4 100%);
   border-radius: 9999px;
   transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+  position: relative;
+  /* Upgraded: Pulsing glow effect */
+  animation: splashPulseGlow 2s infinite alternate;
+}
+
+/* Upgraded: Animated shimmer/sheen */
+.splash-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    90deg, 
+    rgba(255,255,255,0) 0%, 
+    rgba(255,255,255,0.4) 50%, 
+    rgba(255,255,255,0) 100%
+  );
+  animation: splashShimmer 1.5s infinite;
 }
 
 .splash-progress-text {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: #64748b;
   margin-top: 0.6rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.05em;
 }
 
+/* Upgraded: New Keyframe Animations */
+@keyframes splashPulseGlow {
+  0% { 
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3); 
+  }
+  100% { 
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.6), 
+                0 0 24px rgba(99, 102, 241, 0.4); 
+  }
+}
+
+@keyframes splashShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 /* Light mode */
 html.light .splash-progress-bar {
   background: rgba(0, 0, 0, 0.06);
+}
+html.light .splash-progress-fill {
+  /* Soften the glow for light mode so it doesn't look blurry */
+  animation: splashPulseGlowLight 2s infinite alternate;
 }
 html.light .splash-progress-text {
   color: #94a3b8;
 }
 
+@keyframes splashPulseGlowLight {
+  0% { box-shadow: 0 0 6px rgba(99, 102, 241, 0.2); }
+  100% { box-shadow: 0 0 12px rgba(6, 182, 212, 0.4); }
+}
+
+/* Mobile adjustments */
 @media (max-width: 640px) {
   .splash-progress-bar {
-    height: 5px;
+    height: 7px; /* Slightly thicker on mobile for visibility */
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .splash-progress-fill,
+  .splash-progress-fill::after {
+    animation: none !important;
   }
 }
