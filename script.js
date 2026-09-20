@@ -74,6 +74,10 @@ const API_ENDPOINTS = {
 let isSignUpMode = false;
 let selectedRating = 0;
 let currentTab = 'notes';
+// Splash screen timing
+const splashStartTime = Date.now();
+const SPLASH_MIN_VISIBLE_MS = 1200;
+
 
 let testQuestions = [];
 let currentQuestionIndex = 0;
@@ -133,7 +137,19 @@ function shuffleArray(array) {
   }
   return newArray;
 }
+function hideSplashScreen() {
+  const splash = document.getElementById('splashScreen');
+  if (!splash) return;
 
+  const elapsed = Date.now() - splashStartTime;
+  const waitFor = Math.max(0, SPLASH_MIN_VISIBLE_MS - elapsed);
+
+  setTimeout(() => {
+    splash.classList.add('splash-hide');
+    // Remove from DOM after fade-out completes (0.5s)
+    setTimeout(() => splash.remove(), 500);
+  }, waitFor);
+}
 // ============================================================
 // NOTIFICATION SYSTEM
 // ============================================================
@@ -3499,8 +3515,13 @@ updateProviderUI();
     enableTabButtons();
   });
 
- // Check for a shared reviewer in the URL
-checkForSharedReviewer();
+
+    // Check for a shared reviewer in the URL
+  checkForSharedReviewer();
+
+  // Fade out the splash screen once everything is ready
+  hideSplashScreen();
+
   console.log('✅ AcadHub Suite initialized successfully');
 }
 
@@ -3794,7 +3815,7 @@ window.applyStudyOptions = applyStudyOptions;
 window.resetStudySession = resetStudySession;
 window.studyReviewMissed = studyReviewMissed;
 window.restartStudySession = restartStudySession;
-
+window.hideSplashScreen = hideSplashScreen;
 
 
 

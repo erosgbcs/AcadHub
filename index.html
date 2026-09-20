@@ -23,7 +23,33 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<!-- ===== SPLASH / LOADING SCREEN ===== -->
+<div id="splashScreen" class="splash-screen" aria-hidden="true">
+  <div class="splash-glow splash-glow-1"></div>
+  <div class="splash-glow splash-glow-2"></div>
 
+  <div class="splash-content">
+    <div class="splash-logo">
+      <div class="splash-logo-ring"></div>
+      <div class="splash-logo-ring splash-logo-ring-2"></div>
+      <div class="splash-logo-inner">
+        <i class="fa-solid fa-graduation-cap"></i>
+      </div>
+    </div>
+
+    <h1 class="splash-title">
+      <span>A</span><span>c</span><span>a</span><span>d</span><span>H</span><span>u</span><span>b</span>
+    </h1>
+
+    <p class="splash-tagline">Smart Academic Workspace</p>
+
+    <div class="splash-loader">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <p class="splash-footer">Loading study tools…</p>
+</div>
   <!-- Wake-up overlay -->
   <div id="wakeUpOverlay" aria-hidden="true" style="position:fixed;inset:0;background:#0a0a12;color:#e2e8f0;display:none;align-items:center;justify-content:center;z-index:40;text-align:center;padding:1rem;">
     <div>
