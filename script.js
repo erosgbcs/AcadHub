@@ -1055,6 +1055,50 @@ function removeShareParamFromUrl() {
   window.history.replaceState({}, '', url.toString());
 }
 
+async function checkForSharedReviewer() {
+  const shareParam = getShareParamFromUrl();
+  if (!shareParam) return;
+
+  try {
+    let payload = null;
+
+    if (shareParam.startsWith(SHARE_URL_PREFIX)) {
+      payload = decodeSharePayload(shareParam);
+    } else {
+      if (!firebaseAvailable || !db) {
+        throw new Error('This link requires an internet connection.');
+      }
+      const snap = await db.collection(SHARE_COLLECTION).doc(shareParam).get();
+      if (!snap.exists) throw new Error('This shared reviewer no longer exists.');
+      const doc = snap.data();
+      if (doc.expiresAtMs && Date.now() > doc.expiresAtMs) {
+        throw new Error('This shared reviewer has expired.');
+      }
+      payload = doc;
+    }
+
+    const data = payload.data || payload;
+    if (!data || !data.summary) {
+      throw new Error('The shared reviewer is empty or invalid.');
+    }
+
+    currentSharedReviewer = {
+      title: payload.title || 'Shared Reviewer',
+      author: payload.author || null,
+      subject: payload.subject || null,
+      createdAtMs: payload.createdAtMs || null,
+      data,
+    };
+
+    showSharedReviewer();
+  } catch (err) {
+    console.error('Shared reviewer load failed:', err);
+    showNotification(err.message || 'Could not load shared reviewer.', 'error');
+    removeShareParamFromUrl();
+  }
+}
+
+
 function showSharedReviewer() {
   if (!currentSharedReviewer) return;
   const { title, author, subject, createdAtMs, data } = currentSharedReviewer;
