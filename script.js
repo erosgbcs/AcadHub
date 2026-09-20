@@ -77,6 +77,39 @@ let currentTab = 'notes';
 // Splash screen timing
 const splashStartTime = Date.now();
 const SPLASH_MIN_VISIBLE_MS = 3500;
+let splashProgressTimer = null;
+let splashProgress = 0;
+
+function startSplashProgress() {
+  const fill = document.getElementById('splashProgressFill');
+  const text = document.getElementById('splashProgressText');
+  if (!fill || !text) return;
+
+  splashProgress = 0;
+  splashProgressTimer = setInterval(() => {
+    const remaining = 90 - splashProgress;
+    const step = Math.max(0.3, remaining * 0.08);
+    splashProgress = Math.min(90, splashProgress + step);
+    fill.style.width = splashProgress + '%';
+    text.textContent = Math.round(splashProgress) + '%';
+  }, 120);
+}
+
+function completeSplashProgress() {
+  if (splashProgressTimer) {
+    clearInterval(splashProgressTimer);
+    splashProgressTimer = null;
+  }
+  const fill = document.getElementById('splashProgressFill');
+  const text = document.getElementById('splashProgressText');
+  if (fill) fill.style.width = '100%';
+  if (text) text.textContent = '100%';
+}
+
+
+
+
+
 
 
 let testQuestions = [];
@@ -160,12 +193,13 @@ function hideSplashScreen() {
   const waitFor = Math.max(0, SPLASH_MIN_VISIBLE_MS - elapsed);
 
   setTimeout(() => {
-    splash.classList.add('splash-hide');
-    // Remove from DOM after fade-out completes (0.5s)
-    setTimeout(() => splash.remove(), 500);
+    completeSplashProgress();
+    setTimeout(() => {
+      splash.classList.add('splash-hide');
+      setTimeout(() => splash.remove(), 500);
+    }, 250);
   }, waitFor);
-}
-// ============================================================
+}// ============================================================
 // NOTIFICATION SYSTEM
 // ============================================================
 function showNotification(message, type = 'success') {
@@ -3521,7 +3555,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
   console.log('🚀 Initializing AcadHub Suite...');
   console.log('📡 Backend URL:', API_BASE_URL);
-
+startSplashProgress();
   // Check backend health
   checkBackendHealth().then(available => {
     backendAvailable = available;
