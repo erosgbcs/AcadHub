@@ -76,7 +76,7 @@ let selectedRating = 0;
 let currentTab = 'notes';
 // Splash screen timing
 const splashStartTime = Date.now();
-const SPLASH_MIN_VISIBLE_MS = 3000;
+const SPLASH_MIN_VISIBLE_MS = 3500;
 
 
 let testQuestions = [];
