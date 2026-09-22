@@ -1548,3 +1548,43 @@ html.light .particle {
     opacity: 0.05 !important;
   }
 }
+
+/* ============ SAVED-ITEM VIEWER MODE ============ */
+/* Triggered by ?view=<id> — opened from Library in a new window.
+   Hides app chrome, leaving only the reviewer. */
+
+body.viewer-mode { padding: 0.5rem; }
+
+/* Hide header, tab bar, donation card */
+body.viewer-mode #mainWrapper > .glass-card.header,
+body.viewer-mode #tabContainer,
+body.viewer-mode #mainWrapper > .glass-card.mt-6 {
+  display: none !important;
+}
+
+/* Hide every view except the reviewer */
+body.viewer-mode #viewNotes,
+body.viewer-mode #viewLibrary,
+body.viewer-mode #viewTest,
+body.viewer-mode #viewCalendar {
+  display: none !important;
+}
+
+/* Hide the "Generate Study Materials" form card — results stay */
+body.viewer-mode #viewReviewer > .glass-card {
+  display: none !important;
+}
+
+/* Hide the shared-reviewer banner (that's for shared, not saved items) */
+body.viewer-mode #sharedBanner {
+  display: none !important;
+}
+
+/* Already saved — hide that button */
+body.viewer-mode #saveToLibraryBtn {
+  display: none !important;
+}
+
+body.viewer-mode > footer {
+  display: none !important;
+}

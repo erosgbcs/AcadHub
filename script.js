@@ -3033,6 +3033,29 @@ function renderSavedList() {
     container.appendChild(div);
   });
 }
+
+// ============================================================
+// OPEN SAVED REVIEWER IN A NEW WINDOW
+// ============================================================
+function openItemInNewWindow(index) {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[index];
+  if (!item || !item.data) {
+    showNotification('Item not found.', 'error');
+    return;
+  }
+
+  const base = window.location.origin + window.location.pathname;
+  const url = `${base}?view=${encodeURIComponent(item.id)}`;
+
+  const win = window.open(url, '_blank', 'noopener');
+  if (!win) {
+    showNotification('Pop-up blocked. Please allow pop-ups for this site.', 'warning');
+  }
+}
+
+
+
 function loadSavedItem(index) {
   const saved = safeLocalStorageGet('acadhub_saved', []);
   const item = saved[index];
@@ -3552,6 +3575,64 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+function checkForSavedItemView() {
+  const params = new URLSearchParams(window.location.search);
+  const viewId = params.get('view');
+  if (!viewId) return false;
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved.find(s => s.id === viewId);
+
+  if (!item || !item.data) {
+    document.body.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;font-family:'Inter',system-ui,sans-serif;">
+        <div>
+          <h1 style="font-size:1.5rem;margin-bottom:0.5rem;">Reviewer not found</h1>
+          <p style="opacity:0.6;">This saved reviewer could not be loaded. It may have been deleted.</p>
+        </div>
+      </div>`;
+    return true;
+  }
+
+  // Viewer mode
+  document.body.classList.add('viewer-mode');
+  document.title = (item.title || 'Reviewer') + ' — AcadHub';
+
+  switchTab('reviewer');
+
+  // Hide shared banner (that's for shared reviewers, not saved items)
+  const banner = document.getElementById('sharedBanner');
+  if (banner) banner.classList.add('hidden');
+
+  const resultsContainer = document.getElementById('resultsContainer');
+  resultsContainer.classList.remove('hidden');
+  renderSummary(item.data.summary);
+  renderFlashcards(item.data.flashcards);
+  renderQuiz(item.data.quiz);
+
+  if (item.data.quality) {
+    const qualityEl = document.getElementById('generationQuality');
+    if (qualityEl) {
+      qualityEl.textContent = `Generation quality: ${item.data.quality.score}% (source and answer consistency)`;
+    }
+  }
+
+  currentResults = {
+    ...item.data,
+    title: item.title,
+    author: item.author || null,
+    subject: item.subject || null,
+  };
+
+  document.getElementById('saveToLibraryBtn').classList.add('hidden');
+  document.getElementById('saveAsNoteBtn').classList.remove('hidden');
+  document.getElementById('shareReviewerBtn').classList.remove('hidden');
+
+  updateResultsNavCounts();
+  initResultsNav();
+
+  return true;
+}
 
 // ============================================================
 // INITIALIZATION - FIXED VERSION
@@ -3559,29 +3640,38 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
   console.log('🚀 Initializing AcadHub Suite...');
   console.log('📡 Backend URL:', API_BASE_URL);
-startSplashProgress();
-  startTipCarousel();
-  // Check backend health
-  checkBackendHealth().then(available => {
-    backendAvailable = available;
-    console.log(available ? '✅ Backend available' : '⚠️ Backend offline - using local mode');
-  });
 
-  // Load saved theme
+  // --- Load theme + accent (needed in every mode) ---
   const savedTheme = safeLocalStorageGet('theme', 'dark');
   document.documentElement.classList.remove('dark', 'light');
   document.documentElement.classList.add(savedTheme);
 
-  // Load saved accent color
   const savedAccent = safeLocalStorageGet('accent_color', '#6366f1');
   document.documentElement.style.setProperty('--accent', savedAccent);
   const accentPicker = document.getElementById('accentPicker');
   if (accentPicker) accentPicker.value = savedAccent;
 
-  // Load saved data
+  // --- Viewer mode? Skip splash, skip full app init ---
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('view')) {
+    const splash = document.getElementById('splashScreen');
+    if (splash) splash.remove();
+    checkBackendHealth();
+    checkForSavedItemView();
+    return;
+  }
+
+  // --- Normal app init (unchanged from here down) ---
+  startSplashProgress();
+  startTipCarousel();
+
+  checkBackendHealth().then(available => {
+    backendAvailable = available;
+    console.log(available ? '✅ Backend available' : '⚠️ Backend offline - using local mode');
+  });
+
   offlineQueue = safeLocalStorageGet('offline_queue', []);
 
-  // Render initial views
   renderSavedList();
   renderCalendar();
   renderNotesList();
@@ -3590,7 +3680,6 @@ startSplashProgress();
   updateSettingsUI();
   initQuickSummaryListeners();
 
-  // Force enable tab buttons
   setTimeout(() => {
     enableTabButtons();
     console.log('✅ Tab buttons force-enabled');
@@ -3600,20 +3689,10 @@ startSplashProgress();
     enableTabButtons();
   });
 
-  // Check for a shared reviewer in the URL
   checkForSharedReviewer();
-
-  // Fade out the splash screen once everything is ready
   hideSplashScreen();
 
   console.log('✅ AcadHub Suite initialized successfully');
-}
-
-// Call initialization when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-  initializeApp();
 }
 
 // ============================================================
@@ -3641,7 +3720,7 @@ function actionViewItem() {
   if (actionSheetIndex === null) return;
   const index = actionSheetIndex;
   closeActionSheet();
-  loadSavedItem(index);
+  openItemInNewWindow(index);   
 }
 
 function actionDeleteItem() {
@@ -3817,4 +3896,12 @@ function stopTipCarousel() {
     clearInterval(tipInterval);
     tipInterval = null;
   }
+}
+// ============================================================
+// BOOTSTRAP
+// ============================================================
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
 }
