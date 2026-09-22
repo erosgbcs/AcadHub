@@ -694,19 +694,25 @@ html.light #wakeUpOverlay .animate-spin {
 /* ============ TAB BUTTON CLICK FIX ============ */
 
 /* Ensure tab container and buttons are above other elements */
+/* Tab container — must sit BELOW modals (which start at z-50) */
 #tabContainer {
   position: relative;
-  z-index: 100 !important;
+  z-index: 40 !important;   /* was 100 */
 }
 
 #tabContainer button {
   position: relative;
-  z-index: 101 !important;
+  z-index: 41 !important;   /* was 101 */
   pointer-events: auto !important;
   cursor: pointer !important;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.tab-active {
+  position: relative;
+  z-index: 42 !important;   /* was 102 */
 }
 
 /* Ensure no other elements overlap the tabs */
@@ -761,11 +767,7 @@ html.light #wakeUpOverlay .animate-spin {
   pointer-events: none !important;
 }
 
-/* Tab active state enhancement */
-.tab-active {
-  position: relative;
-  z-index: 102 !important;
-}
+
 
 /* Add visual feedback for tab clicks */
 #tabContainer button:active {
