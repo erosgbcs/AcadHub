@@ -811,7 +811,11 @@ const hasFile = selectedFiles.length > 0;
   btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
   progressContainer.classList.remove('hidden');
   resultsContainer.classList.add('hidden');
-
+// Exit saved-view mode — we're back to the generator
+const viewReviewer = document.getElementById('viewReviewer');
+if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
+const backBtn = document.getElementById('backToGeneratorBtn');
+if (backBtn) backBtn.classList.add('hidden');
   try {
     const formData = new FormData();
 if (notes) formData.append('notes', notes);
@@ -3064,28 +3068,44 @@ function loadSavedItem(index) {
 
   switchTab('reviewer');
 
+  // ✅ NEW: enter saved-view mode — hide generator, show back button
+  const viewReviewer = document.getElementById('viewReviewer');
+  if (viewReviewer) viewReviewer.classList.add('saved-view-mode');
+  const backBtn = document.getElementById('backToGeneratorBtn');
+  if (backBtn) backBtn.classList.remove('hidden');
+
   document.getElementById('resultsContainer').classList.remove('hidden');
   renderSummary(item.data.summary);
   renderFlashcards(item.data.flashcards);
   renderQuiz(item.data.quiz);
 
-currentResults = {
-  ...item.data,
-  title: item.title,
-  author: item.author || null,
-  subject: item.subject || null,
-};
-  
- document.getElementById('saveToLibraryBtn').classList.add('hidden');
-// Allow sharing items loaded from the library too
-document.getElementById('shareReviewerBtn').classList.remove('hidden');
-document.getElementById('saveAsNoteBtn').classList.remove('hidden');
-  
-updateResultsNavCounts();
-initResultsNav();
-  
-}
+  currentResults = {
+    ...item.data,
+    title: item.title,
+    author: item.author || null,
+    subject: item.subject || null,
+  };
 
+  document.getElementById('saveToLibraryBtn').classList.add('hidden');
+  document.getElementById('shareReviewerBtn').classList.remove('hidden');
+  document.getElementById('saveAsNoteBtn').classList.remove('hidden');
+
+  updateResultsNavCounts();
+  initResultsNav();
+}
+function exitSavedView() {
+  const viewReviewer = document.getElementById('viewReviewer');
+  if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
+
+  const backBtn = document.getElementById('backToGeneratorBtn');
+  if (backBtn) backBtn.classList.add('hidden');
+
+  document.getElementById('resultsContainer').classList.add('hidden');
+  currentResults = null;
+
+  const qualityEl = document.getElementById('generationQuality');
+  if (qualityEl) qualityEl.textContent = '';
+}
 // ============================================================
 // QUICK SUMMARIZE (Gemini)
 // ============================================================
@@ -3720,7 +3740,14 @@ function actionViewItem() {
   if (actionSheetIndex === null) return;
   const index = actionSheetIndex;
   closeActionSheet();
-  openItemInNewWindow(index);   
+  loadSavedItem(index);          
+}
+
+function actionViewItemNewWindow() {
+  if (actionSheetIndex === null) return;
+  const index = actionSheetIndex;
+  closeActionSheet();
+  openItemInNewWindow(index);    
 }
 
 function actionDeleteItem() {

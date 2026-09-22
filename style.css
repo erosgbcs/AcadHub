@@ -1588,3 +1588,7 @@ body.viewer-mode #saveToLibraryBtn {
 body.viewer-mode > footer {
   display: none !important;
 }
+
+#viewReviewer.saved-view-mode > .glass-card {
+  display: none !important;
+}
