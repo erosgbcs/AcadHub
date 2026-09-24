@@ -170,7 +170,14 @@
   </div>
 </div>
 
-<div id="viewReviewer" class="hidden space-y-4 sm:space-y-6">     
+<div id="viewReviewer" class="hidden space-y-4 sm:space-y-6">
+
+  <!-- Back to Generator (visible when the form is hidden) -->
+  <button id="backToGeneratorBtn" onclick="exitSavedView()"
+          class="hidden mr-auto px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition btn-hover">
+    <i class="fa-solid fa-arrow-left mr-2"></i>Back to Generator
+  </button>
+
 <div id="sharedBanner" class="hidden glass-card border-l-4 border-l-amber-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
   <div class="flex items-start gap-3 min-w-0 flex-1">
     <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
@@ -375,9 +382,6 @@
 </div>
         <div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
   <div class="flex justify-end gap-2 flex-wrap">
-    <button id="backToGeneratorBtn" onclick="exitSavedView()" class="hidden mr-auto px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition btn-hover">
-      <i class="fa-solid fa-arrow-left mr-2"></i>Back to Generator
-    </button>
     <button id="saveAsNoteBtn" onclick="openSaveAsNote()" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition btn-hover">
       <i class="fa-solid fa-book-open mr-2"></i>Save as Note
     </button>
@@ -968,36 +972,98 @@
     </div>
   </div>
 
-  <!-- ===== SETTINGS MODAL ===== -->
-  <div id="settingsModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-    <div class="glass-card w-80 p-6 relative">
-      <button onclick="closeSettingsModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
-        <i class="fa-solid fa-times"></i>
-      </button>
-      <h3 class="text-sm font-semibold mb-4"><i class="fa-solid fa-gear mr-2"></i>Settings</h3>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <label class="text-xs font-semibold">Light Mode</label>
-          <button id="settingsThemeToggle" onclick="toggleTheme()" class="w-10 h-6 rounded-full bg-white/10 relative transition btn-hover">
-            <span id="settingsThemeDot" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition"></span>
-          </button>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold mb-1">Accent Color</label>
-          <input type="color" id="accentPicker" value="#6366f1" onchange="updateAccentColor(this.value)" class="w-full h-10 rounded-lg cursor-pointer" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold mb-1">Tab Position</label>
-          <select id="tabPositionSelect" onchange="changeTabPosition(this.value)" class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
-            <option value="top">Top</option>
-            <option value="bottom">Bottom</option>
-            <option value="left">Left Sidebar</option>
-          </select>
-        </div>
+<!-- ===== SETTINGS MODAL ===== -->
+<div id="settingsModal" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass-card w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
+    <button onclick="closeSettingsModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <h3 class="text-sm font-semibold mb-4"><i class="fa-solid fa-gear mr-2"></i>Settings</h3>
+
+    <div class="space-y-4">
+
+      <!-- Theme presets -->
+      <div>
+        <label class="block text-xs font-semibold mb-2">Theme</label>
+        <div id="themePresetGrid" class="grid grid-cols-3 gap-2"></div>
       </div>
+
+      <!-- Accent -->
+      <div class="flex items-center justify-between">
+        <label class="text-xs font-semibold">Accent color</label>
+        <input type="color" id="accentPicker" value="#6366f1"
+               onchange="updateThemeOverride('accent', this.value)"
+               class="w-12 h-8 rounded-lg cursor-pointer border border-white/10" />
+      </div>
+
+      <!-- Background -->
+      <div class="flex items-center justify-between">
+        <label class="text-xs font-semibold">Background</label>
+        <input type="color" id="bgPicker" value="#0a0a12"
+               onchange="updateThemeOverride('bgBody', this.value)"
+               class="w-12 h-8 rounded-lg cursor-pointer border border-white/10" />
+      </div>
+
+      <!-- Corner radius -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-semibold">Corner radius</label>
+          <span id="radiusValue" class="text-xs opacity-60">1.5rem</span>
+        </div>
+        <input type="range" id="radiusSlider" min="0" max="2" step="0.1" value="1.5"
+               oninput="updateThemeOverride('radiusCard', parseFloat(this.value)); document.getElementById('radiusValue').textContent = this.value + 'rem';" />
+      </div>
+
+      <!-- Card blur -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-semibold">Card blur</label>
+          <span id="blurValue" class="text-xs opacity-60">12px</span>
+        </div>
+        <input type="range" id="blurSlider" min="0" max="24" step="2" value="12"
+               oninput="updateThemeOverride('blur', parseInt(this.value)); document.getElementById('blurValue').textContent = this.value + 'px';" />
+      </div>
+
+      <!-- Density -->
+      <div>
+        <label class="block text-xs font-semibold mb-1">Density</label>
+        <select id="densitySelect" onchange="updateThemeOverride('density', parseFloat(this.value))"
+                class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+          <option value="0.85">Compact</option>
+          <option value="1" selected>Comfy</option>
+          <option value="1.15">Spacious</option>
+        </select>
+      </div>
+
+      <!-- Light mode toggle -->
+      <div class="flex items-center justify-between pt-2 border-t border-white/10">
+        <label class="text-xs font-semibold">Light Mode</label>
+        <button id="settingsThemeToggle" onclick="toggleTheme()" class="w-10 h-6 rounded-full bg-white/10 relative transition btn-hover">
+          <span id="settingsThemeDot" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition"></span>
+        </button>
+      </div>
+
+      <!-- Tab position -->
+      <div>
+        <label class="block text-xs font-semibold mb-1">Tab Position</label>
+        <select id="tabPositionSelect" onchange="changeTabPosition(this.value)"
+                class="w-full py-2 px-3 bg-white/10 border border-white/10 rounded-xl text-sm">
+          <option value="top">Top</option>
+          <option value="bottom">Bottom</option>
+          <option value="left">Left Sidebar</option>
+        </select>
+      </div>
+
+      <!-- Reset -->
+      <button onclick="resetThemeOverrides()"
+              class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold border border-white/10">
+        <i class="fa-solid fa-rotate-left mr-1"></i> Reset theme overrides
+      </button>
+
     </div>
   </div>
-
+</div>
   <!-- ===== QUICK SUMMARY SHEET (now centered) ===== -->
   <div id="quickSummarySheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeQuickSummarySheetBackdrop(event)">
     <div class="glass-card w-full max-w-md rounded-2xl p-5 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">

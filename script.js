@@ -129,6 +129,143 @@ let selectedCalendarDate = null;
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
+// ============================================================
+// THEME SYSTEM
+// ============================================================
+const THEME_PRESETS = {
+  midnight: { label: 'Midnight', accent: '#6366f1', bgBody: '#0a0a12', bgCardSolid: '#1a1a2e', radiusCard: 1.5, radiusBtn: 0.75, blur: 12, density: 1 },
+  ocean:    { label: 'Ocean',    accent: '#0ea5e9', bgBody: '#0a1420', bgCardSolid: '#132436', radiusCard: 1.5, radiusBtn: 0.75, blur: 12, density: 1 },
+  forest:   { label: 'Forest',   accent: '#10b981', bgBody: '#0a1410', bgCardSolid: '#15261e', radiusCard: 1.5, radiusBtn: 0.75, blur: 12, density: 1 },
+  sunset:   { label: 'Sunset',   accent: '#f97316', bgBody: '#150a08', bgCardSolid: '#2a1612', radiusCard: 1.5, radiusBtn: 0.75, blur: 12, density: 1 },
+  rose:     { label: 'Rose',     accent: '#ec4899', bgBody: '#130a12', bgCardSolid: '#251323', radiusCard: 1.5, radiusBtn: 0.75, blur: 12, density: 1 },
+  mono:     { label: 'Mono',     accent: '#64748b', bgBody: '#0e0e11', bgCardSolid: '#1c1c22', radiusCard: 1.5, radiusBtn: 0.75, blur: 12, density: 1 },
+};
+
+let currentTheme = { preset: 'midnight', overrides: {} };
+
+// ---- Color math ----
+function lightenHex(hex, amount) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, Math.round(((n >> 16) & 0xff) + (255 - ((n >> 16) & 0xff)) * amount));
+  const g = Math.min(255, Math.round(((n >> 8) & 0xff) + (255 - ((n >> 8) & 0xff)) * amount));
+  const b = Math.min(255, Math.round((n & 0xff) + (255 - (n & 0xff)) * amount));
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function darkenHex(hex, amount) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const r = Math.max(0, Math.round(((n >> 16) & 0xff) * (1 - amount)));
+  const g = Math.max(0, Math.round(((n >> 8) & 0xff) * (1 - amount)));
+  const b = Math.max(0, Math.round((n & 0xff) * (1 - amount)));
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// ---- Apply theme ----
+function resolveTheme(theme) {
+  const base = THEME_PRESETS[theme.preset] || THEME_PRESETS.midnight;
+  return { ...base, ...(theme.overrides || {}) };
+}
+
+function applyTheme(theme) {
+  const t = resolveTheme(theme);
+  const root = document.documentElement;
+  
+  // Accent + derived
+  root.style.setProperty('--accent', t.accent);
+  root.style.setProperty('--accent2', lightenHex(t.accent, 0.15));
+  
+  // NEW: RGB components for rgba() consumption
+  const rgb = (hex) => {
+    const n = parseInt(hex.replace('#', ''), 16);
+    return `${(n >> 16) & 0xff}, ${(n >> 8) & 0xff}, ${n & 0xff}`;
+  };
+  root.style.setProperty('--accent-rgb', rgb(t.accent));
+  root.style.setProperty('--accent2-rgb', rgb(lightenHex(t.accent, 0.15)));
+
+// Backgrounds (dark mode only — light mode uses CSS defaults)
+if (!root.classList.contains('light')) {
+  if (t.bgBody) root.style.setProperty('--bg-body', t.bgBody);
+  if (t.bgCardSolid) root.style.setProperty('--bg-card-solid', t.bgCardSolid);
+} else {
+  root.style.removeProperty('--bg-body');
+  root.style.removeProperty('--bg-card-solid');
+}
+
+  // Radius
+  if (t.radiusCard !== undefined) root.style.setProperty('--radius-card', t.radiusCard + 'rem');
+  if (t.radiusBtn !== undefined) {
+    root.style.setProperty('--radius-btn', t.radiusBtn + 'rem');
+    root.style.setProperty('--radius-input', t.radiusBtn + 'rem');
+    root.style.setProperty('--radius-lg', (t.radiusBtn + 0.25) + 'rem');
+  }
+
+  // Blur
+  if (t.blur !== undefined) root.style.setProperty('--card-blur', t.blur + 'px');
+
+  // Density
+  root.classList.remove('density-compact', 'density-comfy', 'density-spacious');
+  const densityClass = t.density === 0.85 ? 'density-compact'
+                     : t.density === 1.15 ? 'density-spacious'
+                     : 'density-comfy';
+  root.classList.add(densityClass);
+
+  // Update meta theme-color for Android status bar
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.setAttribute('content', t.accent);
+}
+
+// ---- Persist ----
+function saveTheme(theme) {
+  safeLocalStorageSet('acadhub_theme', theme);
+  if (firebaseAvailable && auth && auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid)
+      .set({ theme: theme }, { merge: true })
+      .catch(err => console.error('Error saving theme:', err));
+  }
+}
+
+// ---- User actions ----
+function selectThemePreset(presetKey) {
+  currentTheme = { preset: presetKey, overrides: {} };
+  applyTheme(currentTheme);
+  saveTheme(currentTheme);
+  renderThemePresets();
+}
+
+function updateThemeOverride(key, value) {
+  currentTheme.overrides = { ...currentTheme.overrides, [key]: value };
+  applyTheme(currentTheme);
+  saveTheme(currentTheme);
+  renderThemePresets();  // in case it affects active state
+}
+
+function resetThemeOverrides() {
+  currentTheme.overrides = {};
+  applyTheme(currentTheme);
+  saveTheme(currentTheme);
+  renderThemePresets();
+  syncThemeControls();
+}
+
+// ---- Init ----
+function loadTheme() {
+  // Migration: if user had old accent_color only, seed a theme
+  const existing = safeLocalStorageGet('acadhub_theme', null);
+  if (existing && existing.preset) {
+    currentTheme = existing;
+  } else {
+    const legacyAccent = safeLocalStorageGet('accent_color', null);
+    if (legacyAccent) {
+      currentTheme = {
+        preset: 'midnight',
+        overrides: { accent: legacyAccent },
+      };
+    }
+  }
+  applyTheme(currentTheme);
+}
+
+
+
 function safeLocalStorageSet(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
@@ -265,15 +402,16 @@ async function apiCall(endpoint, options = {}) {
   };
 
   if (options.formData) {
-    config.body = options.formData;
-  } else if (options.json) {
-    config.headers['Content-Type'] = 'application/json';
-    config.body = JSON.stringify(options.json);
-  }
+  config.body = options.formData;
+} else if (options.json) {
+  config.headers['Content-Type'] = 'application/json';
+  config.body = JSON.stringify(options.json);
+}
 
-  try {
-    const response = await fetch(url, config);
-    
+if (options.signal) config.signal = options.signal;
+
+try {
+  const response = await fetch(url, config);    
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
       throw new Error(errorData?.detail || `API error: ${response.status}`);
@@ -548,14 +686,6 @@ function openAuthModal() {
   document.getElementById('authModal').classList.remove('hidden');
   updateAuthUI();
 }
-// SETTINGS MANAGEMENT
-function toggleSettingsModal() {
-  const modal = document.getElementById('settingsModal');
-  modal.classList.toggle('hidden');
-  if (!modal.classList.contains('hidden')) {
-    updateSettingsUI();
-  }
-}
 
 function closeSettingsModal() {
   document.getElementById('settingsModal').classList.add('hidden');
@@ -564,7 +694,7 @@ function closeSettingsModal() {
 function toggleTheme() {
   const html = document.documentElement;
   const isDark = html.classList.contains('dark');
-
+  
   if (isDark) {
     html.classList.remove('dark');
     html.classList.add('light');
@@ -572,16 +702,17 @@ function toggleTheme() {
     html.classList.remove('light');
     html.classList.add('dark');
   }
-
-  const theme = html.classList.contains('dark') ? 'dark' : 'light';
-  safeLocalStorageSet('theme', theme);
-
+  
+  const mode = html.classList.contains('dark') ? 'dark' : 'light';
+  safeLocalStorageSet('theme', mode);
+  
   if (firebaseAvailable && auth && auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).set({
-      theme
-    }, { merge: true }).catch(err => console.error('Error saving theme:', err));
+    db.collection('users').doc(auth.currentUser.uid)
+      .set({ mode }, { merge: true }) // ← renamed field
+      .catch(err => console.error('Error saving theme mode:', err));
   }
-
+  
+  applyTheme(currentTheme); // ← add this
   updateSettingsUI();
 }
 
@@ -796,6 +927,8 @@ const SKELETON_STAGES = [
 const MIN_SKELETON_MS = 600;
 let skeletonStageTimer = null;
 let skeletonShownAt = 0;
+let generationAbortController = null;
+
 
 function showSkeleton() {
   // Guard against re-entry stacking timers
@@ -865,17 +998,21 @@ async function handleGenerate() {
   }
   
   submitBtn.disabled = true;
-  btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
-  resultsContainer.classList.add('hidden');
-  showSkeleton();
-  
-  // Exit saved-view mode — we're back to the generator
-  const viewReviewer = document.getElementById('viewReviewer');
-  if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
-  const backBtn = document.getElementById('backToGeneratorBtn');
-  if (backBtn) backBtn.classList.add('hidden');
-  
-  try {
+btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+resultsContainer.classList.add('hidden');
+
+const viewReviewer = document.getElementById('viewReviewer');
+if (viewReviewer) viewReviewer.classList.add('saved-view-mode');
+const backBtn = document.getElementById('backToGeneratorBtn');
+if (backBtn) backBtn.classList.remove('hidden');
+
+// Wire up an AbortController so "Back to Generator" can cancel the fetch
+generationAbortController = new AbortController();
+const signal = generationAbortController.signal;
+
+showSkeleton();
+
+try {
     const formData = new FormData();
     if (notes) formData.append('notes', notes);
     if (hasFile) {
@@ -899,13 +1036,13 @@ async function handleGenerate() {
     formData.append('enrich_count', document.getElementById('enrichCount').value || '5');
     
     let result;
-    if (provider === 'local') {
-      result = await apiCall(API_ENDPOINTS.generateLocal, { formData });
-    } else {
-      formData.append('api_key', apiKey);
-      formData.append('provider', provider);
-      result = await apiCall(API_ENDPOINTS.generateAI, { formData });
-    }
+if (provider === 'local') {
+  result = await apiCall(API_ENDPOINTS.generateLocal, { formData, signal });
+} else {
+  formData.append('api_key', apiKey);
+  formData.append('provider', provider);
+  result = await apiCall(API_ENDPOINTS.generateAI, { formData, signal });
+}
     
     const transformedData = transformBackendResponse(result);
     
@@ -941,9 +1078,14 @@ async function handleGenerate() {
     showNotification('Study materials generated successfully!', 'success');
     
   } catch (err) {
-    console.error('Error generating materials:', err);
-    showNotification(err.message || 'Error generating study materials. Please try again.', 'error');
-  } finally {
+  console.error('Error generating materials:', err);
+  showNotification(err.message || 'Error generating study materials. Please try again.', 'error');
+  
+  const viewReviewer = document.getElementById('viewReviewer');
+  if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
+  const backBtn = document.getElementById('backToGeneratorBtn');
+  if (backBtn) backBtn.classList.add('hidden');
+} finally {
     submitBtn.disabled = false;
     btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
     hideSkeleton();
@@ -3163,19 +3305,26 @@ function loadSavedItem(index) {
   initResultsNav();
 }
 function exitSavedView() {
+  // Cancel any in-flight generation — the user is intentionally
+  // navigating back and doesn't want results to arrive later.
+  if (generationAbortController) {
+    generationAbortController.abort();
+    generationAbortController = null;
+  }
+  
   const viewReviewer = document.getElementById('viewReviewer');
   if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
-
+  
   const backBtn = document.getElementById('backToGeneratorBtn');
   if (backBtn) backBtn.classList.add('hidden');
-
+  
   document.getElementById('resultsContainer').classList.add('hidden');
+  hideSkeleton();
   currentResults = null;
-
+  
   const qualityEl = document.getElementById('generationQuality');
   if (qualityEl) qualityEl.textContent = '';
-}
-// ============================================================
+}// ============================================================
 // QUICK SUMMARIZE (Gemini)
 // ============================================================
 let previewDebounceTimer = null;
@@ -3527,29 +3676,28 @@ const firestoreLibrary = await loadFromFirestore('library');
       renderSubjectFilters();
 
         // ---- Load user document (settings & profile) ----
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if (userDoc.exists) {
-          const userData = userDoc.data();
-
-          if (userData.theme) {
-            document.documentElement.classList.remove('dark', 'light');
-            document.documentElement.classList.add(userData.theme);
-            safeLocalStorageSet('theme', userData.theme);
-          }
-
-          if (userData.tabPosition) {
-            changeTabPosition(userData.tabPosition);
-          }
-
-          if (userData.accentColor) {
-            document.documentElement.style.setProperty('--accent', userData.accentColor);
-            safeLocalStorageSet('accent_color', userData.accentColor);
-            // Optionally update the color input value
-            const accentPicker = document.getElementById('accentPicker');
-            if (accentPicker) accentPicker.value = userData.accentColor;
-          }
-
-        }
+const userDoc = await db.collection('users').doc(user.uid).get();
+if (userDoc.exists) {
+  const userData = userDoc.data();
+  
+  if (userData.mode) {
+    document.documentElement.classList.remove('dark', 'light');
+    document.documentElement.classList.add(userData.mode);
+    safeLocalStorageSet('theme', userData.mode);
+  }
+  
+  if (userData.tabPosition) {
+    changeTabPosition(userData.tabPosition);
+  }
+  
+  if (userData.theme) {
+    currentTheme = userData.theme;
+    applyTheme(currentTheme);
+    safeLocalStorageSet('acadhub_theme', currentTheme);
+    syncThemeControls();
+    renderThemePresets();
+  }
+}
 
         // Re-render UI
         renderSavedList();
@@ -3605,15 +3753,6 @@ async function loadFromFirestore(collectionName) {
   } catch (err) {
     console.error(`Error loading ${collectionName}:`, err);
     return [];
-  }
-}
-function updateAccentColor(color) {
-  document.documentElement.style.setProperty('--accent', color);
-  safeLocalStorageSet('accent_color', color);
-  if (firebaseAvailable && auth && auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).set({
-      accentColor: color
-    }, { merge: true }).catch(err => console.error('Error saving accent color:', err));
   }
 }
 // ============================================================
@@ -3779,11 +3918,9 @@ function initializeApp() {
   document.documentElement.classList.remove('dark', 'light');
   document.documentElement.classList.add(savedTheme);
 
-  const savedAccent = safeLocalStorageGet('accent_color', '#6366f1');
-  document.documentElement.style.setProperty('--accent', savedAccent);
-  const accentPicker = document.getElementById('accentPicker');
-  if (accentPicker) accentPicker.value = savedAccent;
-
+ loadTheme();
+syncThemeControls();
+renderThemePresets();
   // --- Viewer mode? Skip splash, skip full app init ---
   const params = new URLSearchParams(window.location.search);
   if (params.get('view')) {
@@ -4030,7 +4167,55 @@ function startTipCarousel() {
     }, 4000); // Changes every 4 seconds
   }, 1500);
 }
+// ============================================================
+// THEME UI
+// ============================================================
+function renderThemePresets() {
+  const grid = document.getElementById('themePresetGrid');
+  if (!grid) return;
+  
+  grid.innerHTML = Object.entries(THEME_PRESETS).map(([key, preset]) => `
+    <button type="button"
+            class="theme-preset-card ${currentTheme.preset === key ? 'active' : ''}"
+            onclick="selectThemePreset('${key}')">
+      <span class="theme-preset-swatch" style="background: linear-gradient(135deg, ${preset.accent}, ${preset.bgBody});"></span>
+      <span class="theme-preset-label">${preset.label}</span>
+    </button>
+  `).join('');
+}
 
+function syncThemeControls() {
+  const t = resolveTheme(currentTheme);
+  
+  const accentPicker = document.getElementById('accentPicker');
+  if (accentPicker) accentPicker.value = t.accent;
+  
+  const bgPicker = document.getElementById('bgPicker');
+  if (bgPicker) bgPicker.value = t.bgBody || '#0a0a12';
+  
+  const radiusSlider = document.getElementById('radiusSlider');
+  const radiusValue = document.getElementById('radiusValue');
+  if (radiusSlider) radiusSlider.value = t.radiusCard;
+  if (radiusValue) radiusValue.textContent = t.radiusCard + 'rem';
+  
+  const blurSlider = document.getElementById('blurSlider');
+  const blurValue = document.getElementById('blurValue');
+  if (blurSlider) blurSlider.value = t.blur;
+  if (blurValue) blurValue.textContent = t.blur + 'px';
+  
+  const densitySelect = document.getElementById('densitySelect');
+  if (densitySelect) densitySelect.value = String(t.density);
+}
+
+function toggleSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  modal.classList.toggle('hidden');
+  if (!modal.classList.contains('hidden')) {
+    updateSettingsUI();
+    syncThemeControls();
+    renderThemePresets();
+  }
+}
 function stopTipCarousel() {
   if (tipInterval) {
     clearInterval(tipInterval);
