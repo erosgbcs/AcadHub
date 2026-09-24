@@ -1077,79 +1077,83 @@
     AI Providers
   </p>
 
-  <!-- Gemini -->
-  <div class="mb-4">
-    <label class="flex items-center gap-2 text-xs font-semibold mb-1">
-      <i class="fa-solid fa-wand-sparkles text-indigo-400"></i>
-      Gemini API Key
-      <span id="settingsGeminiStatus" class="ml-auto text-[10px] font-normal opacity-50">not set</span>
-    </label>
-    <div class="relative">
-      <input type="password" id="settingsGeminiKey" placeholder="AIza..."
-             autocomplete="off" autocapitalize="off" spellcheck="false"
-             class="text-sm pr-20" />
-      <div class="absolute right-2 top-1.5 flex gap-1">
-        <button type="button" onclick="toggleSettingsKeyVisibility('gemini')"
-                class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center btn-hover"
-                aria-label="Show/hide Gemini key">
-          <i class="fa-solid fa-eye text-xs" id="settingsGeminiKeyEye"></i>
-        </button>
-        <button type="button" onclick="saveSettingsAiKey('gemini')"
-                class="w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center btn-hover"
-                aria-label="Save Gemini key">
-          <i class="fa-solid fa-check text-xs text-white"></i>
-        </button>
-        <button type="button" onclick="clearSettingsAiKey('gemini')"
-                class="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/20 flex items-center justify-center btn-hover"
-                aria-label="Remove Gemini key">
-          <i class="fa-solid fa-trash text-xs text-rose-400"></i>
-        </button>
-      </div>
-    </div>
-    <p class="text-[10px] opacity-50 mt-1 leading-snug">
-      Used for Quick Summarize and AI Reviewer.
-      Get a free key at
-      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
-         class="text-indigo-400 hover:underline">Google AI Studio</a>.
-    </p>
+<!-- Gemini -->
+<div class="mb-4">
+  <label class="flex items-center gap-2 text-xs font-semibold mb-1">
+    <i class="fa-solid fa-wand-sparkles text-indigo-400"></i>
+    Gemini API Key
+    <span id="settingsGeminiStatus" class="ml-auto text-[10px] font-normal opacity-50">not set</span>
+  </label>
+
+  <div class="relative">
+    <input type="password" id="settingsGeminiKey" placeholder="AIza..."
+           autocomplete="off" autocapitalize="off" spellcheck="false"
+           class="text-sm pr-10" />
+    <button type="button" onclick="toggleSettingsKeyVisibility('gemini')"
+            class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center btn-hover"
+            aria-label="Show/hide Gemini key">
+      <i class="fa-solid fa-eye text-xs" id="settingsGeminiKeyEye"></i>
+    </button>
   </div>
 
-  <!-- DeepSeek -->
-  <div>
-    <label class="flex items-center gap-2 text-xs font-semibold mb-1">
-      <i class="fa-solid fa-robot text-cyan-400"></i>
-      DeepSeek API Key
-      <span id="settingsDeepseekStatus" class="ml-auto text-[10px] font-normal opacity-50">not set</span>
-    </label>
-    <div class="relative">
-      <input type="password" id="settingsDeepseekKey" placeholder="sk-..."
-             autocomplete="off" autocapitalize="off" spellcheck="false"
-             class="text-sm pr-20" />
-      <div class="absolute right-2 top-1.5 flex gap-1">
-        <button type="button" onclick="toggleSettingsKeyVisibility('deepseek')"
-                class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center btn-hover"
-                aria-label="Show/hide DeepSeek key">
-          <i class="fa-solid fa-eye text-xs" id="settingsDeepseekKeyEye"></i>
-        </button>
-        <button type="button" onclick="saveSettingsAiKey('deepseek')"
-                class="w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center btn-hover"
-                aria-label="Save DeepSeek key">
-          <i class="fa-solid fa-check text-xs text-white"></i>
-        </button>
-        <button type="button" onclick="clearSettingsAiKey('deepseek')"
-                class="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/20 flex items-center justify-center btn-hover"
-                aria-label="Remove DeepSeek key">
-          <i class="fa-solid fa-trash text-xs text-rose-400"></i>
-        </button>
-      </div>
-    </div>
-    <p class="text-[10px] opacity-50 mt-1 leading-snug">
-      Used for AI Reviewer when provider is DeepSeek.
-      Get a key at
-      <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener"
-         class="text-indigo-400 hover:underline">platform.deepseek.com</a>.
-    </p>
+  <div class="flex gap-2 mt-2">
+    <button type="button" onclick="saveSettingsAiKey('gemini')"
+            class="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold btn-hover">
+      <i class="fa-solid fa-floppy-disk mr-1"></i>Save key
+    </button>
+    <button type="button" onclick="clearSettingsAiKey('gemini')"
+            class="px-3 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-xs font-semibold border border-white/10 btn-hover"
+            aria-label="Remove Gemini key">
+      <i class="fa-solid fa-trash text-rose-400"></i>
+    </button>
   </div>
+
+  <p class="text-[10px] opacity-50 mt-2 leading-snug">
+    Used for Quick Summarize and AI Reviewer.
+    Get a free key at
+    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
+       class="text-indigo-400 hover:underline">Google AI Studio</a>.
+  </p>
+</div>
+
+<!-- DeepSeek -->
+<div>
+  <label class="flex items-center gap-2 text-xs font-semibold mb-1">
+    <i class="fa-solid fa-robot text-cyan-400"></i>
+    DeepSeek API Key
+    <span id="settingsDeepseekStatus" class="ml-auto text-[10px] font-normal opacity-50">not set</span>
+  </label>
+
+  <div class="relative">
+    <input type="password" id="settingsDeepseekKey" placeholder="sk-..."
+           autocomplete="off" autocapitalize="off" spellcheck="false"
+           class="text-sm pr-10" />
+    <button type="button" onclick="toggleSettingsKeyVisibility('deepseek')"
+            class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center btn-hover"
+            aria-label="Show/hide DeepSeek key">
+      <i class="fa-solid fa-eye text-xs" id="settingsDeepseekKeyEye"></i>
+    </button>
+  </div>
+
+  <div class="flex gap-2 mt-2">
+    <button type="button" onclick="saveSettingsAiKey('deepseek')"
+            class="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold btn-hover">
+      <i class="fa-solid fa-floppy-disk mr-1"></i>Save key
+    </button>
+    <button type="button" onclick="clearSettingsAiKey('deepseek')"
+            class="px-3 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-xs font-semibold border border-white/10 btn-hover"
+            aria-label="Remove DeepSeek key">
+      <i class="fa-solid fa-trash text-rose-400"></i>
+    </button>
+  </div>
+
+  <p class="text-[10px] opacity-50 mt-2 leading-snug">
+    Used for AI Reviewer when provider is DeepSeek.
+    Get a key at
+    <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener"
+       class="text-indigo-400 hover:underline">platform.deepseek.com</a>.
+  </p>
+</div>
 </div>
 
 
