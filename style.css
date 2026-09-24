@@ -1889,3 +1889,161 @@ button.bg-indigo-600:hover,
 #backToGeneratorBtn:not(.hidden) {
   animation: viewEnter 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
+
+/* ============ QUIZ TYPE TILES ============ */
+.quiz-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+@media (min-width: 640px) {
+  .quiz-type-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+.quiz-type-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.quiz-type-tile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.quiz-type-tile:active {
+  transform: scale(0.985);
+}
+
+/* Checked state — soft accent glow */
+.quiz-type-tile:has(input[type="checkbox"]:checked) {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15) inset;
+}
+.quiz-type-tile:has(input[type="checkbox"]:checked):hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* Head row: check + name */
+.quiz-type-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* Custom checkbox visual */
+.quiz-type-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.quiz-type-check i {
+  font-size: 0.55rem;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.quiz-type-tile:has(input[type="checkbox"]:checked) .quiz-type-check {
+  background: var(--accent, #6366f1);
+  border-color: var(--accent, #6366f1);
+}
+.quiz-type-tile:has(input[type="checkbox"]:checked) .quiz-type-check i {
+  opacity: 1;
+}
+
+.quiz-type-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.quiz-type-tile:not(:has(input[type="checkbox"]:checked)) .quiz-type-name {
+  opacity: 0.55;
+}
+
+/* Count input inside the tile */
+.quiz-type-count {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  color: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.15s, border-color 0.15s;
+  cursor: text;
+}
+.quiz-type-count:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.quiz-type-count:focus {
+  outline: none;
+  border-color: var(--accent, #6366f1);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Disabled (type off) — dim block input */
+.quiz-type-tile:not(:has(input[type="checkbox"]:checked)) .quiz-type-count {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Keyboard focus ring — shows on the tile, not on the hidden checkbox */
+.quiz-type-tile:has(input[type="checkbox"]:focus-visible) {
+  outline: 2px solid var(--accent, #6366f1);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .quiz-type-tile { transition: none; }
+  .quiz-type-tile:active { transform: none; }
+}
+
+/* Light mode */
+html.light .quiz-type-tile {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+html.light .quiz-type-tile:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+html.light .quiz-type-tile:has(input[type="checkbox"]:checked) {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+html.light .quiz-type-check {
+  border-color: rgba(0, 0, 0, 0.18);
+}
+html.light .quiz-type-count {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.1);
+}

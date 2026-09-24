@@ -801,7 +801,18 @@ function toggleAccuracyInfo() {
   const info = document.getElementById('accuracyInfo');
   info.classList.toggle('hidden');
 }
-
+// ============================================================
+// QUIZ TYPE TILES
+// ============================================================
+function toggleQuizTile(event) {
+  // Ignore clicks on the number input — user is editing count
+  const t = event.target;
+  if (t.tagName === 'INPUT' && t.type === 'number') return;
+  
+  const tile = event.currentTarget;
+  const cb = tile.querySelector('input[type="checkbox"]');
+  if (cb) cb.checked = !cb.checked;
+}
 // ============================================================
 // MULTI-FILE HANDLING (shared by Reviewer + Test modes)
 // ============================================================

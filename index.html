@@ -321,15 +321,48 @@
               <input type="number" id="numFlashcards" value="10" min="1" max="50" class="text-sm" />
             </div>
 
-            <div>
-              <label class="block text-xs font-semibold mb-2"><i class="fa-solid fa-circle-question mr-1"></i>Quiz Types &amp; Questions per Type</label>
-             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-  <div class="flex items-center gap-2"><input type="checkbox" id="useTrueFalse" checked class="accent-indigo-500" /><label class="text-xs">True/False</label><input type="number" id="numTrueFalse" value="3" min="0" max="50" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-  <div class="flex items-center gap-2"><input type="checkbox" id="useIdentification" checked class="accent-indigo-500" /><label class="text-xs">Identification</label><input type="number" id="numIdentification" value="3" min="0" max="50" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-  <div class="flex items-center gap-2"><input type="checkbox" id="useEnumeration" checked class="accent-indigo-500" /><label class="text-xs">Enumeration</label><input type="number" id="numEnumeration" value="2" min="0" max="50" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
-  <div class="flex items-center gap-2"><input type="checkbox" id="useMultipleChoice" checked class="accent-indigo-500" /><label class="text-xs">Multiple Choice</label><input type="number" id="numMultipleChoice" value="3" min="0" max="50" class="w-14 sm:w-16 py-1 px-1 sm:px-2 text-xs" /></div>
+           <div>
+  <label class="block text-xs font-semibold mb-2"><i class="fa-solid fa-circle-question mr-1"></i>Quiz Types &amp; Questions per Type</label>
+  <div class="quiz-type-grid">
+    
+    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
+      <input type="checkbox" id="useTrueFalse" checked class="sr-only" />
+      <div class="quiz-type-head">
+        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
+        <span class="quiz-type-name">True/False</span>
+      </div>
+      <input type="number" id="numTrueFalse" value="3" min="0" max="50" class="quiz-type-count" aria-label="Number of True/False questions" />
+    </div>
+    
+    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
+      <input type="checkbox" id="useIdentification" checked class="sr-only" />
+      <div class="quiz-type-head">
+        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
+        <span class="quiz-type-name">Identification</span>
+      </div>
+      <input type="number" id="numIdentification" value="3" min="0" max="50" class="quiz-type-count" aria-label="Number of Identification questions" />
+    </div>
+    
+    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
+      <input type="checkbox" id="useEnumeration" checked class="sr-only" />
+      <div class="quiz-type-head">
+        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
+        <span class="quiz-type-name">Enumeration</span>
+      </div>
+      <input type="number" id="numEnumeration" value="2" min="0" max="50" class="quiz-type-count" aria-label="Number of Enumeration questions" />
+    </div>
+    
+    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
+      <input type="checkbox" id="useMultipleChoice" checked class="sr-only" />
+      <div class="quiz-type-head">
+        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
+        <span class="quiz-type-name">Multiple Choice</span>
+      </div>
+      <input type="number" id="numMultipleChoice" value="3" min="0" max="50" class="quiz-type-count" aria-label="Number of Multiple Choice questions" />
+    </div>
+    
+  </div>
 </div>
-            </div>
 
             <div class="flex items-center gap-2">
               <input type="checkbox" id="useInternet" class="accent-indigo-500" />
