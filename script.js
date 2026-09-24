@@ -24,6 +24,40 @@ let db = null;
 let auth = null;
 let firebaseAvailable = false;
 const SUBJECT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#8b5cf6', '#64748b'];
+
+// ============================================================
+// AI API KEYS (Settings-owned, synced to Firestore)
+// ============================================================
+const AI_KEY_LS = {
+  gemini: 'acadhub_gemini_key',
+  deepseek: 'acadhub_deepseek_key',
+};
+const AI_KEY_FS = {
+  gemini: 'geminiApiKey',
+  deepseek: 'deepseekApiKey',
+};
+
+function getAiApiKey(provider) {
+  if (!provider || provider === 'local') return '';
+  const slot = AI_KEY_LS[provider];
+  return slot ? (safeLocalStorageGet(slot, '') || '') : '';
+}
+
+function setAiApiKey(provider, key) {
+  const slot = AI_KEY_LS[provider];
+  if (!slot) return false;
+  if (key) return safeLocalStorageSet(slot, key);
+  try { localStorage.removeItem(slot); return true; } catch (_) { return false; }
+}
+
+// One-time migration from old slot
+(function migrateLegacyGeminiKey() {
+  const legacy = safeLocalStorageGet('quick_summary_gemini_key', '');
+  if (legacy && !safeLocalStorageGet(AI_KEY_LS.gemini, '')) {
+    safeLocalStorageSet(AI_KEY_LS.gemini, legacy);
+    try { localStorage.removeItem('quick_summary_gemini_key'); } catch (_) {}
+  }
+})();
 let actionSheetIndex = null;
 try {
   if (typeof firebase !== 'undefined') {
@@ -742,35 +776,25 @@ function updateSettingsUI() {
 // AI PROVIDER UI
 function updateProviderUI() {
   const provider = document.getElementById('aiProvider').value;
-  const apiKeyContainer = document.getElementById('apiKeyContainer');
-  const apiKeyLabel = document.getElementById('apiKeyLabel');
-
-  if (provider === 'local') {
-    apiKeyContainer.style.display = 'none';
+  const hint = document.getElementById('apiKeyHint');
+  const nameEl = document.getElementById('apiKeyHintProvider');
+  if (!hint) return;
+  
+  if (provider === 'local') { hint.classList.add('hidden'); return; }
+  
+  const label = provider === 'gemini' ? 'Gemini' : 'DeepSeek';
+  const hasKey = !!getAiApiKey(provider);
+  
+  if (hasKey) {
+    hint.classList.add('hidden');
   } else {
-    apiKeyContainer.style.display = 'block';
-    apiKeyLabel.textContent = provider === 'gemini' ? 'Gemini API Key' : 'DeepSeek API Key';
+    if (nameEl) nameEl.textContent = label;
+    hint.classList.remove('hidden');
   }
 }
-
 function toggleAccuracyInfo() {
   const info = document.getElementById('accuracyInfo');
   info.classList.toggle('hidden');
-}
-
-function toggleApiKeyVisibility() {
-  const input = document.getElementById('apiKey');
-  const icon = document.getElementById('toggleEyeIcon');
-
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.classList.remove('fa-eye');
-    icon.classList.add('fa-eye-slash');
-  } else {
-    input.type = 'password';
-    icon.classList.remove('fa-eye-slash');
-    icon.classList.add('fa-eye');
-  }
 }
 
 // ============================================================
@@ -974,7 +998,6 @@ async function hideSkeletonRespectingMin() {
   hideSkeleton();
 }
 // AI REVIEWER - MAIN GENERATION FUNCTION
-// AI REVIEWER - MAIN GENERATION FUNCTION
 async function handleGenerate() {
   const submitBtn = document.getElementById('submitBtn');
   const btnContent = document.getElementById('btnContent');
@@ -990,29 +1013,33 @@ async function handleGenerate() {
   }
   
   const provider = document.getElementById('aiProvider').value;
-  const apiKey = document.getElementById('apiKey').value;
+  const apiKey = getAiApiKey(provider);
   
   if ((provider === 'gemini' || provider === 'deepseek') && !apiKey) {
-    showNotification(`Please enter your ${provider === 'gemini' ? 'Gemini' : 'DeepSeek'} API key.`, 'error');
+    showNotification(
+      `Add your ${provider === 'gemini' ? 'Gemini' : 'DeepSeek'} key in Settings first.`,
+      'error'
+    );
+    toggleSettingsModal();
     return;
   }
   
   submitBtn.disabled = true;
-btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
-resultsContainer.classList.add('hidden');
-
-const viewReviewer = document.getElementById('viewReviewer');
-if (viewReviewer) viewReviewer.classList.add('saved-view-mode');
-const backBtn = document.getElementById('backToGeneratorBtn');
-if (backBtn) backBtn.classList.remove('hidden');
-
-// Wire up an AbortController so "Back to Generator" can cancel the fetch
-generationAbortController = new AbortController();
-const signal = generationAbortController.signal;
-
-showSkeleton();
-
-try {
+  btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+  resultsContainer.classList.add('hidden');
+  
+  const viewReviewer = document.getElementById('viewReviewer');
+  if (viewReviewer) viewReviewer.classList.add('saved-view-mode');
+  const backBtn = document.getElementById('backToGeneratorBtn');
+  if (backBtn) backBtn.classList.remove('hidden');
+  
+  const controller = new AbortController();
+  generationAbortController = controller;
+  const signal = controller.signal;
+  
+  showSkeleton();
+  
+  try {
     const formData = new FormData();
     if (notes) formData.append('notes', notes);
     if (hasFile) {
@@ -1036,13 +1063,13 @@ try {
     formData.append('enrich_count', document.getElementById('enrichCount').value || '5');
     
     let result;
-if (provider === 'local') {
-  result = await apiCall(API_ENDPOINTS.generateLocal, { formData, signal });
-} else {
-  formData.append('api_key', apiKey);
-  formData.append('provider', provider);
-  result = await apiCall(API_ENDPOINTS.generateAI, { formData, signal });
-}
+    if (provider === 'local') {
+      result = await apiCall(API_ENDPOINTS.generateLocal, { formData, signal });
+    } else {
+      formData.append('api_key', apiKey);
+      formData.append('provider', provider);
+      result = await apiCall(API_ENDPOINTS.generateAI, { formData, signal });
+    }
     
     const transformedData = transformBackendResponse(result);
     
@@ -1060,7 +1087,6 @@ if (provider === 'local') {
       timestamp: new Date().toISOString()
     };
     
-    // Wait for min skeleton time before revealing results
     await hideSkeletonRespectingMin();
     
     resultsContainer.classList.remove('hidden');
@@ -1078,17 +1104,27 @@ if (provider === 'local') {
     showNotification('Study materials generated successfully!', 'success');
     
   } catch (err) {
-  console.error('Error generating materials:', err);
-  showNotification(err.message || 'Error generating study materials. Please try again.', 'error');
-  
-  const viewReviewer = document.getElementById('viewReviewer');
-  if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
-  const backBtn = document.getElementById('backToGeneratorBtn');
-  if (backBtn) backBtn.classList.add('hidden');
-} finally {
-    submitBtn.disabled = false;
-    btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
-    hideSkeleton();
+    if (err.name === 'AbortError') {
+      console.log('Generation cancelled by user');
+      return;
+    }
+    
+    console.error('Error generating materials:', err);
+    showNotification(err.message || 'Error generating study materials. Please try again.', 'error');
+    
+    if (generationAbortController === controller) {
+      const v = document.getElementById('viewReviewer');
+      if (v) v.classList.remove('saved-view-mode');
+      const b = document.getElementById('backToGeneratorBtn');
+      if (b) b.classList.add('hidden');
+    }
+  } finally {
+    if (generationAbortController === controller) {
+      generationAbortController = null;
+      submitBtn.disabled = false;
+      btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+      hideSkeleton();
+    }
   }
 }
 // ============================================================
@@ -3305,11 +3341,15 @@ function loadSavedItem(index) {
   initResultsNav();
 }
 function exitSavedView() {
-  // Cancel any in-flight generation — the user is intentionally
-  // navigating back and doesn't want results to arrive later.
   if (generationAbortController) {
     generationAbortController.abort();
     generationAbortController = null;
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const btnContent = document.getElementById('btnContent');
+    if (submitBtn) submitBtn.disabled = false;
+    if (btnContent) btnContent.innerHTML =
+      '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
   }
   
   const viewReviewer = document.getElementById('viewReviewer');
@@ -3318,34 +3358,22 @@ function exitSavedView() {
   const backBtn = document.getElementById('backToGeneratorBtn');
   if (backBtn) backBtn.classList.add('hidden');
   
-  document.getElementById('resultsContainer').classList.add('hidden');
+  const resultsContainer = document.getElementById('resultsContainer');
+  if (resultsContainer) resultsContainer.classList.add('hidden');
+  
   hideSkeleton();
   currentResults = null;
   
   const qualityEl = document.getElementById('generationQuality');
   if (qualityEl) qualityEl.textContent = '';
-}// ============================================================
+}
+
+
+
+// ============================================================
 // QUICK SUMMARIZE (Gemini)
 // ============================================================
 let previewDebounceTimer = null;
-
-function toggleQuickSummaryKey() {
-  const container = document.getElementById('quickSummaryKeyContainer');
-  container.classList.toggle('hidden');
-  if (!container.classList.contains('hidden')) {
-    document.getElementById('quickSummaryApiKey').value = safeLocalStorageGet('quick_summary_gemini_key', '');
-  }
-}
-
-function getQuickSummaryApiKey() {
-  const input = document.getElementById('quickSummaryApiKey');
-  const typed = input ? input.value.trim() : '';
-  if (typed) {
-    safeLocalStorageSet('quick_summary_gemini_key', typed);
-    return typed;
-  }
-  return safeLocalStorageGet('quick_summary_gemini_key', '');
-}
 
 async function requestSummaryOnly(apiKey) {
   const notes = document.getElementById('studyNotes').value.trim();
@@ -3391,12 +3419,12 @@ async function quickSummarize() {
     return;
   }
 
-  const apiKey = getQuickSummaryApiKey();
-  if (!apiKey) {
-    showNotification('Please enter your Gemini API key (tap "Gemini Key").', 'error');
-    document.getElementById('quickSummaryKeyContainer').classList.remove('hidden');
-    return;
-  }
+  const apiKey = getAiApiKey('gemini');
+if (!apiKey) {
+  showNotification('Add your Gemini key in Settings first.', 'error');
+  toggleSettingsModal();
+  return;
+}
 
   openQuickSummarySheet();
   document.getElementById('quickSummaryLoading').classList.remove('hidden');
@@ -3456,8 +3484,8 @@ async function runLivePreview() {
     return;
   }
 
-  const apiKey = getQuickSummaryApiKey();
-  if (!apiKey) return;
+  const apiKey = getAiApiKey('gemini');
+if (!apiKey) return;
 
   try {
     const summary = await requestSummaryOnly(apiKey);
@@ -3601,11 +3629,19 @@ async function logout() {
     }
   }
   cachedAuthorName = null;
-  currentSharedTitle = '';
-  currentSharedAuthor = null;
-  currentSharedSubject = null;
-  closeAuthModal();
-  showNotification('Logged out successfully.', 'info');
+currentSharedTitle = '';
+currentSharedAuthor = null;
+currentSharedSubject = null;
+
+Object.values(AI_KEY_LS).forEach(slot => {
+  try { localStorage.removeItem(slot); } catch (_) {}
+});
+loadAiKeysIntoSettings();
+updateProviderUI();
+updateQuickSummaryKeyHint();
+
+closeAuthModal();
+showNotification('Logged out successfully.', 'info');
 }
 async function migrateFirestoreData(user) {
   if (!firebaseAvailable || !db || !user) return;
@@ -3697,6 +3733,26 @@ if (userDoc.exists) {
     syncThemeControls();
     renderThemePresets();
   }
+
+  // ---- AI API keys sync ----
+  ['gemini', 'deepseek'].forEach(provider => {
+    const fsField  = AI_KEY_FS[provider];
+    const slot     = AI_KEY_LS[provider];
+    const cloudKey = userData[fsField];
+    const localKey = safeLocalStorageGet(slot, '');
+
+    if (cloudKey) {
+      safeLocalStorageSet(slot, cloudKey);
+    } else if (localKey) {
+      db.collection('users').doc(user.uid)
+        .set({ [fsField]: localKey }, { merge: true })
+        .catch(err => console.warn(provider + ' key backfill failed:', err));
+    }
+  });
+
+  loadAiKeysIntoSettings();
+  updateProviderUI();
+  updateQuickSummaryKeyHint();
 }
 
         // Re-render UI
@@ -3947,8 +4003,9 @@ migrateSavedFlashcardOrder();
   renderNotesList();
   renderSubjectFilters();
   updateProviderUI();
-  updateSettingsUI();
-  initQuickSummaryListeners();
+updateQuickSummaryKeyHint();
+updateSettingsUI();
+initQuickSummaryListeners();
 
   setTimeout(() => {
     enableTabButtons();
@@ -4214,8 +4271,117 @@ function toggleSettingsModal() {
     updateSettingsUI();
     syncThemeControls();
     renderThemePresets();
+    loadAiKeysIntoSettings();
   }
 }
+
+// ============================================================
+// SETTINGS AI-KEY UI
+// ============================================================
+function loadAiKeysIntoSettings() {
+  ['gemini', 'deepseek'].forEach(provider => {
+    const cap    = provider.charAt(0).toUpperCase() + provider.slice(1);
+    const input  = document.getElementById('settings' + cap + 'Key');
+    const status = document.getElementById('settings' + cap + 'Status');
+    const eye    = document.getElementById('settings' + cap + 'KeyEye');
+    if (!input) return;
+
+    const key = getAiApiKey(provider);
+    input.value = key;
+    input.type  = 'password';
+
+    if (eye) {
+      eye.classList.remove('fa-eye-slash');
+      eye.classList.add('fa-eye');
+    }
+
+    if (status) {
+      if (key) {
+        status.textContent = '✓ ···' + key.slice(-4);
+        status.className = 'ml-auto text-[10px] font-normal text-emerald-400';
+      } else {
+        status.textContent = 'not set';
+        status.className = 'ml-auto text-[10px] font-normal opacity-50';
+      }
+    }
+  });
+}
+
+function toggleSettingsKeyVisibility(provider) {
+  const cap   = provider.charAt(0).toUpperCase() + provider.slice(1);
+  const input = document.getElementById('settings' + cap + 'Key');
+  const eye   = document.getElementById('settings' + cap + 'KeyEye');
+  if (!input || !eye) return;
+
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  eye.classList.toggle('fa-eye',       !show);
+  eye.classList.toggle('fa-eye-slash',  show);
+}
+
+async function saveSettingsAiKey(provider) {
+  const cap   = provider.charAt(0).toUpperCase() + provider.slice(1);
+  const label = provider === 'gemini' ? 'Gemini' : 'DeepSeek';
+  const input = document.getElementById('settings' + cap + 'Key');
+  if (!input) return;
+
+  const key = input.value.trim();
+  if (!key) { showNotification('Paste a key first.', 'warning'); return; }
+
+  setAiApiKey(provider, key);
+
+  const fsField = AI_KEY_FS[provider];
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .set({ [fsField]: key }, { merge: true });
+      showNotification(label + ' key saved and synced to your account.', 'success');
+    } catch (err) {
+      console.error('Key sync failed:', err);
+      showNotification('Saved on this device. Cloud sync failed.', 'warning');
+    }
+  } else {
+    showNotification(label + ' key saved on this device.', 'success');
+  }
+
+  loadAiKeysIntoSettings();
+  updateProviderUI();
+  updateQuickSummaryKeyHint();
+}
+
+async function clearSettingsAiKey(provider) {
+  const cap   = provider.charAt(0).toUpperCase() + provider.slice(1);
+  const label = provider === 'gemini' ? 'Gemini' : 'DeepSeek';
+  if (!confirm('Remove your saved ' + label + ' API key?')) return;
+
+  setAiApiKey(provider, '');
+  const input = document.getElementById('settings' + cap + 'Key');
+  if (input) input.value = '';
+
+  const fsField = AI_KEY_FS[provider];
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .set({ [fsField]: firebase.firestore.FieldValue.delete() }, { merge: true });
+    } catch (err) {
+      console.error('Key delete failed:', err);
+    }
+  }
+
+  loadAiKeysIntoSettings();
+  updateProviderUI();
+  updateQuickSummaryKeyHint();
+  showNotification(label + ' key removed.', 'info');
+}
+
+function updateQuickSummaryKeyHint() {
+  const hint = document.getElementById('quickSummaryKeyHint');
+  if (!hint) return;
+  hint.classList.toggle('hidden', !!getAiApiKey('gemini'));
+}
+
 function stopTipCarousel() {
   if (tipInterval) {
     clearInterval(tipInterval);

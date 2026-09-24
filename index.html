@@ -221,16 +221,23 @@
                   <i class="fa-solid fa-circle-info mr-1"></i> See accuracy guide
                 </button>
               </div>
-              <div id="apiKeyContainer" class="sm:col-span-2" style="display:none;">
-                <label class="block text-xs font-semibold mb-1" id="apiKeyLabel">API Key</label>
-                <div class="relative">
-                  <input type="password" id="apiKey" placeholder="Paste API key..." class="text-sm pr-10" />
-                  <span class="absolute left-3 top-3 opacity-50"><i class="fa-solid fa-key text-xs"></i></span>
-                  <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-3 opacity-50 btn-hover">
-                    <i class="fa-solid fa-eye text-xs" id="toggleEyeIcon"></i>
-                  </button>
-                </div>
-              </div>
+              <div id="apiKeyHint" class="sm:col-span-2 hidden">
+  <div class="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs">
+    <i class="fa-solid fa-key text-amber-400 mt-0.5"></i>
+    <div class="flex-1">
+      <p class="font-semibold text-amber-300">
+        No <span id="apiKeyHintProvider">Gemini</span> key set
+      </p>
+      <p class="opacity-70 text-[11px] mt-0.5">
+        Add one in Settings to use this provider.
+      </p>
+    </div>
+    <button type="button" onclick="toggleSettingsModal()"
+            class="text-amber-300 hover:underline text-[11px] whitespace-nowrap">
+      Open Settings
+    </button>
+  </div>
+</div>
             </div>
 
             <div id="accuracyInfo" class="hidden col-span-full mt-2 text-xs bg-white/5 border border-white/10 rounded-xl p-3 overflow-x-auto">
@@ -284,15 +291,19 @@
 
             <!-- ===== QUICK SUMMARIZE ===== -->
             <div class="border-t border-white/10 pt-3 sm:pt-4">
-              <div class="flex items-center justify-between mb-2">
-                <label class="text-xs font-semibold"><i class="fa-solid fa-bolt mr-1"></i>Quick Summarize</label>
-                <button type="button" onclick="toggleQuickSummaryKey()" class="text-xs text-indigo-400 hover:underline btn-hover">
-                  <i class="fa-solid fa-key mr-1"></i>Gemini Key
-                </button>
-              </div>
-              <div id="quickSummaryKeyContainer" class="hidden mb-2">
-                <input type="password" id="quickSummaryApiKey" placeholder="Paste Gemini API key..." class="text-sm" />
-              </div>
+<div class="flex items-center justify-between mb-2">
+  <label class="text-xs font-semibold"><i class="fa-solid fa-bolt mr-1"></i>Quick Summarize</label>
+  <button type="button" onclick="toggleSettingsModal()"
+          class="text-xs text-indigo-400 hover:underline btn-hover">
+    <i class="fa-solid fa-key mr-1"></i>Manage key
+  </button>
+</div>
+<div id="quickSummaryKeyHint"
+     class="hidden mb-2 text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+  <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+  No Gemini key saved.
+  <button type="button" onclick="toggleSettingsModal()" class="underline">Add one in Settings</button>.
+</div>
               <button type="button" id="quickSummarizeBtn" onclick="quickSummarize()" class="w-full py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition btn-hover">
                 <i class="fa-solid fa-wand-sparkles mr-2"></i>Quick Summarize (Gemini)
               </button>
@@ -1060,6 +1071,87 @@
               class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold border border-white/10">
         <i class="fa-solid fa-rotate-left mr-1"></i> Reset theme overrides
       </button>
+<!-- ===== AI Providers ===== -->
+<div class="pt-4 border-t border-white/10">
+  <p class="text-[10px] uppercase tracking-wider font-bold opacity-50 mb-3">
+    AI Providers
+  </p>
+
+  <!-- Gemini -->
+  <div class="mb-4">
+    <label class="flex items-center gap-2 text-xs font-semibold mb-1">
+      <i class="fa-solid fa-wand-sparkles text-indigo-400"></i>
+      Gemini API Key
+      <span id="settingsGeminiStatus" class="ml-auto text-[10px] font-normal opacity-50">not set</span>
+    </label>
+    <div class="relative">
+      <input type="password" id="settingsGeminiKey" placeholder="AIza..."
+             autocomplete="off" autocapitalize="off" spellcheck="false"
+             class="text-sm pr-20" />
+      <div class="absolute right-2 top-1.5 flex gap-1">
+        <button type="button" onclick="toggleSettingsKeyVisibility('gemini')"
+                class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center btn-hover"
+                aria-label="Show/hide Gemini key">
+          <i class="fa-solid fa-eye text-xs" id="settingsGeminiKeyEye"></i>
+        </button>
+        <button type="button" onclick="saveSettingsAiKey('gemini')"
+                class="w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center btn-hover"
+                aria-label="Save Gemini key">
+          <i class="fa-solid fa-check text-xs text-white"></i>
+        </button>
+        <button type="button" onclick="clearSettingsAiKey('gemini')"
+                class="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/20 flex items-center justify-center btn-hover"
+                aria-label="Remove Gemini key">
+          <i class="fa-solid fa-trash text-xs text-rose-400"></i>
+        </button>
+      </div>
+    </div>
+    <p class="text-[10px] opacity-50 mt-1 leading-snug">
+      Used for Quick Summarize and AI Reviewer.
+      Get a free key at
+      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
+         class="text-indigo-400 hover:underline">Google AI Studio</a>.
+    </p>
+  </div>
+
+  <!-- DeepSeek -->
+  <div>
+    <label class="flex items-center gap-2 text-xs font-semibold mb-1">
+      <i class="fa-solid fa-robot text-cyan-400"></i>
+      DeepSeek API Key
+      <span id="settingsDeepseekStatus" class="ml-auto text-[10px] font-normal opacity-50">not set</span>
+    </label>
+    <div class="relative">
+      <input type="password" id="settingsDeepseekKey" placeholder="sk-..."
+             autocomplete="off" autocapitalize="off" spellcheck="false"
+             class="text-sm pr-20" />
+      <div class="absolute right-2 top-1.5 flex gap-1">
+        <button type="button" onclick="toggleSettingsKeyVisibility('deepseek')"
+                class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center btn-hover"
+                aria-label="Show/hide DeepSeek key">
+          <i class="fa-solid fa-eye text-xs" id="settingsDeepseekKeyEye"></i>
+        </button>
+        <button type="button" onclick="saveSettingsAiKey('deepseek')"
+                class="w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center btn-hover"
+                aria-label="Save DeepSeek key">
+          <i class="fa-solid fa-check text-xs text-white"></i>
+        </button>
+        <button type="button" onclick="clearSettingsAiKey('deepseek')"
+                class="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/20 flex items-center justify-center btn-hover"
+                aria-label="Remove DeepSeek key">
+          <i class="fa-solid fa-trash text-xs text-rose-400"></i>
+        </button>
+      </div>
+    </div>
+    <p class="text-[10px] opacity-50 mt-1 leading-snug">
+      Used for AI Reviewer when provider is DeepSeek.
+      Get a key at
+      <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener"
+         class="text-indigo-400 hover:underline">platform.deepseek.com</a>.
+    </p>
+  </div>
+</div>
+
 
     </div>
   </div>
