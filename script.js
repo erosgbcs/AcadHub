@@ -1052,15 +1052,11 @@ async function handleGenerate() {
     }
     
     const quizTypes = {
-      truefalse: document.getElementById('useTrueFalse').checked ? parseInt(document.getElementById('numTrueFalse').value) || 0 : 0,
-      identification: document.getElementById('useIdentification').checked ? parseInt(document.getElementById('numIdentification').value) || 0 : 0,
-      enumeration: document.getElementById('useEnumeration').checked ? parseInt(document.getElementById('numEnumeration').value) || 0 : 0,
-      multiplechoice: document.getElementById('useMultipleChoice').checked ? parseInt(document.getElementById('numMultipleChoice').value) || 0 : 0,
-      what: document.getElementById('useWhat').checked ? parseInt(document.getElementById('numWhat').value) || 0 : 0,
-      who: document.getElementById('useWho').checked ? parseInt(document.getElementById('numWho').value) || 0 : 0,
-      where: document.getElementById('useWhere').checked ? parseInt(document.getElementById('numWhere').value) || 0 : 0,
-      when: document.getElementById('useWhen').checked ? parseInt(document.getElementById('numWhen').value) || 0 : 0
-    };
+  truefalse: document.getElementById('useTrueFalse').checked ? parseInt(document.getElementById('numTrueFalse').value) || 0 : 0,
+  identification: document.getElementById('useIdentification').checked ? parseInt(document.getElementById('numIdentification').value) || 0 : 0,
+  enumeration: document.getElementById('useEnumeration').checked ? parseInt(document.getElementById('numEnumeration').value) || 0 : 0,
+  multiplechoice: document.getElementById('useMultipleChoice').checked ? parseInt(document.getElementById('numMultipleChoice').value) || 0 : 0
+};
     
     formData.append('quiz_types', JSON.stringify(quizTypes));
     formData.append('num_flashcards', document.getElementById('numFlashcards').value || '10');
