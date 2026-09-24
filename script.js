@@ -2081,9 +2081,15 @@ let studyTouchStartY = 0;
 let studyKbBound = false;
 
 function flashcardKey(card) {
-  const term = String(card.front || card.term || '').trim().toLowerCase();
-  return term || String(card.back || card.definition || '').trim().toLowerCase();
+  // New cards (with _answerFirst) → term lives in `back`
+  // Legacy cards (no marker) → term lives in `front`
+  // Either way we return the term, so ratings stay keyed by the same string.
+  const rawTerm = card._answerFirst ?
+    (card.back || card.term || '') :
+    (card.front || card.term || '');
+  return String(rawTerm).trim().toLowerCase();
 }
+
 
 function getFlashcardRatings() {
   return safeLocalStorageGet('acadhub_flashcard_ratings', {});
@@ -2434,9 +2440,10 @@ function transformBackendResponse(backendData) {
   const summary = backendData.summary || [];
   
   const flashcards = (backendData.flashcards || []).map(card => ({
-    front: card.term || card.front || 'Term',
-    back: card.definition || card.back || 'Definition'
-  }));
+  front: card.definition || card.back || 'Description',
+  back: card.term || card.front || 'Answer',
+  _answerFirst: true // marker: this card uses the new order
+}));
 
   const quiz = {
     trueFalse: [],
@@ -3503,7 +3510,10 @@ const firestoreLibrary = await loadFromFirestore('library');
       if (firestoreLibrary.length > 0) {
         safeLocalStorageSet('acadhub_saved', firestoreLibrary);
       }
+        migrateSavedFlashcardOrder();
 
+   
+   
       // ---- Notes + note_subjects ----
       const firestoreNotes = await loadFromFirestore('notes');
       const firestoreNoteSubjects = await loadFromFirestore('note_subjects');
@@ -3715,7 +3725,48 @@ function checkForSavedItemView() {
 
   return true;
 }
-
+// ============================================================
+// MIGRATION: normalize old saved flashcards to new order
+// ============================================================
+function migrateSavedFlashcardOrder() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  if (!Array.isArray(saved) || saved.length === 0) return;
+  
+  let changed = false;
+  
+  saved.forEach(item => {
+    const cards = item?.data?.flashcards;
+    if (!Array.isArray(cards)) return;
+    
+    cards.forEach(card => {
+      if (card._answerFirst) return; // already migrated
+      
+      // Legacy card: front = term, back = description. Swap them.
+      const oldFront = card.front;
+      card.front = card.back;
+      card.back = oldFront;
+      card._answerFirst = true;
+      changed = true;
+    });
+  });
+  
+  if (changed) {
+    safeLocalStorageSet('acadhub_saved', saved);
+    console.log('✅ Migrated saved flashcards to new order');
+    
+    // Best-effort: push migrated items back to Firestore
+    if (firebaseAvailable && auth && auth.currentUser && db) {
+      saved.forEach(item => {
+        if (item?.id && item?.data?.flashcards?.some(c => c._answerFirst)) {
+          db.collection('users').doc(auth.currentUser.uid)
+            .collection('library').doc(item.id)
+            .set(item, { merge: true })
+            .catch(err => console.warn('Migration sync failed for', item.id, err));
+        }
+      });
+    }
+  }
+}
 // ============================================================
 // INITIALIZATION - FIXED VERSION
 // ============================================================
@@ -3753,7 +3804,7 @@ function initializeApp() {
   });
 
   offlineQueue = safeLocalStorageGet('offline_queue', []);
-
+migrateSavedFlashcardOrder();
   renderSavedList();
   renderCalendar();
   renderNotesList();

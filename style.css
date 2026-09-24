@@ -201,6 +201,12 @@ html.light .text-gray-400 {
 html.light .text-white {
   color: #0f172a !important;
 }
+html.light .text-white.bg-indigo-600,
+html.light .text-white.bg-rose-500,
+html.light .text-white.bg-emerald-600,
+html.light .text-white.btn-primary {
+  color: #ffffff !important;
+}
 html.light .opacity-50 {
   opacity: 0.6;
 }
@@ -255,9 +261,7 @@ html.light .border-emerald-500 {
 html.light .text-emerald-300 {
   color: #047857 !important;
 }
-html.light .bg-rose-500\/20 {
-  background: rgba(239, 68, 68, 0.15) !important;
-}
+
 html.light .border-rose-500 {
   border-color: #ef4444 !important;
 }
@@ -339,12 +343,6 @@ html.light select option {
 html.light label {
   color: var(--text-body);
 }
-html.light .cursor-grab {
-  color: var(--text-body);
-}
-html.light .cursor-grab:hover {
-  background: rgba(0, 0, 0, 0.06) !important;
-}
 
 /* Overdue */
 .overdue {
@@ -355,20 +353,6 @@ html.light .cursor-grab:hover {
 .drag-over {
   background: rgba(99, 102, 241, 0.15) !important;
   border-color: #6366f1 !important;
-}
-
-/* Progress bar */
-.progress-bar {
-  height: 6px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 9999px;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: #6366f1;
-  border-radius: 9999px;
-  transition: width 0.3s;
 }
 
 /* Tooltip */
@@ -398,7 +382,7 @@ html.light [data-tooltip]:hover::after {
 }
 
 #wakeUpOverlay {
-  z-index: 2000 !important;
+  z-index: 2000;
 }
 
 /* Test question card */
@@ -489,33 +473,6 @@ html.light #testResultsContainer .text-2xl {
   border-left-color: #ef4444;
   background: rgba(239,68,68,0.05);
 }
-
-/* Difficulty tooltips */
-[data-tooltip] {
-  position: relative;
-}
-[data-tooltip]:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1a1a2e;
-  color: #e2e8f0;
-  padding: 0.4rem 0.6rem;
-  border-radius: 0.5rem;
-  font-size: 0.7rem;
-  white-space: nowrap;
-  z-index: 10;
-  pointer-events: none;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-html.light [data-tooltip]:hover::after {
-  background: #ffffff;
-  color: #0f172a;
-  border-color: rgba(0,0,0,0.1);
-}
-
 /* Settings modal */
 #settingsModal .glass-card {
   padding: 1.5rem;
@@ -525,9 +482,36 @@ html.light [data-tooltip]:hover::after {
 .tab-position-top #tabContainer { order: 2; }
 .tab-position-top #viewsContainer { order: 3; }
 
-.tab-position-bottom #tabContainer { order: 4; }
-.tab-position-bottom #viewsContainer { order: 3; }
-.tab-position-bottom #mainWrapper { flex-direction: column; }
+/* Bottom tabs — fixed to viewport bottom on mobile, static on desktop */
+@media (max-width: 640px) {
+  .tab-position-bottom #mainWrapper {
+    padding-bottom: 5.5rem;
+  }
+  .tab-position-bottom #tabContainer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 45;
+    margin: 0;
+    border-radius: 1rem 1rem 0 0;
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-card);
+    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+  }
+  .tab-position-bottom #tabContainer button {
+    min-width: calc(33% - 0.25rem);
+    padding: 0.6rem 0.4rem;
+    font-size: 0.7rem;
+  }
+}
+
+@media (min-width: 641px) {
+  .tab-position-bottom #tabContainer { order: 4; }
+  .tab-position-bottom #viewsContainer { order: 3; }
+}
 
 .tab-position-left #mainWrapper {
   flex-direction: row;
@@ -746,28 +730,6 @@ html.light #wakeUpOverlay .animate-spin {
   }
 }
 
-/* Fix for any potential overlay issues */
-#wakeUpOverlay {
-  pointer-events: none;
-}
-
-#wakeUpOverlay > div {
-  pointer-events: auto;
-}
-
-/* When overlay is hidden, ensure it doesn't block clicks */
-#wakeUpOverlay[style*="display: none"],
-#wakeUpOverlay[style*="display:none"] {
-  pointer-events: none !important;
-  visibility: hidden !important;
-}
-
-/* Ensure modals don't block tab clicks when hidden */
-[id$="Modal"].hidden,
-.hidden {
-  pointer-events: none !important;
-}
-
 
 
 /* Add visual feedback for tab clicks */
@@ -843,10 +805,7 @@ html.light .card-menu-btn:hover {
 
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  [data-modal] *,
-  .animate-ios-fade-in,
-  .animate-ios-pop-in,
-  .animate-ios-sheet-up {
+  [data-modal] * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
@@ -1647,7 +1606,9 @@ html.light .skeleton-block {
   width: 55%;
   margin-bottom: 0.75rem;
 }
-
+.skeleton-block.skeleton-flashcard {
+  box-shadow: inset 0 0 0 1px var(--card-accent, transparent);
+}
 #skeletonContainer {
   animation: reveal 0.25s ease-out;
 }
@@ -1742,7 +1703,7 @@ html.light .summary-item {
 /* --- Saved library + note cards --- */
 .saved-card,
 .note-card {
-  border-left: 3px solid var(--card-accent, transparent);
+  border-left: 3px solid var(--card-accent, var(--border-card)) !important;
 }
 
 /* --- Study Mode big card --- */
@@ -1756,6 +1717,15 @@ html.light .summary-item {
 }
 #studyCard.has-accent #studyTerm {
   color: var(--card-accent, var(--text-body));
+}
+
+html.light #studyCard.has-accent {
+  background: linear-gradient(
+    145deg,
+    var(--card-soft, rgba(0,0,0,0.03)) 0%,
+    rgba(0,0,0,0.03) 70%
+  );
+  border-color: var(--card-border, var(--border-card));
 }
 
 /* Reduced motion */
