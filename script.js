@@ -631,6 +631,11 @@ function skipToDashboard() {
 // TAB MANAGEMENT - FIXED VERSION
 // ============================================================
 function switchTab(tab) {
+  // Close any full-screen overlay if user switches tabs mid-study
+  ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay']
+  .forEach(id => document.getElementById(id)?.classList.add('hidden'));
+  document.body.style.overflow = '';
+  
   currentTab = tab;
 
   // Hide only the direct child view sections, not the parent container
@@ -1542,12 +1547,23 @@ function updateResultsNavCounts() {
   const summaryCount = document.querySelectorAll('#summaryList > li').length;
   const flashcardCount = document.querySelectorAll('#flashcardGrid > .flashcard').length;
   const quizCount = document.querySelectorAll('#quizContainer > div').length;
-
+  
   const map = { summary: summaryCount, flashcards: flashcardCount, quiz: quizCount };
   document.querySelectorAll('.results-nav-count').forEach(el => {
     const key = el.dataset.count;
     if (key in map) el.textContent = map[key];
   });
+  
+  // Recall Quiz button visibility + count
+  const recallBtn = document.getElementById('recallQuizBtn');
+  const recallCount = document.getElementById('recallQuizCount');
+  if (recallBtn && recallCount) {
+    const idCount = currentResults?.quiz?.identification?.length || 0;
+    const enumCount = currentResults?.quiz?.enumeration?.length || 0;
+    const total = idCount + enumCount;
+    recallCount.textContent = total;
+    recallBtn.classList.toggle('hidden', total === 0);
+  }
 }
 
 function initResultsNav() {
@@ -4387,6 +4403,237 @@ function stopTipCarousel() {
     clearInterval(tipInterval);
     tipInterval = null;
   }
+}
+
+// ============================================================
+// RECALL STUDY MODE (Identification + Enumeration)
+// ============================================================
+let recallQueue = [];
+let recallOriginalQueue = [];
+let recallIndex = 0;
+let recallRevealed = false;
+let recallSessionStats = { easy: 0, hard: 0, forgot: 0 };
+let recallKbBound = false;
+
+function recallKey(item) {
+  return String(item.question || '').trim().toLowerCase();
+}
+
+function buildRecallQueue(mode = 'all') {
+  const quiz = (currentResults && currentResults.quiz) || {};
+  const pool = [];
+  
+  if (mode === 'all' || mode === 'identification') {
+    (quiz.identification || []).forEach(q => {
+      pool.push({
+        kind: 'id',
+        question: q.question,
+        answer: q.answer,
+        key: 'id:' + recallKey(q)
+      });
+    });
+  }
+  
+  if (mode === 'all' || mode === 'enumeration') {
+    (quiz.enumeration || []).forEach(q => {
+      pool.push({
+        kind: 'enum',
+        question: q.question,
+        answer: q.answer,
+        key: 'en:' + recallKey(q)
+      });
+    });
+  }
+  
+  return pool;
+}
+
+function openRecallStudyMode(mode = 'all') {
+  const pool = buildRecallQueue(mode);
+  if (!pool.length) {
+    showNotification('No recall questions available.', 'warning');
+    return;
+  }
+  
+  recallQueue = pool;
+  recallOriginalQueue = [...pool];
+  recallIndex = 0;
+  recallRevealed = false;
+  recallSessionStats = { easy: 0, hard: 0, forgot: 0 };
+  
+  document.getElementById('recallModeOverlay').classList.remove('hidden');
+  document.getElementById('recallCompleteOverlay').classList.add('hidden');
+  document.body.style.overflow = 'hidden';
+  
+  bindRecallKeyboard();
+  renderRecallCard();
+}
+
+function exitRecallStudyMode() {
+  document.getElementById('recallModeOverlay').classList.add('hidden');
+  document.getElementById('recallCompleteOverlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function renderRecallCard() {
+  if (!recallQueue.length || recallIndex >= recallQueue.length) {
+    showRecallComplete();
+    return;
+  }
+  
+  const item = recallQueue[recallIndex];
+  
+  document.getElementById('recallCurrent').textContent = recallIndex + 1;
+  document.getElementById('recallTotal').textContent = recallQueue.length;
+  
+  const pct = Math.round((recallIndex / recallQueue.length) * 100);
+  document.getElementById('recallProgressFill').style.width = pct + '%';
+  
+  const badge = document.getElementById('recallTypeBadge');
+  if (item.kind === 'id') {
+    badge.textContent = 'Identification';
+    badge.className = 'inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border border-indigo-500/30';
+  } else {
+    badge.textContent = 'Enumeration';
+    badge.className = 'inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30';
+  }
+  
+  document.getElementById('recallQuestion').textContent = item.question;
+  
+  const input = document.getElementById('recallInput');
+  input.value = '';
+  input.disabled = false;
+  
+  document.getElementById('recallFeedback').classList.add('hidden');
+  document.getElementById('recallCheckBtn').classList.remove('hidden');
+  
+  recallRevealed = false;
+  
+  if (window.matchMedia('(min-width: 640px)').matches) {
+    setTimeout(() => input.focus(), 100);
+  }
+}
+
+function checkRecallAnswer() {
+  if (recallRevealed) return;
+  const item = recallQueue[recallIndex];
+  if (!item) return;
+  
+  const input = document.getElementById('recallInput');
+  const userAnswer = input.value.trim();
+  
+  if (!userAnswer) {
+    showNotification('Type your answer first.', 'warning');
+    return;
+  }
+  
+  recallRevealed = true;
+  input.disabled = true;
+  
+  document.getElementById('recallUserAnswer').textContent = userAnswer || '(blank)';
+  document.getElementById('recallCorrectAnswer').textContent = item.answer;
+  
+  document.getElementById('recallCheckBtn').classList.add('hidden');
+  document.getElementById('recallFeedback').classList.remove('hidden');
+}
+
+function rateRecallCard(rating) {
+  if (!recallRevealed) return;
+  const item = recallQueue[recallIndex];
+  if (!item) return;
+  
+  const ratings = safeLocalStorageGet('acadhub_flashcard_ratings', {});
+  ratings[item.key] = rating;
+  safeLocalStorageSet('acadhub_flashcard_ratings', ratings);
+  
+  recallSessionStats[rating]++;
+  
+  recallIndex++;
+  recallRevealed = false;
+  
+  if (recallIndex >= recallQueue.length) {
+    showRecallComplete();
+  } else {
+    renderRecallCard();
+  }
+}
+
+function skipRecallCard() {
+  recallIndex++;
+  recallRevealed = false;
+  if (recallIndex >= recallQueue.length) {
+    showRecallComplete();
+  } else {
+    renderRecallCard();
+  }
+}
+
+function showRecallComplete() {
+  document.getElementById('recallSummaryEasy').textContent = recallSessionStats.easy;
+  document.getElementById('recallSummaryHard').textContent = recallSessionStats.hard;
+  document.getElementById('recallSummaryForgot').textContent = recallSessionStats.forgot;
+  document.getElementById('recallMissedCount').textContent = recallSessionStats.hard + recallSessionStats.forgot;
+  
+  document.getElementById('recallReviewMissedBtn').style.display =
+    (recallSessionStats.hard + recallSessionStats.forgot > 0) ? 'block' : 'none';
+  
+  document.getElementById('recallCompleteOverlay').classList.remove('hidden');
+}
+
+function recallReviewMissed() {
+  const ratings = safeLocalStorageGet('acadhub_flashcard_ratings', {});
+  recallQueue = recallOriginalQueue.filter(item => {
+    const r = ratings[item.key];
+    return r === 'forgot' || r === 'hard';
+  });
+  
+  if (!recallQueue.length) {
+    showNotification('No missed items to review.', 'info');
+    return;
+  }
+  
+  recallIndex = 0;
+  recallRevealed = false;
+  recallSessionStats = { easy: 0, hard: 0, forgot: 0 };
+  document.getElementById('recallCompleteOverlay').classList.add('hidden');
+  renderRecallCard();
+}
+
+function restartRecallSession() {
+  recallQueue = [...recallOriginalQueue];
+  recallIndex = 0;
+  recallRevealed = false;
+  recallSessionStats = { easy: 0, hard: 0, forgot: 0 };
+  document.getElementById('recallCompleteOverlay').classList.add('hidden');
+  renderRecallCard();
+}
+
+function bindRecallKeyboard() {
+  if (recallKbBound) return;
+  recallKbBound = true;
+  
+  document.addEventListener('keydown', (e) => {
+    const overlay = document.getElementById('recallModeOverlay');
+    if (!overlay || overlay.classList.contains('hidden')) return;
+    
+    const tag = document.activeElement && document.activeElement.tagName;
+    const typing = tag === 'INPUT' || tag === 'TEXTAREA';
+    
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (!recallRevealed) checkRecallAnswer();
+      else skipRecallCard();
+      return;
+    }
+    
+    if (recallRevealed) {
+      if (e.key === '1') { rateRecallCard('forgot'); return; }
+      if (e.key === '2') { rateRecallCard('hard'); return; }
+      if (e.key === '3') { rateRecallCard('easy'); return; }
+    }
+    
+    if (e.key === 'Escape' && !typing) exitRecallStudyMode();
+  });
 }
 // ============================================================
 // BOOTSTRAP
