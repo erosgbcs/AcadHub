@@ -50,6 +50,7 @@ try {
   firebaseAvailable = false;
 }
 
+
 // ============================================================
 // BACKEND API CONFIGURATION
 // ============================================================
@@ -782,47 +783,105 @@ function updateTestFileName(input) {
   handleFilesAdded('test', input.files);
   input.value = '';
 }
+// ============================================================
+// SKELETON LOADER
+// ============================================================
+const SKELETON_STAGES = [
+  'Reading your notes…',
+  'Extracting key concepts…',
+  'Generating flashcards…',
+  'Drafting quiz questions…',
+  'Polishing answers…'
+];
+const MIN_SKELETON_MS = 600;
+let skeletonStageTimer = null;
+let skeletonShownAt = 0;
 
+function showSkeleton() {
+  // Guard against re-entry stacking timers
+  if (skeletonStageTimer) {
+    clearInterval(skeletonStageTimer);
+    skeletonStageTimer = null;
+  }
+  
+  const sk = document.getElementById('skeletonContainer');
+  const results = document.getElementById('resultsContainer');
+  if (results) results.classList.add('hidden');
+  if (!sk) return;
+  
+  sk.classList.remove('hidden');
+  skeletonShownAt = Date.now();
+  
+  // Reset status text to the first stage
+  const txt = document.getElementById('skeletonStatusText');
+  if (txt) txt.textContent = SKELETON_STAGES[0];
+  
+  let i = 0;
+  skeletonStageTimer = setInterval(() => {
+    i = Math.min(i + 1, SKELETON_STAGES.length - 1);
+    const el = document.getElementById('skeletonStatusText');
+    if (el) el.textContent = SKELETON_STAGES[i];
+  }, 1600);
+}
+
+function hideSkeleton() {
+  if (skeletonStageTimer) {
+    clearInterval(skeletonStageTimer);
+    skeletonStageTimer = null;
+  }
+  const sk = document.getElementById('skeletonContainer');
+  if (sk) sk.classList.add('hidden');
+}
+
+async function hideSkeletonRespectingMin() {
+  const elapsed = Date.now() - skeletonShownAt;
+  if (elapsed < MIN_SKELETON_MS) {
+    await new Promise(r => setTimeout(r, MIN_SKELETON_MS - elapsed));
+  }
+  hideSkeleton();
+}
+// AI REVIEWER - MAIN GENERATION FUNCTION
 // AI REVIEWER - MAIN GENERATION FUNCTION
 async function handleGenerate() {
   const submitBtn = document.getElementById('submitBtn');
   const btnContent = document.getElementById('btnContent');
-  const progressContainer = document.getElementById('progressContainer');
   const resultsContainer = document.getElementById('resultsContainer');
-
-const notes = document.getElementById('studyNotes').value.trim();
-const selectedFiles = fileStore.reviewer;
-const hasFile = selectedFiles.length > 0;
-
+  
+  const notes = document.getElementById('studyNotes').value.trim();
+  const selectedFiles = fileStore.reviewer;
+  const hasFile = selectedFiles.length > 0;
+  
   if (!notes && !hasFile) {
     showNotification('Please paste notes or upload a document.', 'warning');
     return;
   }
-
+  
   const provider = document.getElementById('aiProvider').value;
   const apiKey = document.getElementById('apiKey').value;
-
+  
   if ((provider === 'gemini' || provider === 'deepseek') && !apiKey) {
     showNotification(`Please enter your ${provider === 'gemini' ? 'Gemini' : 'DeepSeek'} API key.`, 'error');
     return;
   }
-
+  
   submitBtn.disabled = true;
   btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
-  progressContainer.classList.remove('hidden');
   resultsContainer.classList.add('hidden');
-// Exit saved-view mode — we're back to the generator
-const viewReviewer = document.getElementById('viewReviewer');
-if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
-const backBtn = document.getElementById('backToGeneratorBtn');
-if (backBtn) backBtn.classList.add('hidden');
+  showSkeleton();
+  
+  // Exit saved-view mode — we're back to the generator
+  const viewReviewer = document.getElementById('viewReviewer');
+  if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
+  const backBtn = document.getElementById('backToGeneratorBtn');
+  if (backBtn) backBtn.classList.add('hidden');
+  
   try {
     const formData = new FormData();
-if (notes) formData.append('notes', notes);
-if (hasFile) {
-  selectedFiles.forEach(f => formData.append('file', f, f.name));
-}
-
+    if (notes) formData.append('notes', notes);
+    if (hasFile) {
+      selectedFiles.forEach(f => formData.append('file', f, f.name));
+    }
+    
     const quizTypes = {
       truefalse: document.getElementById('useTrueFalse').checked ? parseInt(document.getElementById('numTrueFalse').value) || 0 : 0,
       identification: document.getElementById('useIdentification').checked ? parseInt(document.getElementById('numIdentification').value) || 0 : 0,
@@ -833,14 +892,13 @@ if (hasFile) {
       where: document.getElementById('useWhere').checked ? parseInt(document.getElementById('numWhere').value) || 0 : 0,
       when: document.getElementById('useWhen').checked ? parseInt(document.getElementById('numWhen').value) || 0 : 0
     };
-
+    
     formData.append('quiz_types', JSON.stringify(quizTypes));
     formData.append('num_flashcards', document.getElementById('numFlashcards').value || '10');
     formData.append('use_internet', document.getElementById('useInternet').checked);
     formData.append('enrich_count', document.getElementById('enrichCount').value || '5');
-
-    let result;
     
+    let result;
     if (provider === 'local') {
       result = await apiCall(API_ENDPOINTS.generateLocal, { formData });
     } else {
@@ -848,43 +906,47 @@ if (hasFile) {
       formData.append('provider', provider);
       result = await apiCall(API_ENDPOINTS.generateAI, { formData });
     }
-
+    
     const transformedData = transformBackendResponse(result);
-
+    
     renderSummary(transformedData.summary);
     renderFlashcards(transformedData.flashcards);
     renderQuiz(transformedData.quiz);
+    
     const qualityEl = document.getElementById('generationQuality');
     if (qualityEl && transformedData.quality) {
       qualityEl.textContent = `Generation quality: ${transformedData.quality.score}% (source and answer consistency)`;
     }
-
+    
     currentResults = {
       ...transformedData,
       timestamp: new Date().toISOString()
     };
-
+    
+    // Wait for min skeleton time before revealing results
+    await hideSkeletonRespectingMin();
+    
     resultsContainer.classList.remove('hidden');
-document.getElementById('saveToLibraryBtn').classList.remove('hidden');
-document.getElementById('shareReviewerBtn').classList.remove('hidden');
-document.getElementById('saveAsNoteBtn').classList.remove('hidden');    
-    // Clear any shared-view state — this is a fresh local reviewer
-updateResultsNavCounts();
-initResultsNav();
+    document.getElementById('saveToLibraryBtn').classList.remove('hidden');
+    document.getElementById('shareReviewerBtn').classList.remove('hidden');
+    document.getElementById('saveAsNoteBtn').classList.remove('hidden');
     
+    updateResultsNavCounts();
+    initResultsNav();
     
-currentSharedReviewer = null;
-const sharedBanner = document.getElementById('sharedBanner');
-if (sharedBanner) sharedBanner.classList.add('hidden');
+    currentSharedReviewer = null;
+    const sharedBanner = document.getElementById('sharedBanner');
+    if (sharedBanner) sharedBanner.classList.add('hidden');
+    
     showNotification('Study materials generated successfully!', 'success');
-
+    
   } catch (err) {
     console.error('Error generating materials:', err);
     showNotification(err.message || 'Error generating study materials. Please try again.', 'error');
   } finally {
     submitBtn.disabled = false;
     btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
-    progressContainer.classList.add('hidden');
+    hideSkeleton();
   }
 }
 // ============================================================

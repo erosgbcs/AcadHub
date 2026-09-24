@@ -334,7 +334,45 @@
             <p class="text-sm mt-2 opacity-70">Processing...</p>
           </div>
         </div>
-
+<!-- inside #viewReviewer, after #progressContainer, before #resultsContainer -->
+<div id="skeletonContainer" class="hidden space-y-4 sm:space-y-6">
+  <div class="skeleton-status">
+    <span class="skeleton-dot"></span>
+    <span class="skeleton-dot"></span>
+    <span class="skeleton-dot"></span>
+    <span id="skeletonStatusText">Reading your notes…</span>
+  </div>
+  
+  <div class="glass-card border-l-4 border-l-indigo-500">
+    <div class="skeleton-block skeleton-title"></div>
+    <div class="skeleton-line w-90"></div>
+    <div class="skeleton-line w-75"></div>
+    <div class="skeleton-line w-90"></div>
+    <div class="skeleton-line w-60"></div>
+  </div>
+  
+  <div class="glass-card border-l-4 border-l-cyan-500">
+    <div class="skeleton-block skeleton-title"></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="skeleton-block skeleton-flashcard"></div>
+      <div class="skeleton-block skeleton-flashcard"></div>
+      <div class="skeleton-block skeleton-flashcard"></div>
+      <div class="skeleton-block skeleton-flashcard"></div>
+    </div>
+  </div>
+  
+  <div class="glass-card border-l-4 border-l-teal-500">
+    <div class="skeleton-block skeleton-title"></div>
+    <div class="skeleton-card mb-2">
+      <div class="skeleton-line w-75"></div>
+      <div class="skeleton-line w-60"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton-line w-90"></div>
+      <div class="skeleton-line w-40"></div>
+    </div>
+  </div>
+</div>
         <div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
   <div class="flex justify-end gap-2 flex-wrap">
     <button id="backToGeneratorBtn" onclick="exitSavedView()" class="hidden mr-auto px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition btn-hover">
