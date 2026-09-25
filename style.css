@@ -2080,5 +2080,19 @@ html.light .due-subject-row .bar-track {
 }
 
 #recentItemsList .note-card {
-  border-left: none;
+  border-left: none !important;
+}
+
+/* ============ DEADLINES ============ */
+.deadline-row {
+  transition: background 0.15s;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.35rem;
+  margin: 0 -0.35rem;
+}
+.deadline-row:hover {
+  background: var(--bg-hover);
+}
+html.light .deadline-row:hover {
+  background: rgba(0, 0, 0, 0.04);
 }

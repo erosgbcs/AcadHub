@@ -225,6 +225,25 @@
     </button>
   </div>
   
+  <!-- ===== UPCOMING DEADLINES ===== -->
+<div id="upcomingDeadlinesCard" class="glass-card hidden">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-400">
+      <i class="fa-solid fa-calendar-days mr-2"></i>Upcoming Deadlines
+    </h3>
+    <div class="flex items-center gap-3">
+      <button onclick="openDeadlineSheet(todayStr())" class="text-xs text-indigo-400 hover:underline">
+        <i class="fa-solid fa-plus mr-1"></i>Add
+      </button>
+      <button onclick="switchTab('calendar')" class="text-xs text-indigo-400 hover:underline">
+        View all
+      </button>
+    </div>
+  </div>
+  <div id="homeDeadlineList" class="space-y-1"></div>
+</div>
+  
+  
 </div>
 <!-- ===== /VIEW: HOME DASHBOARD ===== -->
 
@@ -1478,6 +1497,46 @@
       </div>
     </div>
   </div>
+<!-- ===== DEADLINE SHEET ===== -->
+<div id="deadlineSheet" data-modal class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeDeadlineSheetBackdrop(event)">
+  <div class="glass-card w-full max-w-md rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-4">
+      <p id="deadlineSheetTitle" class="text-sm font-semibold">New Deadline</p>
+      <button onclick="closeDeadlineSheet()" class="text-xs opacity-50 hover:opacity-100">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    
+    <label class="block text-xs font-semibold mb-1">Title</label>
+    <input type="text" id="deadlineTitleInput" maxlength="80" placeholder="e.g. Biology Midterm" class="text-sm mb-3" />
+    
+    <label class="block text-xs font-semibold mb-1">Date</label>
+    <input type="date" id="deadlineDateInput" class="text-sm mb-3" />
+    
+    <label class="block text-xs font-semibold mb-1">
+      Subject <span class="opacity-50 font-normal">(optional)</span>
+    </label>
+    <input type="text" id="deadlineSubjectInput" maxlength="30" placeholder="e.g. Biology" class="text-sm mb-3" />
+    
+    <label class="block text-xs font-semibold mb-2">Color</label>
+    <div id="deadlineColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
+    
+    <label class="block text-xs font-semibold mb-1">
+      Notes <span class="opacity-50 font-normal">(optional)</span>
+    </label>
+    <textarea id="deadlineNotesInput" rows="3" placeholder="Chapters 1-5..." class="text-sm mb-4 resize-none"></textarea>
+    
+    <div class="flex gap-2">
+      <button id="deadlineDeleteBtn" onclick="deleteDeadlineFromSheet()" class="hidden px-3 py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-sm font-semibold" title="Delete">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+      <button onclick="closeDeadlineSheet()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-sm font-semibold">Cancel</button>
+      <button onclick="saveDeadline()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">Save</button>
+    </div>
+  </div>
+</div>
+
+
 
   <!-- ===== SUBJECT / CATEGORY SHEET (now centered) ===== -->
   <div id="subjectSheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeSubjectSheetBackdrop(event)">

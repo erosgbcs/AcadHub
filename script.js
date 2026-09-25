@@ -3231,23 +3231,30 @@ function renderCalendar() {
   }
 
   const today = new Date();
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(calendarYear, calendarMonth, day);
-    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const isToday = date.toDateString() === today.toDateString();
-    const isSelected = selectedCalendarDate === dateStr;
-
-    cells += `
-      <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDate('${dateStr}')">
-        <span>${day}</span>
-      </div>
-    `;
-  }
-
-  grid.innerHTML = cells;
-  const selectedTasks = document.getElementById('selectedDayTasks');
-  if (selectedTasks) selectedTasks.innerHTML = '<p class="text-sm opacity-50">Task planning is disabled.</p>';
+const allDeadlines = getDeadlines();
+for (let day = 1; day <= daysInMonth; day++) {
+  const date = new Date(calendarYear, calendarMonth, day);
+  const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const isToday = date.toDateString() === today.toDateString();
+  const isSelected = selectedCalendarDate === dateStr;
+  const hasDeadline = allDeadlines.some(d => d.date === dateStr);
+  
+  cells += `
+    <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDate('${dateStr}')">
+      <span>${day}</span>
+      ${hasDeadline ? '<span class="task-dot"></span>' : ''}
+    </div>
+  `;
 }
+
+    grid.innerHTML = cells;
+  if (selectedCalendarDate) {
+    renderSelectedDayDeadlines(selectedCalendarDate);
+  } else {
+    const selectedTasks = document.getElementById('selectedDayTasks');
+    if (selectedTasks) selectedTasks.innerHTML = '<p class="text-sm opacity-50">Select a date to see deadlines.</p>';
+  }
+  }
 
 function selectCalendarDate(dateStr) {
   selectedCalendarDate = dateStr;
@@ -3745,18 +3752,23 @@ const firestoreLibrary = await loadFromFirestore('library');
    
    
    // ---- SRS schedule sync ----
-const firestoreSrs = await loadFromFirestore('srs');
-if (firestoreSrs.length > 0) {
-  const localSrs = getSrsData();
-  const merged = { ...localSrs };
-  firestoreSrs.forEach(rec => {
-    // doc id is `srsDocId(key)`; we stored it under a `cardKey`-like field? No — we store under doc id.
-    // Since loadFromFirestore returns { id, ...data }, use doc id as the key.
-    if (rec.id) merged[rec.id] = { ...(merged[rec.id] || {}), ...rec };
-  });
-  setSrsData(merged);
-}
-renderHomeDashboard();
+   const firestoreSrs = await loadFromFirestore('srs');
+   if (firestoreSrs.length > 0) {
+     const localSrs = getSrsData();
+     const merged = { ...localSrs };
+     firestoreSrs.forEach(rec => {
+       if (rec.id) merged[rec.id] = { ...(merged[rec.id] || {}), ...rec };
+     });
+     setSrsData(merged);
+   }
+   
+   // ---- Deadlines sync ----
+   const firestoreDeadlines = await loadFromFirestore('deadlines');
+   if (firestoreDeadlines.length > 0) {
+     safeLocalStorageSet('acadhub_deadlines', firestoreDeadlines);
+   }
+   
+   renderHomeDashboard();
 
         // ---- Load user document (settings & profile) ----
 const userDoc = await db.collection('users').doc(user.uid).get();
@@ -5038,8 +5050,9 @@ function renderHomeDashboard() {
     renderDueBySubject(due);
   }
 
+  renderUpcomingDeadlines();
   renderRecentItems();
-}
+  }
 
 // ---- Study ahead (ignore scheduling) ----
 function studyAhead() {
@@ -5101,4 +5114,291 @@ function launchDueSession(cards) {
   };
 
   openStudyMode();
+}
+
+// ============================================================
+// DEADLINES (Home + Calendar integration)
+// ============================================================
+const DEADLINES_LS_KEY = 'acadhub_deadlines';
+
+let editingDeadlineId = null;
+let editingDeadlineColor = SUBJECT_COLORS[0];
+
+function getDeadlines() {
+  return safeLocalStorageGet(DEADLINES_LS_KEY, []);
+}
+function setDeadlines(list) {
+  safeLocalStorageSet(DEADLINES_LS_KEY, list);
+}
+
+// Date helpers
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function daysBetween(dateStr1, dateStr2) {
+  const d1 = new Date(dateStr1 + 'T00:00:00');
+  const d2 = new Date(dateStr2 + 'T00:00:00');
+  return Math.round((d2 - d1) / (24 * 60 * 60 * 1000));
+}
+
+function deadlineUrgencyColor(dateStr, fallback) {
+  if (fallback) return fallback;
+  const diff = daysBetween(todayStr(), dateStr);
+  if (diff < 0) return '#ef4444';      // overdue → red
+  if (diff <= 2) return '#ef4444';     // ≤2 days → red
+  if (diff <= 7) return '#f59e0b';     // ≤7 days → amber
+  return '#10b981';                    // else → green
+}
+
+function formatDeadlineCountdown(dateStr) {
+  const diff = daysBetween(todayStr(), dateStr);
+  if (diff < 0) return `${Math.abs(diff)}d overdue`;
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff < 7) return `in ${diff} days`;
+  if (diff < 30) return `in ${Math.round(diff / 7)} wk`;
+  return `in ${Math.round(diff / 30)} mo`;
+}
+
+// ---- Home render ----
+function renderUpcomingDeadlines() {
+  const card = document.getElementById('upcomingDeadlinesCard');
+  const list = document.getElementById('homeDeadlineList');
+  if (!card || !list) return;
+
+  const now = todayStr();
+  const upcoming = getDeadlines()
+    .filter(d => d.date)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter(d => {
+      const diff = daysBetween(now, d.date);
+      return diff >= -7 && diff <= 30; // hide far-future + long-past
+    })
+    .slice(0, 3);
+
+  if (upcoming.length === 0) {
+    card.classList.add('hidden');
+    return;
+  }
+
+  card.classList.remove('hidden');
+  list.innerHTML = upcoming.map(d => {
+    const color = deadlineUrgencyColor(d.date, d.color);
+    const countdown = formatDeadlineCountdown(d.date);
+    return `
+      <div class="deadline-row flex items-center gap-3 cursor-pointer"
+           onclick="openDeadlineFromHome('${d.id}')">
+        <span class="w-2 h-2 rounded-full shrink-0" style="background:${color};"></span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium truncate">${escapeHtml(d.title || 'Deadline')}</p>
+          ${d.subject ? `<p class="text-xs opacity-50 truncate">${escapeHtml(d.subject)}</p>` : ''}
+        </div>
+        <span class="text-xs font-semibold shrink-0" style="color:${color};">
+          ${escapeHtml(countdown)}
+        </span>
+      </div>
+    `;
+  }).join('');
+}
+
+function openDeadlineFromHome(id) {
+  const d = getDeadlines().find(x => x.id === id);
+  if (!d) return;
+  const [y, m] = d.date.split('-').map(Number);
+  calendarYear = y;
+  calendarMonth = m - 1;
+  selectedCalendarDate = d.date;
+  switchTab('calendar');
+}
+
+// ---- Calendar: render selected day's deadlines ----
+function renderSelectedDayDeadlines(dateStr) {
+  const container = document.getElementById('selectedDayTasks');
+  if (!container) return;
+
+  if (!dateStr) {
+    container.innerHTML = '<p class="text-sm opacity-50">Select a date to see deadlines.</p>';
+    return;
+  }
+
+  const list = getDeadlines().filter(d => d.date === dateStr);
+  const dateLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', month: 'short', day: 'numeric'
+  });
+
+  let html = `
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-semibold">${escapeHtml(dateLabel)}</p>
+      <button onclick="openDeadlineSheet('${dateStr}')" class="text-xs text-indigo-400 hover:underline">
+        <i class="fa-solid fa-plus mr-1"></i>Add deadline
+      </button>
+    </div>
+  `;
+
+  if (list.length === 0) {
+    html += '<p class="text-xs opacity-50 text-center py-4">No deadlines on this day.</p>';
+  } else {
+    html += '<div class="space-y-2">';
+    list.forEach(d => {
+      const color = deadlineUrgencyColor(d.date, d.color);
+      html += `
+        <div class="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition"
+             onclick="openDeadlineSheet(null, '${d.id}')">
+          <span class="w-2 h-2 rounded-full shrink-0" style="background:${color};"></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium truncate">${escapeHtml(d.title || 'Deadline')}</p>
+            ${d.notes ? `<p class="text-xs opacity-50 truncate">${escapeHtml(d.notes)}</p>` : ''}
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs opacity-40"></i>
+        </div>
+      `;
+    });
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+// ---- Sheet: create / edit ----
+function openDeadlineSheet(dateStr, id) {
+  editingDeadlineId = id || null;
+  const sheet = document.getElementById('deadlineSheet');
+  const titleEl = document.getElementById('deadlineSheetTitle');
+  const titleInput = document.getElementById('deadlineTitleInput');
+  const dateInput = document.getElementById('deadlineDateInput');
+  const subjectInput = document.getElementById('deadlineSubjectInput');
+  const notesInput = document.getElementById('deadlineNotesInput');
+  const deleteBtn = document.getElementById('deadlineDeleteBtn');
+
+  if (id) {
+    const d = getDeadlines().find(x => x.id === id);
+    if (!d) return;
+    titleEl.textContent = 'Edit Deadline';
+    titleInput.value = d.title || '';
+    dateInput.value = d.date || todayStr();
+    subjectInput.value = d.subject || '';
+    notesInput.value = d.notes || '';
+    editingDeadlineColor = d.color || SUBJECT_COLORS[0];
+    deleteBtn.classList.remove('hidden');
+  } else {
+    titleEl.textContent = 'New Deadline';
+    titleInput.value = '';
+    dateInput.value = dateStr || todayStr();
+    subjectInput.value = '';
+    notesInput.value = '';
+    editingDeadlineColor = SUBJECT_COLORS[0];
+    deleteBtn.classList.add('hidden');
+  }
+
+  renderDeadlineColorSwatches();
+  sheet.classList.remove('hidden');
+  setTimeout(() => titleInput.focus(), 100);
+}
+
+function closeDeadlineSheet() {
+  document.getElementById('deadlineSheet').classList.add('hidden');
+  editingDeadlineId = null;
+}
+
+function closeDeadlineSheetBackdrop(e) {
+  if (e.target.id === 'deadlineSheet') closeDeadlineSheet();
+}
+
+function renderDeadlineColorSwatches() {
+  const container = document.getElementById('deadlineColorSwatches');
+  if (!container) return;
+  container.innerHTML = '';
+  SUBJECT_COLORS.forEach(color => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'w-8 h-8 rounded-full border-2 transition btn-hover';
+    btn.style.background = color;
+    btn.style.borderColor = (color === editingDeadlineColor) ? '#fff' : 'transparent';
+    btn.onclick = () => { editingDeadlineColor = color; renderDeadlineColorSwatches(); };
+    container.appendChild(btn);
+  });
+}
+
+async function saveDeadline() {
+  const title = document.getElementById('deadlineTitleInput').value.trim();
+  const date = document.getElementById('deadlineDateInput').value;
+  const subject = document.getElementById('deadlineSubjectInput').value.trim();
+  const notes = document.getElementById('deadlineNotesInput').value.trim();
+
+  if (!title) { showNotification('Please enter a title.', 'warning'); return; }
+  if (!date) { showNotification('Please pick a date.', 'warning'); return; }
+
+  const all = getDeadlines();
+  const now = new Date().toISOString();
+  let savedItem = null;
+  const wasEditing = !!editingDeadlineId;
+
+  if (editingDeadlineId) {
+    const d = all.find(x => x.id === editingDeadlineId);
+    if (d) {
+      d.title = title;
+      d.date = date;
+      d.subject = subject || '';
+      d.notes = notes || '';
+      d.color = editingDeadlineColor;
+      d.updatedAt = now;
+      savedItem = d;
+    }
+  } else {
+    savedItem = {
+      id: generateId(),
+      title, date,
+      subject: subject || '',
+      notes: notes || '',
+      color: editingDeadlineColor,
+      createdAt: now,
+      updatedAt: now,
+    };
+    all.push(savedItem);
+  }
+
+  setDeadlines(all);
+
+  if (firebaseAvailable && auth && auth.currentUser && savedItem) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('deadlines').doc(savedItem.id).set(savedItem);
+    } catch (err) {
+      console.error('Deadline cloud sync failed:', err);
+      showNotification('Saved locally, cloud sync failed.', 'warning');
+    }
+  }
+
+  closeDeadlineSheet();
+  renderUpcomingDeadlines();
+  if (currentTab === 'calendar') renderCalendar();
+  showNotification(wasEditing ? 'Deadline updated.' : 'Deadline added.', 'success');
+}
+
+async function deleteDeadlineFromSheet() {
+  if (!editingDeadlineId) return;
+  if (!confirm('Delete this deadline?')) return;
+
+  const all = getDeadlines();
+  const idx = all.findIndex(x => x.id === editingDeadlineId);
+  if (idx === -1) return;
+  const removed = all[idx];
+  all.splice(idx, 1);
+  setDeadlines(all);
+
+  if (firebaseAvailable && auth && auth.currentUser && removed?.id) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('deadlines').doc(removed.id).delete();
+    } catch (err) {
+      console.error('Deadline delete failed:', err);
+    }
+  }
+
+  closeDeadlineSheet();
+  renderUpcomingDeadlines();
+  if (currentTab === 'calendar') renderCalendar();
+  showNotification('Deadline deleted.', 'info');
 }
