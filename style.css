@@ -1206,30 +1206,21 @@ html.light #studyCard {
   color: transparent;
   -webkit-text-fill-color: transparent;
 
-  opacity: 0;
-  transform: translateY(14px);
-  animation:
-    splashLetterIn   0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards,
-    splashTitleShine 2.5s ease-in-out infinite;
+  animation: splashTitleShine 2.5s ease-in-out infinite;
 }
-
-.splash-title span:nth-child(1)  { animation-delay: 0.30s, 1.2s; } /* A */
-.splash-title span:nth-child(2)  { animation-delay: 0.38s, 1.2s; } /* c */
-.splash-title span:nth-child(3)  { animation-delay: 0.46s, 1.2s; } /* a */
-.splash-title span:nth-child(4)  { animation-delay: 0.54s, 1.2s; } /* d */
-.splash-title span:nth-child(5)  { animation-delay: 0.62s, 1.2s; } /* H */
-.splash-title span:nth-child(6)  { animation-delay: 0.70s, 1.2s; } /* u */
-.splash-title span:nth-child(7)  { animation-delay: 0.78s, 1.2s; } /* b */
-.splash-title span:nth-child(8)  { animation-delay: 0.86s, 1.2s; } /* space */
-.splash-title span:nth-child(9)  { animation-delay: 0.94s, 1.2s; } /* S */
-.splash-title span:nth-child(10) { animation-delay: 1.02s, 1.2s; } /* u */
-.splash-title span:nth-child(11) { animation-delay: 1.10s, 1.2s; } /* i */
-.splash-title span:nth-child(12) { animation-delay: 1.18s, 1.2s; } /* t */
-.splash-title span:nth-child(13) { animation-delay: 1.26s, 1.2s; } /* e */
-
-@keyframes splashLetterIn {
-  to { opacity: 1; transform: translateY(0); }
-}
+.splash-title span:nth-child(1)  { animation-delay: 0s; }
+.splash-title span:nth-child(2)  { animation-delay: 0s; }
+.splash-title span:nth-child(3)  { animation-delay: 0s; }
+.splash-title span:nth-child(4)  { animation-delay: 0s; }
+.splash-title span:nth-child(5)  { animation-delay: 0s; }
+.splash-title span:nth-child(6)  { animation-delay: 0s; }
+.splash-title span:nth-child(7)  { animation-delay: 0s; }
+.splash-title span:nth-child(8)  { animation-delay: 0s; }
+.splash-title span:nth-child(9)  { animation-delay: 0s; }
+.splash-title span:nth-child(10) { animation-delay: 0s; }
+.splash-title span:nth-child(11) { animation-delay: 0s; }
+.splash-title span:nth-child(12) { animation-delay: 0s; }
+.splash-title span:nth-child(13) { animation-delay: 0s; }
 
 /* Tagline */
 .splash-tagline {
