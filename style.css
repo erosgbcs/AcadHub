@@ -1181,7 +1181,16 @@ html.light #studyCard {
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0 0 0.5rem;
-  background: linear-gradient(
+  white-space: nowrap;
+}
+
+@keyframes splashTitleShine {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.splash-title span {
+  display: inline-block;
+  background-image: linear-gradient(
     90deg,
     #a5b4fc 0%,
     #67e8f9 40%,
@@ -1190,43 +1199,33 @@ html.light #studyCard {
     #a5b4fc 100%
   );
   background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-position: 100% center;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  display: flex;
-  gap: 0;
-  white-space: nowrap; /* NEW: Prevents wrapping on small screens */
-  animation: splashTitleShine 2.5s ease-in-out 1.2s infinite;
-}
+  -webkit-text-fill-color: transparent;
 
-@keyframes splashTitleShine {
-  0%   { background-position: 200% center; }
-  100% { background-position: -200% center; }
-}
-
-.splash-title span {
-  display: inline-block;
   opacity: 0;
   transform: translateY(14px);
-  animation: splashLetterIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  animation:
+    splashLetterIn   0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards,
+    splashTitleShine 2.5s ease-in-out infinite;
 }
 
-/* Existing delays */
-.splash-title span:nth-child(1) { animation-delay: 0.30s; } /* A */
-.splash-title span:nth-child(2) { animation-delay: 0.38s; } /* c */
-.splash-title span:nth-child(3) { animation-delay: 0.46s; } /* a */
-.splash-title span:nth-child(4) { animation-delay: 0.54s; } /* d */
-.splash-title span:nth-child(5) { animation-delay: 0.62s; } /* H */
-.splash-title span:nth-child(6) { animation-delay: 0.70s; } /* u */
-.splash-title span:nth-child(7) { animation-delay: 0.78s; } /* b */
-
-/* NEW delays for " Suite" */
-.splash-title span:nth-child(8)  { animation-delay: 0.86s; } /* (space) */
-.splash-title span:nth-child(9)  { animation-delay: 0.94s; } /* S */
-.splash-title span:nth-child(10) { animation-delay: 1.02s; } /* u */
-.splash-title span:nth-child(11) { animation-delay: 1.10s; } /* i */
-.splash-title span:nth-child(12) { animation-delay: 1.18s; } /* t */
-.splash-title span:nth-child(13) { animation-delay: 1.26s; } /* e */
+.splash-title span:nth-child(1)  { animation-delay: 0.30s, 1.2s; } /* A */
+.splash-title span:nth-child(2)  { animation-delay: 0.38s, 1.2s; } /* c */
+.splash-title span:nth-child(3)  { animation-delay: 0.46s, 1.2s; } /* a */
+.splash-title span:nth-child(4)  { animation-delay: 0.54s, 1.2s; } /* d */
+.splash-title span:nth-child(5)  { animation-delay: 0.62s, 1.2s; } /* H */
+.splash-title span:nth-child(6)  { animation-delay: 0.70s, 1.2s; } /* u */
+.splash-title span:nth-child(7)  { animation-delay: 0.78s, 1.2s; } /* b */
+.splash-title span:nth-child(8)  { animation-delay: 0.86s, 1.2s; } /* space */
+.splash-title span:nth-child(9)  { animation-delay: 0.94s, 1.2s; } /* S */
+.splash-title span:nth-child(10) { animation-delay: 1.02s, 1.2s; } /* u */
+.splash-title span:nth-child(11) { animation-delay: 1.10s, 1.2s; } /* i */
+.splash-title span:nth-child(12) { animation-delay: 1.18s, 1.2s; } /* t */
+.splash-title span:nth-child(13) { animation-delay: 1.26s, 1.2s; } /* e */
 
 @keyframes splashLetterIn {
   to { opacity: 1; transform: translateY(0); }
