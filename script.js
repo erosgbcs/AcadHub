@@ -1019,6 +1019,19 @@ async function hideSkeletonRespectingMin() {
 }
 // AI REVIEWER - MAIN GENERATION FUNCTION
 async function handleGenerate() {
+  const notes = document.getElementById('studyNotes').value.trim();
+  const hasFile = fileStore.reviewer.length > 0;
+  
+  if (!notes && !hasFile) {
+    showNotification('Please paste notes or upload a document.', 'warning');
+    return;
+  }
+  
+  // Move on to asking for subject / term / semester
+  openGenerateMetaSheet();
+}
+
+async function runGenerateWithMeta(meta = {}) {
   const submitBtn = document.getElementById('submitBtn');
   const btnContent = document.getElementById('btnContent');
   const resultsContainer = document.getElementById('resultsContainer');
@@ -1026,11 +1039,6 @@ async function handleGenerate() {
   const notes = document.getElementById('studyNotes').value.trim();
   const selectedFiles = fileStore.reviewer;
   const hasFile = selectedFiles.length > 0;
-  
-  if (!notes && !hasFile) {
-    showNotification('Please paste notes or upload a document.', 'warning');
-    return;
-  }
   
   const provider = document.getElementById('aiProvider').value;
   const apiKey = getAiApiKey(provider);
@@ -1067,11 +1075,11 @@ async function handleGenerate() {
     }
     
     const quizTypes = {
-  truefalse: document.getElementById('useTrueFalse').checked ? parseInt(document.getElementById('numTrueFalse').value) || 0 : 0,
-  identification: document.getElementById('useIdentification').checked ? parseInt(document.getElementById('numIdentification').value) || 0 : 0,
-  enumeration: document.getElementById('useEnumeration').checked ? parseInt(document.getElementById('numEnumeration').value) || 0 : 0,
-  multiplechoice: document.getElementById('useMultipleChoice').checked ? parseInt(document.getElementById('numMultipleChoice').value) || 0 : 0
-};
+      truefalse: document.getElementById('useTrueFalse').checked ? parseInt(document.getElementById('numTrueFalse').value) || 0 : 0,
+      identification: document.getElementById('useIdentification').checked ? parseInt(document.getElementById('numIdentification').value) || 0 : 0,
+      enumeration: document.getElementById('useEnumeration').checked ? parseInt(document.getElementById('numEnumeration').value) || 0 : 0,
+      multiplechoice: document.getElementById('useMultipleChoice').checked ? parseInt(document.getElementById('numMultipleChoice').value) || 0 : 0
+    };
     
     formData.append('quiz_types', JSON.stringify(quizTypes));
     formData.append('num_flashcards', document.getElementById('numFlashcards').value || '10');
@@ -1098,9 +1106,18 @@ async function handleGenerate() {
       qualityEl.textContent = `Generation quality: ${transformedData.quality.score}% (source and answer consistency)`;
     }
     
+    // ---- Attach the metadata collected from the meta sheet ----
+    const subjectObj = meta.subjectId ? getNoteSubject(meta.subjectId) : null;
+    
     currentResults = {
       ...transformedData,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      subject: subjectObj ?
+        { id: subjectObj.id, name: subjectObj.name, color: subjectObj.color } :
+        null,
+      term: meta.term || null,
+      semester: meta.semester || null,
+      schoolYear: meta.schoolYear || null,
     };
     
     await hideSkeletonRespectingMin();
@@ -1138,7 +1155,7 @@ async function handleGenerate() {
     if (generationAbortController === controller) {
       generationAbortController = null;
       submitBtn.disabled = false;
-      btnContent.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials';
+      btnContent.innerHTML = '<i class="fa-solid fa-magic-sparkles mr-2"></i>Generate Study Materials';
       hideSkeleton();
     }
   }
@@ -1622,15 +1639,58 @@ let currentFilterSubjectId = 'all';
 let currentNoteSearchQuery = '';
 let currentActionNoteId = null;
 let editingSubjectId = null;
-let editingSubjectColor = SUBJECT_COLORS[0];
-
 function getNotes() { return safeLocalStorageGet('acadhub_notes', []); }
 function setNotes(notes) { safeLocalStorageSet('acadhub_notes', notes); }
 function getNoteSubjects() { return safeLocalStorageGet('acadhub_note_subjects', []); }
 function setNoteSubjects(subs) { safeLocalStorageSet('acadhub_note_subjects', subs); }
+
 function getNoteSubject(id) {
   if (!id) return null;
+
+  // Synthetic ids coming from saved library items
+  if (typeof id === 'string' && id.startsWith('lib:')) {
+    const key = id.slice(4);
+    const saved = safeLocalStorageGet('acadhub_saved', []);
+    for (const item of saved) {
+      const s = item && item.subject;
+      if (s && s.name && String(s.name).trim().toLowerCase() === key) {
+        return { id, name: s.name, color: s.color || '#94a3b8' };
+      }
+    }
+    return null;
+  }
+
   return getNoteSubjects().find(s => s.id === id) || null;
+}
+
+// Returns every subject the user has ever used:
+// - ones they created in the Notes tab
+// - ones they attached to saved library items
+// Deduped by lowercase name. Library-only subjects get a synthetic
+// `lib:<lowercasedName>` id so they can still be picked in the meta sheet.
+function getAllUserSubjects() {
+  const out = [];
+  const seen = new Map();
+
+  getNoteSubjects().forEach(s => {
+    const key = String(s.name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.set(key, s);
+    out.push(s);
+  });
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  saved.forEach(item => {
+    const s = item && item.subject;
+    if (!s || !s.name) return;
+    const key = String(s.name).trim().toLowerCase();
+    if (seen.has(key)) return;
+    const synth = { id: 'lib:' + key, name: s.name, color: s.color || '#94a3b8' };
+    seen.set(key, synth);
+    out.push(synth);
+  });
+
+  return out;
 }
 
 function escapeHtml(s) {
@@ -2018,6 +2078,7 @@ function closeEditSubjectBackdrop(e) {
 async function saveSubject() {
   const name = document.getElementById('editSubjectNameInput').value.trim();
   if (!name) { showNotification('Please enter a subject name.', 'warning'); return; }
+
   const subjects = getNoteSubjects();
   let savedSubj = null;
 
@@ -2031,8 +2092,10 @@ async function saveSubject() {
   setNoteSubjects(subjects);
 
   if (firebaseAvailable && auth && auth.currentUser && savedSubj) {
-    try { await db.collection('users').doc(auth.currentUser.uid).collection('note_subjects').doc(savedSubj.id).set(savedSubj); }
-    catch (err) { console.error(err); }
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('note_subjects').doc(savedSubj.id).set(savedSubj);
+    } catch (err) { console.error(err); }
   }
 
   const wasEditing = !!editingSubjectId;
@@ -2040,10 +2103,62 @@ async function saveSubject() {
   updateNoteSubjectUI();
   renderSubjectFilters();
   renderNotesList();
+
+  // If the meta sheet is open, refresh its subject dropdown
+  const metaSheet = document.getElementById('generateMetaSheet');
+  if (metaSheet && !metaSheet.classList.contains('hidden')) {
+    const select = document.getElementById('genMetaSubject');
+    if (select) {
+      const prevValue = select.value;
+      const subjects2 = getAllUserSubjects();
+      select.innerHTML = '<option value="">— No subject —</option>' +
+        subjects2.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+
+      if (savedSubj && subjects2.some(s => s.id === savedSubj.id)) {
+        select.value = savedSubj.id;
+        if (pendingGenerateMeta) pendingGenerateMeta.subjectId = savedSubj.id;
+      } else if (prevValue) {
+        select.value = prevValue;
+      }
+    }
+  }
+
   showNotification(wasEditing ? 'Subject updated.' : 'Subject created.', 'success');
 }
 
 async function deleteSubject(id) {
+  if (!confirm('Delete this subject? Notes in it will become Uncategorized.')) return;
+  const subjects = getNoteSubjects();
+  const idx = subjects.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  subjects.splice(idx, 1);
+  setNoteSubjects(subjects);
+
+  const notes = getNotes();
+  notes.forEach(n => { if (n.subjectId === id) n.subjectId = null; });
+  setNotes(notes);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      const uid = auth.currentUser.uid;
+      await db.collection('users').doc(uid).collection('note_subjects').doc(id).delete();
+      for (const n of notes) {
+        if (n.subjectId === null) {
+          await db.collection('users').doc(uid).collection('notes').doc(n.id)
+            .set({ subjectId: null }, { merge: true });
+        }
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  if (currentNoteSubjectId === id) { currentNoteSubjectId = null; updateNoteSubjectUI(); }
+  closeSubjectPicker();
+  renderSubjectFilters();
+  renderNotesList();
+  showNotification('Subject deleted.', 'info');
+}
+  
+  async function deleteSubject(id) {
   if (!confirm('Delete this subject? Notes in it will become Uncategorized.')) return;
   const subjects = getNoteSubjects();
   const idx = subjects.findIndex(s => s.id === id);
@@ -2943,7 +3058,7 @@ async function persistLibraryItemWithMeta(title, data, meta = {}) {
     subject: meta.subject || null,
     data,
   };
-
+  
   const saved = safeLocalStorageGet('acadhub_saved', []);
   saved.unshift(saveItem);
   const ok = safeLocalStorageSet('acadhub_saved', saved);
@@ -2951,7 +3066,7 @@ async function persistLibraryItemWithMeta(title, data, meta = {}) {
     showNotification('Could not save — local storage is full.', 'error');
     return false;
   }
-
+  
   if (firebaseAvailable && auth && auth.currentUser) {
     try {
       await db.collection('users').doc(auth.currentUser.uid)
@@ -2963,19 +3078,35 @@ async function persistLibraryItemWithMeta(title, data, meta = {}) {
       return true;
     }
   }
-
+  
   showNotification('Saved to library!', 'success');
   renderSavedList();
   return true;
 }
+
 async function saveToLibrary() {
   if (!currentResults) {
     showNotification('No results to save.', 'warning');
     return;
   }
+  
+  const subject = currentResults.subject || null;
+  
+  const titleParts = [];
+  if (currentResults.term) titleParts.push(currentResults.term);
+  if (currentResults.semester) titleParts.push(currentResults.semester);
+  if (currentResults.schoolYear) titleParts.push(currentResults.schoolYear);
+  
+  const autoTitle = titleParts.length ?
+    `${subject ? subject.name + ' — ' : ''}${titleParts.join(' · ')}` :
+    'Reviewer ' + new Date().toLocaleDateString();
+  
+  const ok = await persistLibraryItemWithMeta(autoTitle, currentResults, { subject });
+  if (ok) renderSavedList();
+}
 
-  await persistLibraryItem('Reviewer ' + new Date().toLocaleDateString(), currentResults);
-}// TEST MY LIMITS
+
+// TEST MY LIMITS
 function setDifficulty(difficulty) {
   testDifficulty = difficulty;
 
@@ -5375,13 +5506,13 @@ async function saveDeadline() {
   renderUpcomingDeadlines();
   if (currentTab === 'calendar') renderCalendar();
   showNotification(wasEditing ? 'Deadline updated.' : 'Deadline added.', 'success');
-}
-
-async function deleteDeadlineFromSheet() {
-  if (!editingDeadlineId) return;
-  if (!confirm('Delete this deadline?')) return;
-
-  const all = getDeadlines();
+  }
+  
+  async function deleteDeadlineFromSheet() {
+    if (!editingDeadlineId) return;
+    if (!confirm('Delete this deadline?')) return;
+    
+    const all = getDeadlines();
   const idx = all.findIndex(x => x.id === editingDeadlineId);
   if (idx === -1) return;
   const removed = all[idx];
@@ -5401,4 +5532,130 @@ async function deleteDeadlineFromSheet() {
   renderUpcomingDeadlines();
   if (currentTab === 'calendar') renderCalendar();
   showNotification('Deadline deleted.', 'info');
+}
+
+// ============================================================
+// GENERATE METADATA — ask Subject / Term / Semester before generating
+// ============================================================
+const GEN_TERMS = ['Prelim', 'Midterm', 'Semi-Final', 'Finals'];
+const GEN_SEMESTERS = ['1st Sem', '2nd Sem', 'Summer'];
+
+// Holds the choices while the sheet is open
+let pendingGenerateMeta = null;
+
+function openGenerateMetaSheet() {
+  const sheet = document.getElementById('generateMetaSheet');
+  if (!sheet) return;
+  
+  // Reset pending state
+  pendingGenerateMeta = {
+    subjectId: null,
+    term: null,
+    semester: null,
+    schoolYear: '',
+  };
+  
+// Populate subject dropdown from ALL subjects the user has ever used
+const select = document.getElementById('genMetaSubject');
+const subjects = getAllUserSubjects();
+select.innerHTML = '<option value="">— No subject —</option>' +
+  subjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  
+  // Reset school year
+  const syInput = document.getElementById('genMetaSchoolYear');
+  if (syInput) syInput.value = '';
+  
+  renderGenMetaTermTiles();
+  renderGenMetaSemTiles();
+  
+  sheet.classList.remove('hidden');
+}
+
+function closeGenerateMetaSheet() {
+  const sheet = document.getElementById('generateMetaSheet');
+  if (sheet) sheet.classList.add('hidden');
+}
+
+function closeGenerateMetaSheetBackdrop(e) {
+  if (e.target.id === 'generateMetaSheet') closeGenerateMetaSheet();
+}
+
+function renderGenMetaTermTiles() {
+  const c = document.getElementById('genMetaTermTiles');
+  if (!c) return;
+  c.innerHTML = GEN_TERMS.map(t => `
+    <button type="button"
+            class="gen-meta-tile ${pendingGenerateMeta?.term === t ? 'active' : ''}"
+            onclick="pickGenTerm('${t}')">${t}</button>
+  `).join('');
+}
+
+function renderGenMetaSemTiles() {
+  const c = document.getElementById('genMetaSemTiles');
+  if (!c) return;
+  c.innerHTML = GEN_SEMESTERS.map(s => `
+    <button type="button"
+            class="gen-meta-tile ${pendingGenerateMeta?.semester === s ? 'active' : ''}"
+            onclick="pickGenSem('${s}')">${s}</button>
+  `).join('');
+}
+
+function pickGenTerm(term) {
+  if (!pendingGenerateMeta) pendingGenerateMeta = {};
+  pendingGenerateMeta.term = pendingGenerateMeta.term === term ? null : term;
+  renderGenMetaTermTiles();
+}
+
+function pickGenSem(sem) {
+  if (!pendingGenerateMeta) pendingGenerateMeta = {};
+  pendingGenerateMeta.semester = pendingGenerateMeta.semester === sem ? null : sem;
+  renderGenMetaSemTiles();
+}
+
+// Called by the "Generate" button inside the sheet
+async function confirmGenerateMeta() {
+  if (!pendingGenerateMeta) pendingGenerateMeta = {};
+  
+  const subjectId = document.getElementById('genMetaSubject').value || null;
+  const schoolYear = (document.getElementById('genMetaSchoolYear').value || '').trim();
+  
+  pendingGenerateMeta.subjectId = subjectId;
+  pendingGenerateMeta.schoolYear = schoolYear;
+  
+  closeGenerateMetaSheet();
+  
+  // Hand off to the real generation routine
+  await runGenerateWithMeta({ ...pendingGenerateMeta });
+}
+
+// Returns every subject the user has ever used:
+// - ones they created in the Notes tab
+// - ones they attached to saved library items
+// Deduped by lowercase name. Library-only subjects get a synthetic
+// `lib:<lowercasedName>` id so they can still be picked here.
+function getAllUserSubjects() {
+  const out = [];
+  const seen = new Map();
+  
+  // 1. Note subjects (canonical — have real ids + colors)
+  getNoteSubjects().forEach(s => {
+    const key = String(s.name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.set(key, s);
+    out.push(s);
+  });
+  
+  // 2. Subjects from saved library items (only if not already listed above)
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  saved.forEach(item => {
+    const s = item && item.subject;
+    if (!s || !s.name) return;
+    const key = String(s.name).trim().toLowerCase();
+    if (seen.has(key)) return;
+    const synth = { id: 'lib:' + key, name: s.name, color: s.color || '#94a3b8' };
+    seen.set(key, synth);
+    out.push(synth);
+  });
+  
+  return out;
 }

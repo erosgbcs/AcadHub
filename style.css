@@ -2096,3 +2096,64 @@ html.light .due-subject-row .bar-track {
 html.light .deadline-row:hover {
   background: rgba(0, 0, 0, 0.04);
 }
+/* ============ GENERATE META TILES ============ */
+.gen-meta-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.35rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s;
+  color: var(--text-body);
+}
+.gen-meta-tile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.gen-meta-tile.active {
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: var(--accent2);
+}
+
+html.light .gen-meta-tile {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+html.light .gen-meta-tile:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+html.light .gen-meta-tile.active {
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+
+/* Library card meta line */
+.saved-card .saved-meta-line {
+  font-size: 0.7rem;
+  opacity: 0.55;
+  margin-top: 0.15rem;
+}
+.saved-card .saved-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.65rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+html.light .saved-card .saved-meta-chip {
+  background: rgba(0, 0, 0, 0.05);
+}

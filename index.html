@@ -1536,8 +1536,57 @@
   </div>
 </div>
 
+<!-- ===== GENERATE METADATA SHEET ===== -->
+<div id="generateMetaSheet" data-modal class="hidden fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeGenerateMetaSheetBackdrop(event)">
+  <div class="glass-card w-full max-w-md rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-sm font-semibold">
+        <i class="fa-solid fa-tag mr-2 text-indigo-400"></i>Tag this reviewer
+      </p>
+      <button onclick="closeGenerateMetaSheet()" class="text-xs opacity-50 hover:opacity-100">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
 
+    <p class="text-xs opacity-60 mb-4">Optional but recommended — makes your library easier to sort later.</p>
 
+    <!-- Subject -->
+    <label class="block text-xs font-semibold mb-1">Subject</label>
+    <div class="flex gap-2 mb-4">
+      <select id="genMetaSubject" class="flex-1 text-sm">
+        <option value="">— No subject —</option>
+      </select>
+      <button type="button" onclick="openEditSubject(null)"
+              class="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs hover:bg-white/10"
+              title="Create new subject">
+        <i class="fa-solid fa-plus"></i>
+      </button>
+    </div>
+
+    <!-- Term -->
+    <label class="block text-xs font-semibold mb-1">Term</label>
+    <div id="genMetaTermTiles" class="grid grid-cols-4 gap-2 mb-4"></div>
+
+    <!-- Semester -->
+    <label class="block text-xs font-semibold mb-1">Semester</label>
+    <div id="genMetaSemTiles" class="grid grid-cols-3 gap-2 mb-4"></div>
+
+    <!-- School Year -->
+    <label class="block text-xs font-semibold mb-1">
+      School Year <span class="opacity-50 font-normal">(optional)</span>
+    </label>
+    <input type="text" id="genMetaSchoolYear" placeholder="e.g. 2024-2025" maxlength="12" class="text-sm mb-4" />
+
+      <div class="flex gap-2">
+      <button onclick="closeGenerateMetaSheet()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-sm font-semibold">Cancel</button>
+      <button onclick="confirmGenerateMeta()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">
+        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Generate
+      </button>
+    </div>
+    </div>
+    </div>
+    
+    <!-- ===== SUBJECT / CATEGORY SHEET (now centered) ===== -->
   <!-- ===== SUBJECT / CATEGORY SHEET (now centered) ===== -->
   <div id="subjectSheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeSubjectSheetBackdrop(event)">
     <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
