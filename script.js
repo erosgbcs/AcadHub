@@ -4029,6 +4029,7 @@ migrateSavedFlashcardOrder();
 updateQuickSummaryKeyHint();
 updateSettingsUI();
 initQuickSummaryListeners();
+initAdvancedOptions();
 
   setTimeout(() => {
     enableTabButtons();
@@ -4605,7 +4606,39 @@ function recallReviewMissed() {
   document.getElementById('recallCompleteOverlay').classList.add('hidden');
   renderRecallCard();
 }
+// ============================================================
+// ADVANCED OPTIONS ACCORDION
+// ============================================================
+const ADV_OPTIONS_LS_KEY = 'acadhub_advanced_options_open';
 
+function toggleAdvancedOptions() {
+  const panel = document.getElementById('advancedOptions');
+  const btn = document.getElementById('advancedToggleBtn');
+  const chevron = document.getElementById('advancedToggleChevron');
+  if (!panel || !btn) return;
+  
+  const isOpen = !panel.classList.contains('hidden');
+  const nextOpen = !isOpen;
+  
+  panel.classList.toggle('hidden', !nextOpen);
+  btn.setAttribute('aria-expanded', String(nextOpen));
+  if (chevron) chevron.classList.toggle('rotate-180', nextOpen);
+  
+  safeLocalStorageSet(ADV_OPTIONS_LS_KEY, nextOpen);
+}
+
+function initAdvancedOptions() {
+  const panel = document.getElementById('advancedOptions');
+  const btn = document.getElementById('advancedToggleBtn');
+  const chevron = document.getElementById('advancedToggleChevron');
+  if (!panel || !btn) return;
+  
+  const wasOpen = safeLocalStorageGet(ADV_OPTIONS_LS_KEY, false);
+  
+  panel.classList.toggle('hidden', !wasOpen);
+  btn.setAttribute('aria-expanded', String(wasOpen));
+  if (chevron) chevron.classList.toggle('rotate-180', wasOpen);
+}
 function restartRecallSession() {
   recallQueue = [...recallOriginalQueue];
   recallIndex = 0;

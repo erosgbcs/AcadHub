@@ -316,6 +316,22 @@
               </div>
             </div>
 
+            <!-- ===== ADVANCED OPTIONS (collapsed by default) ===== -->
+            <button type="button" id="advancedToggleBtn"
+                    onclick="toggleAdvancedOptions()"
+                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold transition btn-hover"
+                    aria-expanded="false"
+                    aria-controls="advancedOptions">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-indigo-400"></i>
+                Advanced options
+              </span>
+              <i class="fa-solid fa-chevron-down text-[10px] opacity-60 transition-transform"
+                 id="advancedToggleChevron"></i>
+            </button>
+
+            <div id="advancedOptions" class="hidden space-y-3 sm:space-y-4">
+
             <div>
               <label class="block text-xs font-semibold mb-1"><i class="fa-solid fa-clone mr-1"></i>Number of Flashcards</label>
               <input type="number" id="numFlashcards" value="10" min="1" max="50" class="text-sm" />
@@ -365,13 +381,15 @@
 </div>
 
             <div class="flex items-center gap-2">
-              <input type="checkbox" id="useInternet" class="accent-indigo-500" />
-              <label for="useInternet" class="text-xs"><i class="fa-solid fa-globe mr-1"></i>Boost accuracy with Wikipedia</label>
-              <label class="text-xs opacity-70 ml-2">Enrich count:</label>
-              <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
-            </div>
+  <input type="checkbox" id="useInternet" class="accent-indigo-500" />
+  <label for="useInternet" class="text-xs"><i class="fa-solid fa-globe mr-1"></i>Boost accuracy with Wikipedia</label>
+  <label class="text-xs opacity-70 ml-2">Enrich count:</label>
+  <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
+</div>
 
-            <button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base btn-hover">
+</div> <!-- /#advancedOptions -->
+
+<button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base btn-hover">
               <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
             </button>
           </form>
