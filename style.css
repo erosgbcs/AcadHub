@@ -2047,3 +2047,38 @@ html.light .quiz-type-count {
   background: rgba(255, 255, 255, 0.6);
   border-color: rgba(0, 0, 0, 0.1);
 }
+
+/* ============ HOME DASHBOARD ============ */
+#viewHome {
+  animation: viewEnter 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.due-subject-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.due-subject-row .bar-track {
+  width: 4rem;
+  height: 0.375rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+html.light .due-subject-row .bar-track {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.due-subject-row .bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+#recentItemsList .note-card {
+  border-left: none;
+}

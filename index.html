@@ -118,7 +118,14 @@
 </div>
     <!-- ===== TABS ===== -->
 <div id="tabContainer" class="flex p-1.5 glass-card rounded-2xl gap-1 flex-wrap order-2">
-  <button id="tabNotes" onclick="switchTab('notes')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">Notes</button>
+  <button id="tabHome" onclick="switchTab('home')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-active btn-hover">
+    <i class="fa-solid fa-house text-xs"></i>
+    <span class="hidden sm:inline ml-1">Home</span>
+  </button>
+  <button id="tabNotes" onclick="switchTab('notes')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">
+    <i class="fa-solid fa-pen-to-square text-xs"></i>
+    <span class="hidden sm:inline ml-1">Notes</span>
+  </button>
   <button id="tabReviewer" onclick="switchTab('reviewer')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">AI Reviewer</button>
   <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Saved Library</button>
   <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition tab-inactive btn-hover">Test My Limits</button>
@@ -127,6 +134,100 @@
 
     <!-- ===== VIEWS CONTAINER ===== -->
     <div id="viewsContainer" class="flex-1 space-y-4 sm:space-y-6 order-3">
+
+<!-- ===== VIEW: HOME DASHBOARD ===== -->
+<div id="viewHome" class="space-y-4 sm:space-y-6">
+  
+  <!-- Greeting -->
+  <div class="glass-card">
+    <h2 id="homeGreeting" class="text-lg sm:text-xl font-bold">Good evening 👋</h2>
+    <p id="homeSubline" class="text-xs opacity-70 mt-1">Here's what's waiting for you.</p>
+  </div>
+  
+  <!-- PRIMARY: Due card queue -->
+  <div class="glass-card border-l-4 border-l-indigo-500">
+    <h3 class="text-sm font-bold uppercase text-indigo-400 mb-3">
+      <i class="fa-solid fa-brain mr-2"></i>Due for Review
+    </h3>
+    
+    <!-- State: Loading -->
+    <div id="dueLoading" class="hidden space-y-2 py-2">
+      <div class="skeleton-block skeleton-title"></div>
+      <div class="skeleton-line w-75"></div>
+      <div class="skeleton-line w-60"></div>
+    </div>
+    
+    <!-- State: No flashcards exist -->
+    <div id="dueEmpty" class="hidden text-center py-6">
+      <div class="text-3xl mb-2">📚</div>
+      <p class="text-sm font-semibold">No flashcards yet.</p>
+      <p class="text-xs opacity-60 mt-1 mb-4">
+        Generate a reviewer from your notes to start studying with spaced repetition.
+      </p>
+      <button onclick="switchTab('reviewer')" class="btn-primary btn-hover">
+        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Reviewer
+      </button>
+    </div>
+    
+    <!-- State: Caught up -->
+    <div id="dueCaughtUp" class="hidden text-center py-6">
+      <div class="text-3xl mb-2">✅</div>
+      <p class="text-sm font-semibold">You're all caught up!</p>
+      <p class="text-xs opacity-60 mt-1 mb-4" id="nextReviewInfo">
+        No cards due today.
+      </p>
+      <div class="flex gap-2 justify-center">
+        <button onclick="studyAhead()" class="px-4 py-2 bg-white/10 rounded-lg text-xs font-semibold btn-hover">
+          Study ahead
+        </button>
+        <button onclick="switchTab('reviewer')" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold btn-hover">
+          Generate new
+        </button>
+      </div>
+    </div>
+    
+    <!-- State: Has due cards -->
+    <div id="dueContent" class="hidden">
+      <div class="text-center mb-4">
+        <p id="dueCount" class="text-4xl font-bold text-indigo-400">0</p>
+        <p class="text-xs opacity-60">cards ready</p>
+      </div>
+      
+      <div id="dueBySubject" class="space-y-2 mb-4"></div>
+      
+      <button onclick="startDueReviewSession()" class="btn-primary w-full btn-hover">
+        <i class="fa-solid fa-play mr-2"></i>Start Review Session
+      </button>
+    </div>
+  </div>
+  
+  <!-- Continue where you left off -->
+  <div>
+    <p class="text-xs uppercase tracking-wider opacity-50 mb-2 font-semibold px-1">
+      Continue where you left off
+    </p>
+    <div id="recentItemsList" class="space-y-2"></div>
+  </div>
+  
+  <!-- Quick actions -->
+  <div class="grid grid-cols-3 gap-2">
+    <button onclick="openNoteEditor(null)" class="glass-card py-3 text-center btn-hover">
+      <i class="fa-solid fa-plus text-indigo-400"></i>
+      <p class="text-[10px] mt-1">New Note</p>
+    </button>
+    <button onclick="switchTab('reviewer')" class="glass-card py-3 text-center btn-hover">
+      <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i>
+      <p class="text-[10px] mt-1">Upload PDF</p>
+    </button>
+    <button onclick="switchTab('reviewer'); setTimeout(quickSummarize, 200);" class="glass-card py-3 text-center btn-hover">
+      <i class="fa-solid fa-bolt text-amber-400"></i>
+      <p class="text-[10px] mt-1">Summarize</p>
+    </button>
+  </div>
+  
+</div>
+<!-- ===== /VIEW: HOME DASHBOARD ===== -->
+
 
       <!-- ===== VIEW: AI REVIEWER ===== -->
 <div id="viewNotes" class="space-y-4 sm:space-y-6">

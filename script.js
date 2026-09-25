@@ -644,6 +644,7 @@ function switchTab(tab) {
   });
 
 const viewMap = {
+  'home': 'viewHome',
   'notes': 'viewNotes',
   'reviewer': 'viewReviewer',
   'library': 'viewLibrary',
@@ -667,6 +668,7 @@ const viewMap = {
   });
 
 const tabMap = {
+  'home': 'tabHome',
   'notes': 'tabNotes',
   'reviewer': 'tabReviewer',
   'library': 'tabLibrary',
@@ -685,10 +687,12 @@ const tabMap = {
   }
 
   // Refresh data for certain tabs
-if (tab === 'library') renderSavedList();
-if (tab === 'calendar') renderCalendar();
-if (tab === 'notes') { renderNotesList(); renderSubjectFilters(); }
-}
+  // Refresh data for certain tabs
+  if (tab === 'home') renderHomeDashboard();
+  if (tab === 'library') renderSavedList();
+  if (tab === 'calendar') renderCalendar();
+  if (tab === 'notes') { renderNotesList(); renderSubjectFilters(); }
+}                                                    //  
 // FIXED: Improved initTabListeners with direct onclick
 function initTabListeners() {
   const tabMappings = {
@@ -2337,6 +2341,19 @@ function openStudyMode() {
 }
 
 function exitStudyMode() {
+  // NEW: restore previous reviewer state if we were in a Due Queue session
+  if (dueReviewMode) {
+    dueReviewMode = false;
+    dueReviewSubjectMap = {};
+    if (__preDueResults !== undefined) {
+      currentResults = __preDueResults;
+      __preDueResults = undefined;
+    } else {
+      currentResults = null;
+    }
+    setTimeout(renderHomeDashboard, 50);
+  }
+  
   document.getElementById('studyModeOverlay').classList.add('hidden');
   document.getElementById('studyCompleteOverlay').classList.add('hidden');
   document.getElementById('studyOptionsPanel').classList.add('hidden');
@@ -2405,11 +2422,16 @@ function studyPrev() {
 function rateStudyCard(rating) {
   const card = studyQueue[studyIndex];
   if (!card) return;
-
+  
+  // ✅ SRS hook — feeds the Home Dashboard due queue
+  if (dueReviewMode && card.key) {
+    scheduleNext(card.key, rating, dueReviewSubjectMap[card.key] || null);
+  }
+  
   studyRatings = getFlashcardRatings();
   studyRatings[card.key] = rating;
   setFlashcardRatings(studyRatings);
-
+  
   studySessionStats[rating]++;
 
   const cardEl = document.getElementById('studyCard');
@@ -3336,7 +3358,7 @@ function loadSavedItem(index) {
 
   if (!item || !item.data) return;
 
-  switchTab('reviewer');
+  switchTab('reviewer');   
 
   // ✅ NEW: enter saved-view mode — hide generator, show back button
   const viewReviewer = document.getElementById('viewReviewer');
@@ -3722,17 +3744,19 @@ const firestoreLibrary = await loadFromFirestore('library');
 
    
    
-      // ---- Notes + note_subjects ----
-      const firestoreNotes = await loadFromFirestore('notes');
-      const firestoreNoteSubjects = await loadFromFirestore('note_subjects');
-      if (firestoreNotes.length > 0) {
-        safeLocalStorageSet('acadhub_notes', firestoreNotes);
-      }
-      if (firestoreNoteSubjects.length > 0) {
-        safeLocalStorageSet('acadhub_note_subjects', firestoreNoteSubjects);
-      }
-      renderNotesList();
-      renderSubjectFilters();
+   // ---- SRS schedule sync ----
+const firestoreSrs = await loadFromFirestore('srs');
+if (firestoreSrs.length > 0) {
+  const localSrs = getSrsData();
+  const merged = { ...localSrs };
+  firestoreSrs.forEach(rec => {
+    // doc id is `srsDocId(key)`; we stored it under a `cardKey`-like field? No — we store under doc id.
+    // Since loadFromFirestore returns { id, ...data }, use doc id as the key.
+    if (rec.id) merged[rec.id] = { ...(merged[rec.id] || {}), ...rec };
+  });
+  setSrsData(merged);
+}
+renderHomeDashboard();
 
         // ---- Load user document (settings & profile) ----
 const userDoc = await db.collection('users').doc(user.uid).get();
@@ -4021,15 +4045,16 @@ renderThemePresets();
 
   offlineQueue = safeLocalStorageGet('offline_queue', []);
 migrateSavedFlashcardOrder();
-  renderSavedList();
+    renderSavedList();
   renderCalendar();
   renderNotesList();
   renderSubjectFilters();
+  renderHomeDashboard();
   updateProviderUI();
-updateQuickSummaryKeyHint();
-updateSettingsUI();
-initQuickSummaryListeners();
-initAdvancedOptions();
+  updateQuickSummaryKeyHint();
+  updateSettingsUI();
+  initQuickSummaryListeners();
+  initAdvancedOptions();
 
   setTimeout(() => {
     enableTabButtons();
@@ -4040,12 +4065,12 @@ initAdvancedOptions();
     enableTabButtons();
   });
 
-  checkForSharedReviewer();
-  hideSplashScreen();
+  switchTab('home');
+checkForSharedReviewer();
+hideSplashScreen();
 
-  console.log('✅ AcadHub Suite initialized successfully');
+console.log('✅ AcadHub Suite initialized successfully');
 }
-
 // ============================================================
 // SAVED ITEM ACTION SHEET
 // ============================================================
@@ -4682,4 +4707,398 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
   initializeApp();
+}
+
+// ============================================================
+// HOME DASHBOARD + SPACED REPETITION QUEUE
+// ============================================================
+
+// ---- SRS storage ----
+const SRS_LS_KEY = 'acadhub_srs';
+
+let dueReviewMode = false;
+let dueReviewSubjectMap = {};
+let __preDueResults = undefined;
+let homeRecentItems = [];
+
+function getSrsData() {
+  return safeLocalStorageGet(SRS_LS_KEY, {});
+}
+
+function setSrsData(data) {
+  safeLocalStorageSet(SRS_LS_KEY, data);
+}
+
+function srsDocId(cardKey) {
+  // Firestore doc IDs cannot contain '/'
+  return String(cardKey).replace(/[\/]/g, '_').slice(0, 1400);
+}
+
+// ---- SM-2 inspired scheduler ----
+function scheduleNext(cardKey, rating, subject) {
+  if (!cardKey) return;
+
+  const all = getSrsData();
+  const existing = all[cardKey] || {
+    interval: 0,
+    easeFactor: 2.5,
+    reviewCount: 0,
+    lapses: 0,
+    subject: subject || null,
+  };
+
+  let interval = existing.interval || 0;
+  let easeFactor = existing.easeFactor || 2.5;
+  let reviewCount = existing.reviewCount || 0;
+  let lapses = existing.lapses || 0;
+
+  if (rating === 'forgot') {
+    interval = 1;
+    easeFactor = Math.max(1.3, easeFactor - 0.20);
+    lapses += 1;
+  } else if (rating === 'hard') {
+    interval = interval === 0 ? 1 : Math.max(1, Math.round(interval * 1.2));
+    easeFactor = Math.max(1.3, easeFactor - 0.15);
+  } else if (rating === 'easy') {
+    interval = interval === 0 ? 3 : Math.max(2, Math.round(interval * easeFactor));
+    easeFactor = Math.min(3.0, easeFactor + 0.15);
+  }
+
+  reviewCount += 1;
+
+  const nextReviewAt = new Date(
+    Date.now() + interval * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  all[cardKey] = {
+    interval,
+    easeFactor: Math.round(easeFactor * 100) / 100,
+    nextReviewAt,
+    lastRating: rating,
+    reviewCount,
+    lapses,
+    subject: subject || existing.subject || null,
+    updatedAt: new Date().toISOString(),
+  };
+
+  setSrsData(all);
+
+  if (firebaseAvailable && auth && auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid)
+      .collection('srs').doc(srsDocId(cardKey))
+      .set(all[cardKey], { merge: true })
+      .catch(err => console.warn('SRS sync failed:', err));
+  }
+}
+
+// ---- Compute the due queue ----
+function computeDueQueue() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const srs = getSrsData();
+  const now = Date.now();
+  const due = [];
+  const seen = new Set();
+
+  saved.forEach(item => {
+    const cards = (item && item.data && item.data.flashcards) || [];
+    const subject = item.subject || null;
+
+    cards.forEach(card => {
+      const key = flashcardKey(card);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+
+      const record = srs[key];
+
+      if (!record) {
+        due.push({
+          key,
+          front: card.front,
+          back: card.back,
+          subject,
+          isNew: true,
+          lastRating: null,
+          lastReviewedAt: null,
+        });
+        return;
+      }
+
+      const nextAt = record.nextReviewAt
+        ? new Date(record.nextReviewAt).getTime()
+        : 0;
+
+      if (nextAt <= now) {
+        due.push({
+          key,
+          front: card.front,
+          back: card.back,
+          subject: record.subject && !subject
+            ? { name: record.subject, color: '#94a3b8' }
+            : subject,
+          isNew: false,
+          lastRating: record.lastRating,
+          lastReviewedAt: record.updatedAt,
+        });
+      }
+    });
+  });
+
+  return due;
+}
+
+// ---- Greeting helper ----
+function getHomeGreetingName() {
+  if (cachedAuthorName) return cachedAuthorName;
+  if (firebaseAvailable && auth && auth.currentUser) {
+    const u = auth.currentUser;
+    if (u.displayName) return u.displayName;
+    if (u.email) return u.email.split('@')[0];
+  }
+  return '';
+}
+
+// ---- Render subject breakdown bars ----
+function renderDueBySubject(due) {
+  const container = document.getElementById('dueBySubject');
+  if (!container) return;
+
+  const groups = {};
+  due.forEach(card => {
+    const name = (card.subject && card.subject.name) || 'Uncategorized';
+    const color = (card.subject && card.subject.color) || '#94a3b8';
+    if (!groups[name]) groups[name] = { name, color, count: 0 };
+    groups[name].count++;
+  });
+
+  const sorted = Object.values(groups).sort((a, b) => b.count - a.count);
+  const max = Math.max(...sorted.map(g => g.count), 1);
+
+  container.innerHTML = sorted.map(g => `
+    <div class="due-subject-row">
+      <span class="w-2 h-2 rounded-full shrink-0" style="background:${g.color}"></span>
+      <span class="flex-1 truncate opacity-80">${escapeHtml(g.name)}</span>
+      <span class="font-mono opacity-60 text-xs">${g.count}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(g.count / max) * 100}%; background:${g.color}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---- Render recent items ----
+function renderRecentItems() {
+  const container = document.getElementById('recentItemsList');
+  if (!container) return;
+
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const notes = getNotes();
+  const items = [];
+
+  saved.forEach((item, idx) => {
+    items.push({
+      type: 'reviewer',
+      idx,
+      title: item.title || 'Untitled Reviewer',
+      subtitle: `${(item.data && item.data.flashcards ? item.data.flashcards.length : 0)} flashcards · ${formatRelativeTime(item.date)}`,
+      timestamp: item.date,
+    });
+  });
+
+  notes.forEach(note => {
+    items.push({
+      type: 'note',
+      id: note.id,
+      title: note.title || 'Untitled note',
+      subtitle: `Edited ${formatRelativeTime(note.updatedAt)}`,
+      timestamp: note.updatedAt,
+    });
+  });
+
+  const recent = items
+    .filter(i => i.timestamp)
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, 3);
+
+  homeRecentItems = recent;
+
+  if (recent.length === 0) {
+    container.innerHTML = `
+      <p class="text-xs opacity-50 text-center py-6 glass-card">
+        Nothing here yet. Create a note or generate a reviewer to get started.
+      </p>`;
+    return;
+  }
+
+  container.innerHTML = recent.map((item, i) => `
+    <div class="glass-card flex items-center gap-3 py-3 cursor-pointer note-card"
+         onclick="openHomeRecent(${i})">
+      <div class="w-9 h-9 rounded-lg ${
+        item.type === 'reviewer'
+          ? 'bg-indigo-500/15 text-indigo-400'
+          : 'bg-cyan-500/15 text-cyan-400'
+      } flex items-center justify-center shrink-0">
+        <i class="fa-solid ${
+          item.type === 'reviewer' ? 'fa-clone' : 'fa-file-lines'
+        } text-sm"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-medium truncate">${escapeHtml(item.title)}</p>
+        <p class="text-xs opacity-50 truncate">${escapeHtml(item.subtitle)}</p>
+      </div>
+      <i class="fa-solid fa-chevron-right text-xs opacity-40"></i>
+    </div>
+  `).join('');
+}
+
+function openHomeRecent(index) {
+  const item = homeRecentItems[index];
+  if (!item) return;
+  if (item.type === 'reviewer') {
+    loadSavedItem(item.idx);
+  } else if (item.type === 'note') {
+    openNoteEditor(item.id);
+  }
+}
+
+// ---- Main renderer ----
+function renderHomeDashboard() {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning'
+                 : hour < 18 ? 'Good afternoon'
+                 : 'Good evening';
+  const name = getHomeGreetingName();
+
+  const greetingEl = document.getElementById('homeGreeting');
+  const sublineEl = document.getElementById('homeSubline');
+  if (greetingEl) {
+    greetingEl.textContent = name ? `${greeting}, ${name} 👋` : `${greeting} 👋`;
+  }
+
+  // Hide loading (it's a placeholder for future async)
+  const loadingEl = document.getElementById('dueLoading');
+  if (loadingEl) loadingEl.classList.add('hidden');
+
+  const due = computeDueQueue();
+  const allSaved = safeLocalStorageGet('acadhub_saved', []);
+  const hasAnyCards = allSaved.some(item =>
+    item && item.data && item.data.flashcards && item.data.flashcards.length > 0
+  );
+
+  const emptyEl = document.getElementById('dueEmpty');
+  const caughtUpEl = document.getElementById('dueCaughtUp');
+  const contentEl = document.getElementById('dueContent');
+
+  if (!hasAnyCards) {
+    if (sublineEl) sublineEl.textContent = "Let's get started.";
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    if (caughtUpEl) caughtUpEl.classList.add('hidden');
+    if (contentEl) contentEl.classList.add('hidden');
+  } else if (due.length === 0) {
+    if (sublineEl) sublineEl.textContent = "You're all caught up.";
+    if (emptyEl) emptyEl.classList.add('hidden');
+    if (caughtUpEl) caughtUpEl.classList.remove('hidden');
+    if (contentEl) contentEl.classList.add('hidden');
+
+    // Next-review hint
+    const srs = getSrsData();
+    const futureTimes = Object.values(srs)
+      .map(r => r.nextReviewAt ? new Date(r.nextReviewAt).getTime() : 0)
+      .filter(t => t > Date.now())
+      .sort((a, b) => a - b);
+
+    const infoEl = document.getElementById('nextReviewInfo');
+    if (infoEl) {
+      if (futureTimes.length === 0) {
+        infoEl.textContent = 'No cards scheduled.';
+      } else {
+        const next = new Date(futureTimes[0]);
+        const diffMs = next.getTime() - Date.now();
+        const hours = Math.round(diffMs / (60 * 60 * 1000));
+        let label;
+        if (hours < 1) label = 'in less than an hour';
+        else if (hours < 24) label = `in ${hours} hour${hours === 1 ? '' : 's'}`;
+        else if (hours < 48) label = 'tomorrow';
+        else {
+          const days = Math.round(hours / 24);
+          label = `in ${days} days`;
+        }
+        infoEl.textContent = `Next review scheduled ${label}.`;
+      }
+    }
+  } else {
+    if (sublineEl) {
+      sublineEl.textContent = `${due.length} card${due.length === 1 ? '' : 's'} waiting for you.`;
+    }
+    if (emptyEl) emptyEl.classList.add('hidden');
+    if (caughtUpEl) caughtUpEl.classList.add('hidden');
+    if (contentEl) contentEl.classList.remove('hidden');
+
+    const countEl = document.getElementById('dueCount');
+    if (countEl) countEl.textContent = due.length;
+    renderDueBySubject(due);
+  }
+
+  renderRecentItems();
+}
+
+// ---- Study ahead (ignore scheduling) ----
+function studyAhead() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const allCards = [];
+  const seen = new Set();
+
+  saved.forEach(item => {
+    const cards = (item && item.data && item.data.flashcards) || [];
+    const subject = item.subject || null;
+    cards.forEach(card => {
+      const key = flashcardKey(card);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      allCards.push({
+        key,
+        front: card.front,
+        back: card.back,
+        subject,
+      });
+    });
+  });
+
+  if (!allCards.length) {
+    showNotification('No flashcards to study.', 'warning');
+    return;
+  }
+
+  launchDueSession(allCards);
+}
+
+// ---- Start the review session ----
+function startDueReviewSession() {
+  const due = computeDueQueue();
+  if (!due.length) {
+    showNotification('No cards due right now.', 'info');
+    return;
+  }
+  launchDueSession(due);
+}
+
+function launchDueSession(cards) {
+  // Reset any prior session state
+  dueReviewSubjectMap = {};
+  cards.forEach(c => { dueReviewSubjectMap[c.key] = c.subject || null; });
+
+  __preDueResults = currentResults;
+  dueReviewMode = true;
+
+  // Feed Study Mode a synthetic "results" object
+  currentResults = {
+    flashcards: cards.map(c => ({
+      front: c.front,
+      back: c.back,
+      _answerFirst: true,
+    })),
+    summary: [],
+    quiz: {},
+  };
+
+  openStudyMode();
 }
