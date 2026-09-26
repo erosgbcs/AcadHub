@@ -4207,6 +4207,11 @@ function initializeApp() {
   console.log('🚀 Initializing AcadHub Suite...');
   console.log('📡 Backend URL:', API_BASE_URL);
 
+  // Move full-screen overlays to <body> so hidden view containers don't hide them
+  ensureOverlaysAtBodyLevel();
+
+  // --- Load theme + accent (needed in every mode) ---
+
   // --- Load theme + accent (needed in every mode) ---
   const savedTheme = safeLocalStorageGet('theme', 'dark');
   document.documentElement.classList.remove('dark', 'light');
@@ -5898,4 +5903,17 @@ function getAllUserSubjects() {
   });
   
   return out;
+}
+
+// Full-screen overlays must be direct children of <body>.
+// Otherwise a hidden parent (`#viewReviewer`, `#resultsContainer`)
+// makes `display: none` cascade down and the overlay can't render.
+function ensureOverlaysAtBodyLevel() {
+  ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.parentElement !== document.body) {
+        document.body.appendChild(el);
+      }
+    });
 }
