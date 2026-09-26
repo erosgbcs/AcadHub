@@ -5404,44 +5404,66 @@ function renderHomeDashboard() {
   renderHomeProgress();
 }
 // ---- Study ahead (ignore scheduling) ----
+// ---- Study ahead (ignore scheduling) ----
 function studyAhead() {
-  const saved = safeLocalStorageGet('acadhub_saved', []);
-  const allCards = [];
-  const seen = new Set();
+  const overlay = document.getElementById('studyModeOverlay');
+  if (overlay) overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
 
-  saved.forEach(item => {
-    const cards = (item && item.data && item.data.flashcards) || [];
-    const subject = item.subject || null;
-    cards.forEach(card => {
-      const key = flashcardKey(card);
-      if (!key || seen.has(key)) return;
-      seen.add(key);
-      allCards.push({
-        key,
-        front: card.front,
-        back: card.back,
-        subject,
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const saved = safeLocalStorageGet('acadhub_saved', []);
+      const allCards = [];
+      const seen = new Set();
+
+      saved.forEach(item => {
+        const cards = (item && item.data && item.data.flashcards) || [];
+        const subject = item.subject || null;
+        cards.forEach(card => {
+          const key = flashcardKey(card);
+          if (!key || seen.has(key)) return;
+          seen.add(key);
+          allCards.push({
+            key,
+            front: card.front,
+            back: card.back,
+            subject,
+          });
+        });
       });
+
+      if (!allCards.length) {
+        if (overlay) overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        showNotification('No flashcards to study.', 'warning');
+        return;
+      }
+
+      launchDueSession(allCards);
     });
   });
-
-  if (!allCards.length) {
-    showNotification('No flashcards to study.', 'warning');
-    return;
-  }
-
-  launchDueSession(allCards);
-}
-
-// ---- Start the review session ----
+}// ---- Start the review session ----
 function startDueReviewSession() {
-  const due = computeDueQueue();
-  if (!due.length) {
-    showNotification('No cards due right now.', 'info');
-    return;
-  }
-  launchDueSession(due);
+  // Paint the overlay shell first so the user sees instant feedback
+  const overlay = document.getElementById('studyModeOverlay');
+  if (overlay) overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // Defer heavy work to the next frame
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const due = computeDueQueue();
+      if (!due.length) {
+        if (overlay) overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        showNotification('No cards due right now.', 'info');
+        return;
+      }
+      launchDueSession(due);  // openStudyMode() re-shows overlay (harmless)
+    });
+  });
 }
+
 
 function launchDueSession(cards) {
   // Reset any prior session state
