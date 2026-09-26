@@ -1639,6 +1639,8 @@ let currentFilterSubjectId = 'all';
 let currentNoteSearchQuery = '';
 let currentActionNoteId = null;
 let editingSubjectId = null;
+let editingSubjectColor = SUBJECT_COLORS[0];
+
 function getNotes() { return safeLocalStorageGet('acadhub_notes', []); }
 function setNotes(notes) { safeLocalStorageSet('acadhub_notes', notes); }
 function getNoteSubjects() { return safeLocalStorageGet('acadhub_note_subjects', []); }
@@ -2164,35 +2166,6 @@ async function deleteSubject(id) {
   showNotification('Subject deleted.', 'info');
 }
   
-  async function deleteSubject(id) {
-  if (!confirm('Delete this subject? Notes in it will become Uncategorized.')) return;
-  const subjects = getNoteSubjects();
-  const idx = subjects.findIndex(s => s.id === id);
-  if (idx === -1) return;
-  subjects.splice(idx, 1);
-  setNoteSubjects(subjects);
-
-  const notes = getNotes();
-  notes.forEach(n => { if (n.subjectId === id) n.subjectId = null; });
-  setNotes(notes);
-
-  if (firebaseAvailable && auth && auth.currentUser) {
-    try {
-      const uid = auth.currentUser.uid;
-      await db.collection('users').doc(uid).collection('note_subjects').doc(id).delete();
-      for (const n of notes) {
-        if (n.subjectId === null) await db.collection('users').doc(uid).collection('notes').doc(n.id).set({ subjectId: null }, { merge: true });
-      }
-    } catch (err) { console.error(err); }
-  }
-
-  if (currentNoteSubjectId === id) { currentNoteSubjectId = null; updateNoteSubjectUI(); }
-  closeSubjectPicker();
-  renderSubjectFilters();
-  renderNotesList();
-  showNotification('Subject deleted.', 'info');
-}
-
 // ---- Note action sheet ----
 function openNoteActionSheet(noteId) {
   const note = getNotes().find(n => n.id === noteId);
@@ -4159,6 +4132,32 @@ function checkForSavedItemView() {
 
   return true;
 }
+// ---- Escape key closes any open sheet ----
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+
+  // Highest z-index first
+  const editSubjectSheet = document.getElementById('editSubjectSheet');
+  if (editSubjectSheet && !editSubjectSheet.classList.contains('hidden')) {
+    closeEditSubject(); return;
+  }
+
+  const metaSheet = document.getElementById('generateMetaSheet');
+  if (metaSheet && !metaSheet.classList.contains('hidden')) {
+    closeGenerateMetaSheet(); return;
+  }
+
+  const deadlineSheet = document.getElementById('deadlineSheet');
+  if (deadlineSheet && !deadlineSheet.classList.contains('hidden')) {
+    closeDeadlineSheet(); return;
+  }
+
+  const subjectPicker = document.getElementById('subjectPickerSheet');
+  if (subjectPicker && !subjectPicker.classList.contains('hidden')) {
+    closeSubjectPicker(); return;
+  }
+});
+
 // ============================================================
 // MIGRATION: normalize old saved flashcards to new order
 // ============================================================
