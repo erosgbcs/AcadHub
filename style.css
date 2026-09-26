@@ -2157,3 +2157,51 @@ html.light .gen-meta-tile.active {
 html.light .saved-card .saved-meta-chip {
   background: rgba(0, 0, 0, 0.05);
 }
+
+/* ============ HOME PROGRESS PILLS (streak + weekly XP) ============ */
+.progress-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  line-height: 1;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.progress-pill strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.progress-pill i {
+  font-size: 0.75rem;
+}
+
+.progress-pill.streak {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+.progress-pill.streak i {
+  color: #f59e0b;
+}
+
+.progress-pill.xp {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent2);
+}
+.progress-pill.xp i {
+  color: var(--accent);
+}
+
+html.light .progress-pill.streak {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+html.light .progress-pill.xp {
+  color: #4338ca;
+}

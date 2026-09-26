@@ -139,67 +139,101 @@
 <div id="viewHome" class="space-y-4 sm:space-y-6">
   
   <!-- Greeting -->
-  <div class="glass-card">
-    <h2 id="homeGreeting" class="text-lg sm:text-xl font-bold">Good evening 👋</h2>
-    <p id="homeSubline" class="text-xs opacity-70 mt-1">Here's what's waiting for you.</p>
+<div class="glass-card">
+  <h2 id="homeGreeting" class="text-lg sm:text-xl font-bold">Good evening 👋</h2>
+  <p id="homeSubline" class="text-xs opacity-70 mt-1">Here's what's waiting for you.</p>
+
+  <!-- Progress pills: streak + weekly XP -->
+  <div id="homeProgressStrip" class="items-center gap-2 mt-3 flex-wrap" style="display:none;">
+    <div id="streakPill" class="progress-pill streak" style="display:none;" title="Days in a row you've studied">
+      <i class="fa-solid fa-fire"></i>
+      <span><strong id="streakCount">0</strong> day<span id="streakPlural">s</span> streak</span>
+    </div>
+    <div id="xpPill" class="progress-pill xp" style="display:none;" title="XP earned this week">
+      <i class="fa-solid fa-star"></i>
+      <span><strong id="weeklyXp">0</strong> XP this week</span>
+    </div>
   </div>
+</div>
   
-  <!-- PRIMARY: Due card queue -->
-  <div class="glass-card border-l-4 border-l-indigo-500">
-    <h3 class="text-sm font-bold uppercase text-indigo-400 mb-3">
-      <i class="fa-solid fa-brain mr-2"></i>Due for Review
+  <!-- PRIMARY: Today's Study Plan -->
+<div class="glass-card border-l-4 border-l-indigo-500" id="studyPlanCard">
+  <div class="flex items-center justify-between gap-2 mb-1">
+    <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-400">
+      <i class="fa-solid fa-brain mr-2"></i>Today's Study Plan
     </h3>
-    
-    <!-- State: Loading -->
-    <div id="dueLoading" class="hidden space-y-2 py-2">
-      <div class="skeleton-block skeleton-title"></div>
-      <div class="skeleton-line w-75"></div>
-      <div class="skeleton-line w-60"></div>
+    <span id="studyPlanBadge" class="hidden text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"></span>
+  </div>
+  <p id="studyPlanSubline" class="text-xs opacity-60 mb-4">Checking your cards…</p>
+
+  <!-- State: Loading -->
+  <div id="dueLoading" class="hidden space-y-2 py-2">
+    <div class="skeleton-block skeleton-title"></div>
+    <div class="skeleton-line w-75"></div>
+    <div class="skeleton-line w-60"></div>
+  </div>
+
+  <!-- State: No flashcards exist -->
+  <div id="dueEmpty" class="hidden text-center py-6">
+    <div class="w-14 h-14 mx-auto rounded-full bg-indigo-500/10 flex items-center justify-center mb-3">
+      <i class="fa-solid fa-wand-magic-sparkles text-xl text-indigo-400"></i>
     </div>
-    
-    <!-- State: No flashcards exist -->
-    <div id="dueEmpty" class="hidden text-center py-6">
-      <div class="text-3xl mb-2">📚</div>
-      <p class="text-sm font-semibold">No flashcards yet.</p>
-      <p class="text-xs opacity-60 mt-1 mb-4">
-        Generate a reviewer from your notes to start studying with spaced repetition.
+    <p class="text-sm font-semibold">Start your first study plan</p>
+    <p class="text-xs opacity-60 mt-1 mb-4 max-w-xs mx-auto">
+      Generate a reviewer from your notes and AcadHub will schedule daily reviews for you.
+    </p>
+    <button onclick="switchTab('reviewer')" class="btn-primary btn-hover">
+      <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Reviewer
+    </button>
+  </div>
+
+  <!-- State: Caught up -->
+  <div id="dueCaughtUp" class="hidden">
+    <div class="text-center py-4">
+      <div class="w-14 h-14 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+        <i class="fa-solid fa-circle-check text-2xl text-emerald-400"></i>
+      </div>
+      <p class="text-base font-bold text-emerald-400">All caught up!</p>
+      <p class="text-xs opacity-70 mt-1 max-w-xs mx-auto">
+        You've cleared today's reviews. Come back tomorrow — or keep going.
       </p>
-      <button onclick="switchTab('reviewer')" class="btn-primary btn-hover">
-        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Reviewer
+    </div>
+
+    <div class="rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 mb-3 flex items-center gap-3">
+      <i class="fa-solid fa-clock text-indigo-400 text-sm shrink-0"></i>
+      <p id="nextReviewInfo" class="text-xs opacity-80">No cards scheduled.</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <button onclick="studyAhead()" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold btn-hover">
+        <i class="fa-solid fa-forward mr-1"></i>Get Ahead
       </button>
-    </div>
-    
-    <!-- State: Caught up -->
-    <div id="dueCaughtUp" class="hidden text-center py-6">
-      <div class="text-3xl mb-2">✅</div>
-      <p class="text-sm font-semibold">You're all caught up!</p>
-      <p class="text-xs opacity-60 mt-1 mb-4" id="nextReviewInfo">
-        No cards due today.
-      </p>
-      <div class="flex gap-2 justify-center">
-        <button onclick="studyAhead()" class="px-4 py-2 bg-white/10 rounded-lg text-xs font-semibold btn-hover">
-          Study ahead
-        </button>
-        <button onclick="switchTab('reviewer')" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold btn-hover">
-          Generate new
-        </button>
-      </div>
-    </div>
-    
-    <!-- State: Has due cards -->
-    <div id="dueContent" class="hidden">
-      <div class="text-center mb-4">
-        <p id="dueCount" class="text-4xl font-bold text-indigo-400">0</p>
-        <p class="text-xs opacity-60">cards ready</p>
-      </div>
-      
-      <div id="dueBySubject" class="space-y-2 mb-4"></div>
-      
-      <button onclick="startDueReviewSession()" class="btn-primary w-full btn-hover">
-        <i class="fa-solid fa-play mr-2"></i>Start Review Session
+      <button onclick="switchTab('reviewer')" class="py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold btn-hover">
+        <i class="fa-solid fa-plus mr-1"></i>New Material
       </button>
     </div>
   </div>
+
+  <!-- State: Has due cards -->
+  <div id="dueContent" class="hidden">
+    <div class="flex items-baseline gap-3 mb-4">
+      <p id="dueCount" class="text-4xl font-bold text-indigo-400 leading-none">0</p>
+      <div class="flex flex-col">
+        <p class="text-xs font-semibold opacity-80">card<span id="dueCountPlural">s</span> due</p>
+        <p id="dueBreakdown" class="text-[10px] opacity-50 mt-0.5">0 new · 0 review</p>
+      </div>
+    </div>
+
+    <div id="dueBySubject" class="space-y-2 mb-4"></div>
+
+    <button onclick="startDueReviewSession()" class="btn-primary w-full btn-hover">
+      <i class="fa-solid fa-play mr-2"></i>Start Review Session
+    </button>
+    <button onclick="studyAhead()" class="w-full mt-2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] font-semibold opacity-70 btn-hover">
+      Or study future cards
+    </button>
+  </div>
+</div>
   
   <!-- Continue where you left off -->
   <div>
@@ -1587,7 +1621,6 @@
     </div>
     
     <!-- ===== SUBJECT / CATEGORY SHEET (now centered) ===== -->
-  <!-- ===== SUBJECT / CATEGORY SHEET (now centered) ===== -->
   <div id="subjectSheet" data-modal class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeSubjectSheetBackdrop(event)">
     <div class="glass-card w-full max-w-md rounded-2xl p-5" onclick="event.stopPropagation()">
       <p class="text-sm font-semibold mb-4"><i class="fa-solid fa-tag mr-2"></i>Subject / Category</p>

@@ -1913,10 +1913,16 @@ async function doSaveNote({ title, body, silent }) {
   let note = notes.find(n => n.id === currentEditingNoteId);
   const isNew = !note;
 
-  if (isNew) {
-    note = { id: currentEditingNoteId, subjectId: currentNoteSubjectId, title: title || '', body: body || '', pinned: currentNoteIsPinned, createdAt: now, updatedAt: now };
-    notes.unshift(note);
-  } else {
+if (isNew) {
+  note = { id: currentEditingNoteId, subjectId: currentNoteSubjectId, title: title || '', body: body || '', pinned: currentNoteIsPinned, createdAt: now, updatedAt: now };
+  notes.unshift(note);
+
+  // XP: +3 for creating a new note (awarded once per note)
+  if (currentEditingNoteIsNew) {
+    addXp(XP_REWARDS.newNote);
+    currentEditingNoteIsNew = false;
+  }
+} else {
     note.title = title || '';
     note.body = body || '';
     note.subjectId = currentNoteSubjectId;
@@ -2547,8 +2553,13 @@ function rateStudyCard(rating) {
   studyRatings[card.key] = rating;
   setFlashcardRatings(studyRatings);
   
-  studySessionStats[rating]++;
+studySessionStats[rating]++;
 
+// XP: +2 per rated card (silent — session XP fires on completion)
+addXp(XP_REWARDS.flashcard, { silent: true });
+
+
+  
   const cardEl = document.getElementById('studyCard');
   cardEl.classList.add('swipe-left');
   setTimeout(() => {
@@ -2597,9 +2608,14 @@ function showStudyComplete() {
   document.getElementById('studyMissedCount').textContent = hard + forgot;
 
   const missedBtn = document.getElementById('studyReviewMissedBtn');
-  missedBtn.style.display = (hard + forgot > 0) ? 'block' : 'none';
+missedBtn.style.display = (hard + forgot > 0) ? 'block' : 'none';
 
-  document.getElementById('studyCompleteOverlay').classList.remove('hidden');
+// XP: +10 session bonus (only if at least one card was rated)
+if (easy + hard + forgot > 0) {
+  addXp(XP_REWARDS.session);
+}
+
+document.getElementById('studyCompleteOverlay').classList.remove('hidden');
 }
 
 function studyReviewMissed() {
@@ -3028,11 +3044,14 @@ async function persistLibraryItem(title, data) {
   const savedOk = safeLocalStorageSet('acadhub_saved', saved);
 
   if (!savedOk) {
-    showNotification('Could not save — local storage is full. Try deleting old reviewers.', 'error');
-    return false;
-  }
+  showNotification('Could not save — local storage is full. Try deleting old reviewers.', 'error');
+  return false;
+}
 
-  if (firebaseAvailable && auth && auth.currentUser) {
+// XP: +5 for saving a reviewer
+addXp(XP_REWARDS.saveReviewer);
+
+if (firebaseAvailable && auth && auth.currentUser) {
     try {
       await db.collection('users').doc(auth.currentUser.uid).collection('library').doc(saveItem.id).set(saveItem);
     } catch (err) {
@@ -3061,13 +3080,16 @@ async function persistLibraryItemWithMeta(title, data, meta = {}) {
   
   const saved = safeLocalStorageGet('acadhub_saved', []);
   saved.unshift(saveItem);
-  const ok = safeLocalStorageSet('acadhub_saved', saved);
-  if (!ok) {
-    showNotification('Could not save — local storage is full.', 'error');
-    return false;
-  }
-  
-  if (firebaseAvailable && auth && auth.currentUser) {
+const ok = safeLocalStorageSet('acadhub_saved', saved);
+if (!ok) {
+  showNotification('Could not save — local storage is full.', 'error');
+  return false;
+}
+
+// XP: +5 for saving a reviewer
+addXp(XP_REWARDS.saveReviewer);
+
+if (firebaseAvailable && auth && auth.currentUser) {
     try {
       await db.collection('users').doc(auth.currentUser.uid)
         .collection('library').doc(saveItem.id).set(saveItem);
@@ -3288,10 +3310,15 @@ function showTestResults() {
   document.getElementById('testCorrectCount').textContent = testScore;
   document.getElementById('testTotalCount').textContent = testQuestions.length;
 
-  const percentage = Math.round((testScore / testQuestions.length) * 100);
-  document.getElementById('testPercentage').textContent = percentage + '% ' + getGradeMessage(percentage);
+const percentage = Math.round((testScore / testQuestions.length) * 100);
+document.getElementById('testPercentage').textContent = percentage + '% ' + getGradeMessage(percentage);
 
-  document.getElementById('reviewBtn').classList.remove('hidden');
+// XP: +20 for completing a test
+if (testQuestions.length > 0) {
+  addXp(XP_REWARDS.test);
+}
+
+document.getElementById('reviewBtn').classList.remove('hidden');
 }
 
 function getGradeMessage(percentage) {
@@ -3893,13 +3920,35 @@ const firestoreLibrary = await loadFromFirestore('library');
      setSrsData(merged);
    }
    
-   // ---- Deadlines sync ----
-   const firestoreDeadlines = await loadFromFirestore('deadlines');
-   if (firestoreDeadlines.length > 0) {
-     safeLocalStorageSet('acadhub_deadlines', firestoreDeadlines);
-   }
-   
-   renderHomeDashboard();
+// ---- Deadlines sync ----
+const firestoreDeadlines = await loadFromFirestore('deadlines');
+if (firestoreDeadlines.length > 0) {
+  safeLocalStorageSet('acadhub_deadlines', firestoreDeadlines);
+}
+
+// ---- Progress / Streak / XP sync ----
+try {
+  const firestoreProgress = await loadFromFirestore('progress');
+  const serverStats = firestoreProgress.find(x => x.id === 'stats');
+  if (serverStats) {
+    const local = safeLocalStorageGet(PROGRESS_LS_KEY, null);
+    const serverTotal = serverStats.totalXp || 0;
+    const localTotal  = (local && local.totalXp) || 0;
+    if (!local || serverTotal > localTotal) {
+      // Server has more — use it
+      const clean = { ...serverStats };
+      delete clean.id;
+      safeLocalStorageSet(PROGRESS_LS_KEY, clean);
+    } else if (localTotal > serverTotal) {
+      // Local has more — push up
+      syncProgressToFirestore(local);
+    }
+  }
+} catch (err) {
+  console.warn('Progress load failed:', err);
+}
+
+renderHomeDashboard();
 
         // ---- Load user document (settings & profile) ----
 const userDoc = await db.collection('users').doc(user.uid).get();
@@ -4723,8 +4772,11 @@ function rateRecallCard(rating) {
   safeLocalStorageSet('acadhub_flashcard_ratings', ratings);
   
   recallSessionStats[rating]++;
-  
-  recallIndex++;
+
+// XP: +2 per rated recall item (silent)
+addXp(XP_REWARDS.recallItem, { silent: true });
+
+recallIndex++;
   recallRevealed = false;
   
   if (recallIndex >= recallQueue.length) {
@@ -4751,9 +4803,15 @@ function showRecallComplete() {
   document.getElementById('recallMissedCount').textContent = recallSessionStats.hard + recallSessionStats.forgot;
   
   document.getElementById('recallReviewMissedBtn').style.display =
-    (recallSessionStats.hard + recallSessionStats.forgot > 0) ? 'block' : 'none';
-  
-  document.getElementById('recallCompleteOverlay').classList.remove('hidden');
+  (recallSessionStats.hard + recallSessionStats.forgot > 0) ? 'block' : 'none';
+
+// XP: +15 recall session bonus
+const _recallTotal = recallSessionStats.easy + recallSessionStats.hard + recallSessionStats.forgot;
+if (_recallTotal > 0) {
+  addXp(XP_REWARDS.recallSession);
+}
+
+document.getElementById('recallCompleteOverlay').classList.remove('hidden');
 }
 
 function recallReviewMissed() {
@@ -5103,6 +5161,142 @@ function openHomeRecent(index) {
   }
 }
 
+// ============================================================
+// PROGRESS TRACKING (Streak + Weekly XP)
+// ============================================================
+const PROGRESS_LS_KEY = 'acadhub_progress';
+
+const XP_REWARDS = {
+  flashcard: 2,       // per rated flashcard
+  session: 10,        // completed study session
+  recallItem: 2,      // per rated recall item
+  recallSession: 15,  // completed recall quiz
+  test: 20,           // completed Test My Limits
+  saveReviewer: 5,    // saved a reviewer to library
+  newNote: 3,         // created a new note
+};
+
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getMondayOfWeek(d = new Date()) {
+  const day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diff);
+  return localDateStr(monday);
+}
+
+function getProgress() {
+  let p = safeLocalStorageGet(PROGRESS_LS_KEY, null);
+  const today = localDateStr();
+  const thisMonday = getMondayOfWeek();
+
+  if (!p || typeof p !== 'object') {
+    p = { streak: 0, lastStudyDate: null, weeklyXp: 0, weekStart: thisMonday, totalXp: 0 };
+  }
+
+  p.streak = Number(p.streak) || 0;
+  p.weeklyXp = Number(p.weeklyXp) || 0;
+  p.totalXp = Number(p.totalXp) || 0;
+  p.weekStart = p.weekStart || thisMonday;
+  p.lastStudyDate = p.lastStudyDate || null;
+
+  let dirty = false;
+
+  // Weekly rollover (resets every Monday)
+  if (p.weekStart !== thisMonday) {
+    p.weeklyXp = 0;
+    p.weekStart = thisMonday;
+    dirty = true;
+  }
+
+  // Streak break check
+  if (p.lastStudyDate && p.streak > 0) {
+    const gap = daysBetween(p.lastStudyDate, today);
+    if (gap > 1) {
+      p.streak = 0;
+      dirty = true;
+    }
+  }
+
+  if (dirty) safeLocalStorageSet(PROGRESS_LS_KEY, p);
+  return p;
+}
+
+function syncProgressToFirestore(p) {
+  if (!firebaseAvailable || !auth || !auth.currentUser) return;
+  db.collection('users').doc(auth.currentUser.uid)
+    .collection('progress').doc('stats')
+    .set(p, { merge: true })
+    .catch(err => console.warn('Progress sync failed:', err));
+}
+
+function addXp(amount, opts = {}) {
+  const num = Number(amount);
+  if (!num || num <= 0) return;
+  const silent = !!opts.silent;
+
+  const p = getProgress();
+  const today = localDateStr();
+
+  // Update streak on first activity today
+  if (p.lastStudyDate !== today) {
+    if (p.lastStudyDate && daysBetween(p.lastStudyDate, today) === 1) {
+      p.streak = (p.streak || 0) + 1;
+    } else {
+      p.streak = 1;
+    }
+    p.lastStudyDate = today;
+  }
+
+  p.weeklyXp = (p.weeklyXp || 0) + num;
+  p.totalXp = (p.totalXp || 0) + num;
+
+  safeLocalStorageSet(PROGRESS_LS_KEY, p);
+
+  if (!silent) {
+    syncProgressToFirestore(p);
+    renderHomeProgress();
+  }
+}
+
+function renderHomeProgress() {
+  const strip = document.getElementById('homeProgressStrip');
+  const streakPill = document.getElementById('streakPill');
+  const xpPill = document.getElementById('xpPill');
+  if (!strip || !streakPill || !xpPill) return;
+
+  const p = getProgress();
+
+  // Streak pill
+  if (p.streak > 0) {
+    streakPill.style.display = 'inline-flex';
+    const cnt = document.getElementById('streakCount');
+    const pl = document.getElementById('streakPlural');
+    if (cnt) cnt.textContent = p.streak;
+    if (pl) pl.textContent = p.streak === 1 ? '' : 's';
+  } else {
+    streakPill.style.display = 'none';
+  }
+
+  // XP pill
+  if (p.weeklyXp > 0) {
+    xpPill.style.display = 'inline-flex';
+    const xp = document.getElementById('weeklyXp');
+    if (xp) xp.textContent = p.weeklyXp;
+  } else {
+    xpPill.style.display = 'none';
+  }
+
+  // Show/hide the whole strip
+  const bothHidden = streakPill.style.display === 'none'
+                  && xpPill.style.display === 'none';
+  strip.style.display = bothHidden ? 'none' : 'flex';
+}
+
+
 // ---- Main renderer ----
 function renderHomeDashboard() {
   const hour = new Date().getHours();
@@ -5130,14 +5324,24 @@ function renderHomeDashboard() {
   const emptyEl = document.getElementById('dueEmpty');
   const caughtUpEl = document.getElementById('dueCaughtUp');
   const contentEl = document.getElementById('dueContent');
+  const badgeEl = document.getElementById('studyPlanBadge');
+  const planSubline = document.getElementById('studyPlanSubline');
 
   if (!hasAnyCards) {
     if (sublineEl) sublineEl.textContent = "Let's get started.";
+    if (planSubline) planSubline.textContent = 'No cards yet — create some to begin.';
+    if (badgeEl) badgeEl.classList.add('hidden');
     if (emptyEl) emptyEl.classList.remove('hidden');
     if (caughtUpEl) caughtUpEl.classList.add('hidden');
     if (contentEl) contentEl.classList.add('hidden');
   } else if (due.length === 0) {
-    if (sublineEl) sublineEl.textContent = "You're all caught up.";
+    if (sublineEl) sublineEl.textContent = "You're all caught up. 🎉";
+    if (planSubline) planSubline.textContent = 'Nothing due right now.';
+    if (badgeEl) {
+      badgeEl.textContent = '✓ Done';
+      badgeEl.className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+      badgeEl.classList.remove('hidden');
+    }
     if (emptyEl) emptyEl.classList.add('hidden');
     if (caughtUpEl) caughtUpEl.classList.remove('hidden');
     if (contentEl) contentEl.classList.add('hidden');
@@ -5152,7 +5356,7 @@ function renderHomeDashboard() {
     const infoEl = document.getElementById('nextReviewInfo');
     if (infoEl) {
       if (futureTimes.length === 0) {
-        infoEl.textContent = 'No cards scheduled.';
+        infoEl.textContent = 'No cards scheduled yet.';
       } else {
         const next = new Date(futureTimes[0]);
         const diffMs = next.getTime() - Date.now();
@@ -5165,12 +5369,16 @@ function renderHomeDashboard() {
           const days = Math.round(hours / 24);
           label = `in ${days} days`;
         }
-        infoEl.textContent = `Next review scheduled ${label}.`;
+        infoEl.textContent = `Next review ${label}.`;
       }
     }
   } else {
-    if (sublineEl) {
-      sublineEl.textContent = `${due.length} card${due.length === 1 ? '' : 's'} waiting for you.`;
+    if (sublineEl) sublineEl.textContent = `${due.length} card${due.length === 1 ? '' : 's'} waiting for you.`;
+    if (planSubline) planSubline.textContent = 'Your daily review queue is ready.';
+    if (badgeEl) {
+      badgeEl.textContent = `${due.length} due`;
+      badgeEl.className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30';
+      badgeEl.classList.remove('hidden');
     }
     if (emptyEl) emptyEl.classList.add('hidden');
     if (caughtUpEl) caughtUpEl.classList.add('hidden');
@@ -5178,13 +5386,24 @@ function renderHomeDashboard() {
 
     const countEl = document.getElementById('dueCount');
     if (countEl) countEl.textContent = due.length;
+
+    const pluralEl = document.getElementById('dueCountPlural');
+    if (pluralEl) pluralEl.textContent = due.length === 1 ? '' : 's';
+
+    const breakdownEl = document.getElementById('dueBreakdown');
+    if (breakdownEl) {
+      const newCount = due.filter(c => c.isNew).length;
+      const reviewCount = due.length - newCount;
+      breakdownEl.textContent = `${newCount} new · ${reviewCount} review`;
+    }
+
     renderDueBySubject(due);
   }
 
-  renderUpcomingDeadlines();
+    renderUpcomingDeadlines();
   renderRecentItems();
-  }
-
+  renderHomeProgress();
+}
 // ---- Study ahead (ignore scheduling) ----
 function studyAhead() {
   const saved = safeLocalStorageGet('acadhub_saved', []);
