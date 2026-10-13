@@ -1143,18 +1143,56 @@
       <!-- ===== VIEW: CALENDAR ===== -->
       <div id="viewCalendar" class="hidden space-y-4 sm:space-y-6">
         <div class="glass-card">
-          <div class="flex items-center justify-between mb-3 gap-2">
+          <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h2 class="text-lg sm:text-xl font-bold"><i class="fa-solid fa-calendar-days mr-2"></i>Calendar</h2>
-            <button onclick="goToToday()" id="calendarTodayBtn" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition btn-hover">
-              <i class="fa-solid fa-crosshairs mr-1"></i>Today
-            </button>
+            <div class="flex items-center gap-1.5">
+              <div id="calendarViewToggle" class="calendar-view-toggle">
+                <button id="calendarViewMonth" onclick="setCalendarView('month')" class="calendar-view-btn active" title="Month view">
+                  <i class="fa-solid fa-calendar"></i><span class="hidden sm:inline">Month</span>
+                </button>
+                <button id="calendarViewAgenda" onclick="setCalendarView('agenda')" class="calendar-view-btn" title="Agenda view">
+                  <i class="fa-solid fa-list"></i><span class="hidden sm:inline">Agenda</span>
+                </button>
+              </div>
+              <button onclick="goToToday()" id="calendarTodayBtn" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition btn-hover">
+                <i class="fa-solid fa-crosshairs"></i>
+              </button>
+            </div>
           </div>
 
           <!-- Month stats -->
           <div id="calendarStats" class="flex items-center gap-2 flex-wrap mb-3"></div>
 
+          <!-- Type filters -->
+          <div id="calendarTypeFilters" class="flex gap-1.5 flex-wrap mb-3"></div>
+
+          <!-- Month view -->
+          <div id="calendarMonthView">
+            <div class="flex items-center justify-between mb-3">
+              <button onclick="changeMonth(-1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <h3 id="calendarMonthLabel" class="text-base sm:text-lg font-bold"></h3>
+              <button onclick="changeMonth(1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center"></div>
+          </div>
+
+          <!-- Agenda view -->
+          <div id="calendarAgendaView" class="hidden">
+            <div id="calendarAgendaList" class="space-y-4"></div>
+          </div>
+
+          <!-- Selected-day panel (month view only) -->
+          <div id="selectedDayTasks" class="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 min-h-[100px]">
+            <p class="text-sm opacity-50">Select a date to see deadlines.</p>
+          </div>
+
           <!-- Reminders toggle -->
-          <div class="flex items-center justify-between mb-4 p-3 bg-white/5 rounded-xl border border-white/10">
+          <div class="flex items-center justify-between mt-3 p-3 bg-white/5 rounded-xl border border-white/10">
             <div>
               <label class="text-sm font-semibold"><i class="fa-solid fa-bell mr-2"></i>Deadline Reminders</label>
               <p class="text-xs opacity-60">Get notified when deadlines are near.</p>
@@ -1164,25 +1202,6 @@
               <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-indigo-600 transition"></div>
               <span class="ml-2 text-xs">Enable</span>
             </label>
-          </div>
-
-          <!-- Month nav -->
-          <div class="flex items-center justify-between mb-3">
-            <button onclick="changeMonth(-1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
-              <i class="fa-solid fa-chevron-left mr-1"></i>
-            </button>
-            <h3 id="calendarMonthLabel" class="text-base sm:text-lg font-bold"></h3>
-            <button onclick="changeMonth(1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
-              <i class="fa-solid fa-chevron-right ml-1"></i>
-            </button>
-          </div>
-
-          <!-- Grid -->
-          <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center"></div>
-
-          <!-- Selected-day panel -->
-          <div id="selectedDayTasks" class="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 min-h-[100px]">
-            <p class="text-sm opacity-50">Select a date to see deadlines.</p>
           </div>
         </div>
 
@@ -1595,7 +1614,11 @@
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
-    
+
+    <!-- Type chips -->
+    <label class="block text-xs font-semibold mb-2">Type</label>
+    <div id="deadlineTypeChips" class="flex flex-wrap gap-1.5 mb-3"></div>
+
     <label class="block text-xs font-semibold mb-1">Title</label>
     <input type="text" id="deadlineTitleInput" maxlength="80" placeholder="e.g. Biology Midterm" class="text-sm mb-3" />
     

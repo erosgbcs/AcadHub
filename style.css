@@ -3313,3 +3313,286 @@ html.light .calendar-day.overdue-day:hover {
     -webkit-backdrop-filter: none !important;
   }
 }
+
+/* ============================================================ */
+/* CALENDAR — TYPES, FILTERS, COMPLETION, AGENDA                */
+/* ============================================================ */
+
+/* ---- View toggle ---- */
+.calendar-view-toggle {
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-card);
+}
+.calendar-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.calendar-view-btn.active {
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent2);
+}
+.calendar-view-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+}
+html.light .calendar-view-btn.active {
+  color: var(--accent);
+}
+
+/* ---- Type filter chips ---- */
+.calendar-type-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.calendar-type-filter:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.calendar-type-filter:active {
+  transform: scale(0.97);
+}
+.calendar-type-filter.active {
+  background: var(--type-color, var(--accent));
+  border-color: var(--type-color, var(--accent));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.calendar-type-filter-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.calendar-type-filter.active .calendar-type-filter-dot {
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+html.light .calendar-type-filter {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #475569;
+}
+html.light .calendar-type-filter:hover {
+  background: #f8fafc;
+}
+
+/* ---- Deadline type chips (in sheet) ---- */
+.deadline-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-body);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+}
+.deadline-type-chip:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.deadline-type-chip:active {
+  transform: scale(0.97);
+}
+.deadline-type-chip.active {
+  background: var(--type-color);
+  border-color: var(--type-color);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.deadline-type-chip i {
+  font-size: 0.68rem;
+}
+html.light .deadline-type-chip {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+/* ---- Load indicator (heavy day) ---- */
+.calendar-day.heavy-load {
+  box-shadow: 0 0 0 1.5px rgba(239, 68, 68, 0.45);
+}
+.calendar-day.heavy-load.today {
+  box-shadow: 0 0 0 1.5px rgba(239, 68, 68, 0.6),
+              0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+html.light .calendar-day.heavy-load {
+  box-shadow: 0 0 0 1.5px rgba(239, 68, 68, 0.4);
+}
+
+/* ---- Completed item styling ---- */
+.deadline-card.is-done {
+  opacity: 0.55;
+}
+.deadline-card.is-done p {
+  text-decoration: line-through;
+}
+.deadline-card.is-done .deadline-type-icon {
+  filter: grayscale(0.6);
+}
+.calendar-day .task-dot.is-done {
+  background: rgba(148, 163, 184, 0.6) !important;
+}
+
+/* Circular check toggle */
+.deadline-check {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  border: 1.5px solid var(--border-card);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.deadline-check:hover {
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+.deadline-check:active {
+  transform: scale(0.9);
+}
+.deadline-check i {
+  font-size: 0.6rem;
+}
+.deadline-check.is-done {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+html.light .deadline-check {
+  border-color: rgba(15, 23, 42, 0.15);
+}
+html.light .deadline-check.is-done {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+
+/* ---- Type icon on cards ---- */
+.deadline-type-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.deadline-type-icon-sm {
+  width: 1.4rem;
+  height: 1.4rem;
+  font-size: 0.6rem;
+  border-radius: 0.4rem;
+}
+
+/* ---- Done stats chip ---- */
+.calendar-stat-chip.done {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #34d399;
+}
+html.light .calendar-stat-chip.done {
+  color: #047857;
+}
+
+/* ---- Agenda view ---- */
+.agenda-day {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.agenda-day-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.15rem 0.1rem;
+}
+.agenda-day-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-body);
+}
+.agenda-day-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent2);
+  letter-spacing: 0.02em;
+}
+html.light .agenda-day-badge {
+  color: var(--accent);
+}
+.agenda-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+/* ---- Day cell: prevent text selection + long-press menu ---- */
+.calendar-day {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---- Mobile tweaks ---- */
+@media (max-width: 768px) {
+  .deadline-type-chip,
+  .calendar-type-filter,
+  .calendar-view-toggle {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Light mode polish */
+html.light .deadline-type-icon {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
