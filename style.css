@@ -3070,3 +3070,246 @@ html.light .home-stat-card:hover {
   border-color: rgba(var(--accent-rgb), 0.35);
   box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.1);
 }
+
+/* ============================================================ */
+/* CALENDAR UPGRADE                                             */
+/* ============================================================ */
+
+/* ---- Month stats chips ---- */
+.calendar-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  color: var(--accent2);
+  white-space: nowrap;
+}
+.calendar-stat-chip i {
+  font-size: 0.7rem;
+}
+.calendar-stat-chip.upcoming {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+}
+.calendar-stat-chip.overdue {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.28);
+  color: #f87171;
+}
+.calendar-stat-chip.muted {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: var(--text-secondary);
+}
+html.light .calendar-stat-chip {
+  color: var(--accent);
+}
+html.light .calendar-stat-chip.upcoming { color: #b45309; }
+html.light .calendar-stat-chip.overdue { color: #b91c1c; }
+
+/* ---- Multi-dot day cells ---- */
+.calendar-day .task-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+.calendar-day .task-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  /* override the old margin-top */
+  margin-top: 0;
+}
+.calendar-day .task-count {
+  font-size: 0.55rem;
+  font-weight: 700;
+  opacity: 0.7;
+  margin-left: 1px;
+  line-height: 1;
+}
+
+/* ---- Overdue day tint ---- */
+.calendar-day.overdue-day {
+  background: rgba(239, 68, 68, 0.06);
+}
+html.light .calendar-day.overdue-day {
+  background: rgba(239, 68, 68, 0.05);
+}
+.calendar-day.overdue-day.selected {
+  background: rgba(239, 68, 68, 0.12);
+}
+html.light .calendar-day.overdue-day.selected {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Selected day wins over overdue-day styling */
+.calendar-day.selected.overdue-day {
+  border-color: #ef4444;
+}
+
+/* ---- Deadline count badge in day panel ---- */
+.deadline-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 9999px;
+  background: rgba(var(--accent-rgb), 0.2);
+  color: var(--accent2);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+html.light .deadline-count-badge {
+  color: var(--accent);
+}
+
+/* ---- Empty day state ---- */
+.empty-day-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0;
+}
+
+/* ---- Deadline card ---- */
+.deadline-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.deadline-card:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+.deadline-card:active {
+  transform: scale(0.99);
+}
+.deadline-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+html.light .deadline-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+}
+html.light .deadline-card:hover {
+  background: #f8fafc;
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+
+/* ---- Upcoming strip ---- */
+.upcoming-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.upcoming-item:hover {
+  background: rgba(var(--accent-rgb), 0.06);
+  border-color: rgba(var(--accent-rgb), 0.28);
+}
+.upcoming-item:active {
+  transform: scale(0.99);
+}
+.upcoming-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.upcoming-today-tag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 9999px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent2);
+  vertical-align: middle;
+}
+html.light .upcoming-item {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+}
+html.light .upcoming-item:hover {
+  background: #f8fafc;
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+html.light .upcoming-today-tag {
+  color: var(--accent);
+}
+
+/* ---- Today button polish ---- */
+#calendarTodayBtn {
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+#calendarTodayBtn:hover {
+  background: rgba(var(--accent-rgb), 0.15) !important;
+  color: var(--accent2);
+}
+html.light #calendarTodayBtn:hover {
+  color: var(--accent);
+}
+
+/* ---- Calendar grid: prevent text selection during swipe ---- */
+#calendarGrid {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+
+/* ---- Light mode tweaks for the day cells ---- */
+html.light .calendar-day.overdue-day:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* ---- Compact calendar on small phones ---- */
+@media (max-width: 380px) {
+  .calendar-day {
+    min-height: 52px;
+    font-size: 0.75rem;
+  }
+  .calendar-day-header {
+    font-size: 0.65rem;
+  }
+}
+
+/* ---- Mobile performance: no blur ---- */
+@media (max-width: 768px) {
+  .deadline-card,
+  .upcoming-item {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

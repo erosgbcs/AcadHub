@@ -1143,11 +1143,21 @@
       <!-- ===== VIEW: CALENDAR ===== -->
       <div id="viewCalendar" class="hidden space-y-4 sm:space-y-6">
         <div class="glass-card">
-          <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-calendar-days mr-2"></i>Calendar &amp; Deadlines</h2>
+          <div class="flex items-center justify-between mb-3 gap-2">
+            <h2 class="text-lg sm:text-xl font-bold"><i class="fa-solid fa-calendar-days mr-2"></i>Calendar</h2>
+            <button onclick="goToToday()" id="calendarTodayBtn" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition btn-hover">
+              <i class="fa-solid fa-crosshairs mr-1"></i>Today
+            </button>
+          </div>
+
+          <!-- Month stats -->
+          <div id="calendarStats" class="flex items-center gap-2 flex-wrap mb-3"></div>
+
+          <!-- Reminders toggle -->
           <div class="flex items-center justify-between mb-4 p-3 bg-white/5 rounded-xl border border-white/10">
             <div>
               <label class="text-sm font-semibold"><i class="fa-solid fa-bell mr-2"></i>Deadline Reminders</label>
-              <p class="text-xs opacity-60">Get notified when deadlines are near (1, 3, or 7 days before).</p>
+              <p class="text-xs opacity-60">Get notified when deadlines are near.</p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="reminderToggle" class="sr-only peer" onchange="toggleReminders()">
@@ -1155,19 +1165,36 @@
               <span class="ml-2 text-xs">Enable</span>
             </label>
           </div>
-          <div class="flex items-center justify-between mb-4">
+
+          <!-- Month nav -->
+          <div class="flex items-center justify-between mb-3">
             <button onclick="changeMonth(-1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
-              <i class="fa-solid fa-chevron-left mr-1"></i> Prev
+              <i class="fa-solid fa-chevron-left mr-1"></i>
             </button>
             <h3 id="calendarMonthLabel" class="text-base sm:text-lg font-bold"></h3>
             <button onclick="changeMonth(1)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition btn-hover">
-              Next <i class="fa-solid fa-chevron-right ml-1"></i>
+              <i class="fa-solid fa-chevron-right ml-1"></i>
             </button>
           </div>
+
+          <!-- Grid -->
           <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center"></div>
+
+          <!-- Selected-day panel -->
           <div id="selectedDayTasks" class="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 min-h-[100px]">
-            <p class="text-sm opacity-50">Select a date to see tasks.</p>
+            <p class="text-sm opacity-50">Select a date to see deadlines.</p>
           </div>
+        </div>
+
+        <!-- Upcoming strip -->
+        <div id="calendarUpcomingCard" class="glass-card hidden">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-400">
+              <i class="fa-solid fa-forward mr-2"></i>Coming Up
+            </h3>
+            <span id="calendarUpcomingCount" class="text-xs opacity-60">0 items</span>
+          </div>
+          <div id="calendarUpcomingList" class="space-y-2"></div>
         </div>
       </div>
 

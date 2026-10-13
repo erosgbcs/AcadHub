@@ -3484,30 +3484,53 @@ function renderCalendar() {
   }
 
   const today = new Date();
-const allDeadlines = getDeadlines();
-for (let day = 1; day <= daysInMonth; day++) {
-  const date = new Date(calendarYear, calendarMonth, day);
-  const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const isToday = date.toDateString() === today.toDateString();
-  const isSelected = selectedCalendarDate === dateStr;
-  const hasDeadline = allDeadlines.some(d => d.date === dateStr);
-  
-  cells += `
-    <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDate('${dateStr}')">
-      <span>${day}</span>
-      ${hasDeadline ? '<span class="task-dot"></span>' : ''}
-    </div>
-  `;
-}
+  const todayStrVal = todayStr();
+  const allDeadlines = getDeadlines();
 
-    grid.innerHTML = cells;
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(calendarYear, calendarMonth, day);
+    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isToday = date.toDateString() === today.toDateString();
+    const isSelected = selectedCalendarDate === dateStr;
+
+    const dayDeadlines = allDeadlines.filter(d => d.date === dateStr);
+    const isOverdue = dateStr < todayStrVal && dayDeadlines.length > 0;
+
+    // Build up to 3 color dots
+    let dotsHTML = '';
+    if (dayDeadlines.length > 0) {
+      const visible = dayDeadlines.slice(0, 3);
+      const extra = dayDeadlines.length - visible.length;
+      const dots = visible.map(d => {
+        const c = deadlineUrgencyColor(d.date, d.color);
+        return `<span class="task-dot" style="background:${c};"></span>`;
+      }).join('');
+      const extraLabel = extra > 0 ? `<span class="task-count">+${extra}</span>` : '';
+      dotsHTML = `<div class="task-dots">${dots}${extraLabel}</div>`;
+    }
+
+    cells += `
+      <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isOverdue ? 'overdue-day' : ''}" onclick="selectCalendarDate('${dateStr}')">
+        <span>${day}</span>
+        ${dotsHTML}
+      </div>
+    `;
+  }
+
+  grid.innerHTML = cells;
+
+  renderCalendarStats();
+  renderCalendarUpcoming();
+
   if (selectedCalendarDate) {
     renderSelectedDayDeadlines(selectedCalendarDate);
   } else {
     const selectedTasks = document.getElementById('selectedDayTasks');
     if (selectedTasks) selectedTasks.innerHTML = '<p class="text-sm opacity-50">Select a date to see deadlines.</p>';
   }
-  }
+
+  bindCalendarSwipe();
+}
 
 function selectCalendarDate(dateStr) {
   selectedCalendarDate = dateStr;
@@ -3525,6 +3548,132 @@ function toggleReminders() {
   const enabled = document.getElementById('reminderToggle').checked;
   if (enabled) showNotification('Reminders enabled!', 'success');
   else showNotification('Reminders disabled.', 'info');
+}
+
+// ---- Jump to today's month ----
+function goToToday() {
+  const now = new Date();
+  calendarYear = now.getFullYear();
+  calendarMonth = now.getMonth();
+  selectedCalendarDate = todayStr();
+  renderCalendar();
+  showNotification('Jumped to today', 'info');
+}
+
+// ---- Month stats chips ----
+function renderCalendarStats() {
+  const container = document.getElementById('calendarStats');
+  if (!container) return;
+
+  const monthPrefix = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`;
+  const all = getDeadlines();
+  const thisMonth = all.filter(d => d.date && d.date.startsWith(monthPrefix));
+  const now = todayStr();
+
+  let overdue = 0;
+  let upcoming = 0;
+  thisMonth.forEach(d => {
+    if (d.date < now) overdue++;
+    else if (daysBetween(now, d.date) <= 7) upcoming++;
+  });
+
+  const chips = [];
+  if (thisMonth.length > 0) {
+    chips.push(`<span class="calendar-stat-chip"><i class="fa-solid fa-calendar-check"></i>${thisMonth.length} this month</span>`);
+  }
+  if (upcoming > 0) {
+    chips.push(`<span class="calendar-stat-chip upcoming"><i class="fa-solid fa-clock"></i>${upcoming} in next 7 days</span>`);
+  }
+  if (overdue > 0) {
+    chips.push(`<span class="calendar-stat-chip overdue"><i class="fa-solid fa-triangle-exclamation"></i>${overdue} overdue</span>`);
+  }
+
+  if (chips.length === 0) {
+    container.innerHTML = `<span class="calendar-stat-chip muted"><i class="fa-regular fa-circle-check"></i>No deadlines this month</span>`;
+  } else {
+    container.innerHTML = chips.join('');
+  }
+}
+
+// ---- Upcoming strip (next 7 days) ----
+function renderCalendarUpcoming() {
+  const card = document.getElementById('calendarUpcomingCard');
+  const list = document.getElementById('calendarUpcomingList');
+  const countEl = document.getElementById('calendarUpcomingCount');
+  if (!card || !list) return;
+
+  const now = todayStr();
+  const upcoming = getDeadlines()
+    .filter(d => d.date)
+    .filter(d => {
+      const diff = daysBetween(now, d.date);
+      return diff >= 0 && diff <= 7;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 5);
+
+  if (upcoming.length === 0) {
+    card.classList.add('hidden');
+    return;
+  }
+
+  card.classList.remove('hidden');
+  if (countEl) countEl.textContent = `${upcoming.length} item${upcoming.length === 1 ? '' : 's'}`;
+
+  list.innerHTML = upcoming.map(d => {
+    const color = deadlineUrgencyColor(d.date, d.color);
+    const countdown = formatDeadlineCountdown(d.date);
+    const diff = daysBetween(now, d.date);
+    const isToday = diff === 0;
+
+    return `
+      <div class="upcoming-item" onclick="openDeadlineSheet(null, '${d.id}')">
+        <span class="upcoming-dot" style="background:${color};"></span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium truncate">
+            ${escapeHtml(d.title || 'Deadline')}
+            ${isToday ? '<span class="upcoming-today-tag">TODAY</span>' : ''}
+          </p>
+          <p class="text-[11px] opacity-55 truncate">
+            ${d.subject ? escapeHtml(d.subject) + ' · ' : ''}${escapeHtml(countdown)}
+          </p>
+        </div>
+        <i class="fa-solid fa-chevron-right text-xs opacity-40 shrink-0"></i>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---- Swipe to change month ----
+let calendarSwipeBound = false;
+let calendarTouchStartX = 0;
+let calendarTouchStartY = 0;
+
+function bindCalendarSwipe() {
+  if (calendarSwipeBound) return;
+  const grid = document.getElementById('calendarGrid');
+  if (!grid) return;
+  calendarSwipeBound = true;
+
+  grid.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    calendarTouchStartX = t.screenX;
+    calendarTouchStartY = t.screenY;
+  }, { passive: true });
+
+  grid.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    const dx = t.screenX - calendarTouchStartX;
+    const dy = t.screenY - calendarTouchStartY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    // Require horizontal swipe > 60px and more horizontal than vertical
+    if (absX < 60 || absX < absY) return;
+
+    if (dx > 0) changeMonth(-1);
+    else changeMonth(1);
+  }, { passive: true });
 }
 // ============================================================
 // LIBRARY FUNCTIONS
@@ -5903,30 +6052,46 @@ function renderSelectedDayDeadlines(dateStr) {
     weekday: 'long', month: 'short', day: 'numeric'
   });
 
+  const countBadge = list.length > 0
+    ? `<span class="deadline-count-badge">${list.length}</span>`
+    : '';
+
   let html = `
-    <div class="flex items-center justify-between mb-3">
-      <p class="text-sm font-semibold">${escapeHtml(dateLabel)}</p>
-      <button onclick="openDeadlineSheet('${dateStr}')" class="text-xs text-indigo-400 hover:underline">
-        <i class="fa-solid fa-plus mr-1"></i>Add deadline
+    <div class="flex items-center justify-between mb-3 gap-2">
+      <div class="flex items-center gap-2 min-w-0">
+        <p class="text-sm font-semibold truncate">${escapeHtml(dateLabel)}</p>
+        ${countBadge}
+      </div>
+      <button onclick="openDeadlineSheet('${dateStr}')" class="text-xs text-indigo-400 hover:underline shrink-0">
+        <i class="fa-solid fa-plus mr-1"></i>Add
       </button>
     </div>
   `;
 
   if (list.length === 0) {
-    html += '<p class="text-xs opacity-50 text-center py-4">No deadlines on this day.</p>';
+    html += `
+      <div class="empty-day-state">
+        <i class="fa-regular fa-calendar text-2xl opacity-30"></i>
+        <p class="text-xs opacity-50 mt-2">No deadlines on this day</p>
+      </div>
+    `;
   } else {
     html += '<div class="space-y-2">';
     list.forEach(d => {
       const color = deadlineUrgencyColor(d.date, d.color);
+      const countdown = formatDeadlineCountdown(d.date);
       html += `
-        <div class="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition"
-             onclick="openDeadlineSheet(null, '${d.id}')">
-          <span class="w-2 h-2 rounded-full shrink-0" style="background:${color};"></span>
+        <div class="deadline-card" onclick="openDeadlineSheet(null, '${d.id}')">
+          <span class="deadline-card-dot" style="background:${color};"></span>
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium truncate">${escapeHtml(d.title || 'Deadline')}</p>
-            ${d.notes ? `<p class="text-xs opacity-50 truncate">${escapeHtml(d.notes)}</p>` : ''}
+            <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span class="text-[10px] font-semibold" style="color:${color};">${escapeHtml(countdown)}</span>
+              ${d.subject ? `<span class="text-[10px] opacity-50 truncate">· ${escapeHtml(d.subject)}</span>` : ''}
+            </div>
+            ${d.notes ? `<p class="text-xs opacity-50 truncate mt-1">${escapeHtml(d.notes)}</p>` : ''}
           </div>
-          <i class="fa-solid fa-chevron-right text-xs opacity-40"></i>
+          <i class="fa-solid fa-chevron-right text-xs opacity-40 shrink-0"></i>
         </div>
       `;
     });
@@ -6050,7 +6215,7 @@ async function saveDeadline() {
   renderUpcomingDeadlines();
   if (currentTab === 'calendar') renderCalendar();
   showNotification(wasEditing ? 'Deadline updated.' : 'Deadline added.', 'success');
-  }
+}
   
   async function deleteDeadlineFromSheet() {
     if (!editingDeadlineId) return;
