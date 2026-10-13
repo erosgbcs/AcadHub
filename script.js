@@ -345,6 +345,10 @@ function hideSplashScreen() {
 // NOTIFICATION SYSTEM
 // ============================================================
 function showNotification(message, type = 'success') {
+  // Play matching sound
+  const soundMap = { success: 'success', error: 'error', warning: 'warning', info: 'info' };
+  if (typeof SoundEngine !== 'undefined') SoundEngine.play(soundMap[type] || 'info');
+
   const existing = document.getElementById('appNotification');
   if (existing) existing.remove();
 
@@ -616,6 +620,9 @@ function switchTab(tab) {
     return;
   }
 
+  // Play tab switch sound (skip if it's a re-render of the same tab)
+  if (currentTab !== tab) SoundEngine.play('swipe');
+
   // Close any full-screen overlay if user switches tabs mid-study
   ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay', 'mcqStudyOverlay', 'mcqCompleteOverlay']
   .forEach(id => document.getElementById(id)?.classList.add('hidden'));
@@ -744,8 +751,34 @@ function initTabListeners() {
 
 // AUTH MODAL (login / signup only)
 function openAuthModal() {
+  SoundEngine.play('open');
   document.getElementById('authModal').classList.remove('hidden');
   updateAuthUI();
+}
+
+// ============================================================
+// SOUND CONTROLS
+// ============================================================
+function toggleSounds() {
+  const next = !SoundEngine.isEnabled();
+  SoundEngine.setEnabled(next);
+  updateSoundToggleUI();
+  showNotification(next ? 'Sound effects on' : 'Sound effects muted', 'info');
+}
+
+function previewSound() {
+  if (!SoundEngine.isEnabled()) {
+    showNotification('Enable sounds first', 'warning');
+    return;
+  }
+  SoundEngine.play('success');
+}
+
+function updateSoundToggleUI() {
+  const dot = document.getElementById('settingsSoundDot');
+  if (!dot) return;
+  const on = SoundEngine.isEnabled();
+  dot.style.left = on ? '1.25rem' : '0.25rem';
 }
 
 function closeSettingsModal() {
@@ -2564,6 +2597,7 @@ function renderStudyCard() {
 }
 
 function flipStudyCard() {
+  SoundEngine.play('flip');
   studyRevealed = !studyRevealed;
   renderStudyCard();
 }
@@ -2603,6 +2637,14 @@ studySessionStats[rating]++;
 
 // XP: +2 per rated card (silent — session XP fires on completion)
 addXp(XP_REWARDS.flashcard, { silent: true });
+
+// Play rating sound
+const ratingSound = {
+  easy: 'rateEasy',
+  hard: 'rateHard',
+  forgot: 'rateForgot'
+}[rating];
+if (ratingSound) SoundEngine.play(ratingSound);
 
 
   
@@ -2659,6 +2701,7 @@ missedBtn.style.display = (hard + forgot > 0) ? 'block' : 'none';
 // XP: +10 session bonus (only if at least one card was rated)
 if (easy + hard + forgot > 0) {
   addXp(XP_REWARDS.session);
+  SoundEngine.play('complete');
 }
 
 document.getElementById('studyCompleteOverlay').classList.remove('hidden');
@@ -3480,7 +3523,7 @@ const DEADLINE_TYPES = {
   quiz:       { label: 'Quiz',       icon: 'fa-circle-question', color: '#f59e0b' },
   assignment: { label: 'Assignment', icon: 'fa-clipboard-check', color: '#3b82f6' },
   project:    { label: 'Project',    icon: 'fa-diagram-project', color: '#8b5cf6' },
-  reading:    { label: 'Reading',    icon: 'fa-book-open',       color: '#06b6d4' },
+  reading:    { label: 'Reading',    icon: 'fa-book',            color: '#06b6d4' },
   personal:   { label: 'Personal',   icon: 'fa-user',            color: '#64748b' },
 };
 
@@ -4791,6 +4834,7 @@ renderThemePresets();
   renderSubjectFilters();
   renderHomeDashboard();
   updateSettingsUI();
+  updateSoundToggleUI();
   updateSavedCount();
   initQuickSummaryListeners();
   initAdvancedOptions();
@@ -5459,6 +5503,9 @@ function selectMcqOption(index) {
     msg.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i>Not quite. Correct answer: <strong>${String.fromCharCode(65 + item.correct)}. ${correctText}</strong>`;
   }
   feedback.classList.remove('hidden');
+
+  // Play correct/wrong sound
+  SoundEngine.play(isCorrect ? 'success' : 'error');
 
   const nextBtn = document.getElementById('mcqNextBtn');
   if (nextBtn) {

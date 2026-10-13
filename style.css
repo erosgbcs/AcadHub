@@ -2291,7 +2291,7 @@ html.light .progress-pill.xp {
   position: sticky;
   bottom: 5.5rem;
   z-index: 30;
-  padding: 0.75rem 0 0.5rem;
+  padding: 0.75rem 1.25rem 0.5rem;   /* ← was 0.75rem 0 0.5rem — added 1.25rem sides */
   margin-top: 0.5rem;
   background: linear-gradient(
     180deg,
@@ -2307,6 +2307,8 @@ html.light .progress-pill.xp {
 @media (min-width: 1024px) {
   .sticky-action-bar {
     bottom: 1rem;
+    padding-left: 1.5rem;      /* ← match desktop glass-card padding */
+    padding-right: 1.5rem;
   }
 }
 
@@ -2643,8 +2645,10 @@ html.light .calendar-day.selected {
   box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.3);
 }
 
+/* Keep type-colored dots, but add a white halo ring so they stay
+   visible against the indigo selection background. */
 html.light .calendar-day.selected .task-dot {
-  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
 }
 
 /* ----- Yellow/green/rose accents: darker for contrast ----- */
@@ -3653,4 +3657,97 @@ html.light .offline-banner {
     background: #f59e0b;
     color: #ffffff;
   }
+}
+/* ============================================================ */
+/* DEADLINE TYPE CHIP — VISIBILITY SAFETY NET                  */
+/* ============================================================ */
+
+/* Guarantee icon + label are always visible, even if a stylesheet
+   or font-family override tries to hide them. */
+.deadline-type-chip {
+  color: var(--text-body) !important;
+  -webkit-text-fill-color: currentColor !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+}
+
+.deadline-type-chip i {
+  color: inherit;
+  flex-shrink: 0;
+  min-width: 0.7rem;      /* prevent collapse if icon fails */
+  display: inline-block;
+}
+
+.deadline-type-chip.active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* Fallback if --type-color ever fails to resolve */
+.deadline-type-chip.active {
+  background: var(--type-color, var(--accent));
+  border-color: var(--type-color, var(--accent));
+}
+
+/* ============================================================ */
+/* CALENDAR DOT — BULLETPROOF OVERRIDE                          */
+/* ============================================================ */
+
+/* Container: guarantee room for up to 3 dots side-by-side */
+.calendar-day .task-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 3px;
+  flex-wrap: nowrap;
+  min-height: 8px;
+}
+
+/* Dot: bigger, thicker border, forces type color to survive any
+   background tint (overdue red, selected indigo, today accent). */
+.calendar-day .task-dot {
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 50%;
+  display: inline-block;
+  margin-top: 0 !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+  /* NOTE: background is set inline by JS — never override here. */
+}
+
+/* Only completed items get the muted gray treatment */
+.calendar-day .task-dot.is-done {
+  background: rgba(148, 163, 184, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* On SELECTED days: brighten the halo but keep the type color */
+.calendar-day.selected .task-dot {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Fix: SELECTED + OVERDUE → use indigo selection, NOT red tint.
+   Selection is the stronger state — overdue is still conveyed by
+   the countdown text and the type color of the dots. */
+html.light .calendar-day.selected.overdue-day,
+html:not(.light) .calendar-day.selected.overdue-day {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* Amber "+N" overflow badge — nicer alignment */
+.calendar-day .task-count {
+  font-size: 0.6rem !important;
+  font-weight: 800 !important;
+  opacity: 0.9 !important;
+  margin-left: 2px !important;
+  line-height: 1;
+  color: inherit;
 }
