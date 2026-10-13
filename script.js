@@ -1020,7 +1020,11 @@ async function runGenerateWithMeta(meta = {}) {
     
     const qualityEl = document.getElementById('generationQuality');
     if (qualityEl && transformedData.quality) {
-      qualityEl.textContent = `Generation quality: ${transformedData.quality.score}% (source and answer consistency)`;
+      const providerName = transformedData.provider === 'gemini' ? 'Gemini'
+                         : transformedData.provider === 'groq'   ? 'Groq'
+                         : null;
+      const badge = providerName ? ` · Powered by ${providerName}` : '';
+      qualityEl.textContent = `Generation quality: ${transformedData.quality.score}% (source and answer consistency)${badge}`;
     }
     
     // ---- Attach the metadata collected from the meta sheet ----
@@ -1375,7 +1379,11 @@ function showSharedReviewer() {
   if (data.quality) {
     const qualityEl = document.getElementById('generationQuality');
     if (qualityEl) {
-      qualityEl.textContent = `Generation quality: ${data.quality.score}% (source and answer consistency)`;
+      const providerName = data.provider === 'gemini' ? 'Gemini'
+                         : data.provider === 'groq'   ? 'Groq'
+                         : null;
+      const badge = providerName ? ` · Powered by ${providerName}` : '';
+      qualityEl.textContent = `Generation quality: ${data.quality.score}% (source and answer consistency)${badge}`;
     }
   }
 
@@ -2732,7 +2740,13 @@ function transformBackendResponse(backendData) {
     }
   });
 
-  return { summary, flashcards, quiz, quality: backendData.quality || null };
+  return {
+    summary,
+    flashcards,
+    quiz,
+    quality: backendData.quality || null,
+    provider: backendData._provider || null,
+  };
 }
 
 // RENDER FUNCTIONS
@@ -3987,7 +4001,11 @@ function checkForSavedItemView() {
   if (item.data.quality) {
     const qualityEl = document.getElementById('generationQuality');
     if (qualityEl) {
-      qualityEl.textContent = `Generation quality: ${item.data.quality.score}% (source and answer consistency)`;
+      const providerName = item.data.provider === 'gemini' ? 'Gemini'
+                         : item.data.provider === 'groq'   ? 'Groq'
+                         : null;
+      const badge = providerName ? ` · Powered by ${providerName}` : '';
+      qualityEl.textContent = `Generation quality: ${item.data.quality.score}% (source and answer consistency)${badge}`;
     }
   }
 
