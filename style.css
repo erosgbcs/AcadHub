@@ -794,14 +794,7 @@ html.light .card-menu-btn:hover {
 
 /* ============ SHARE FEATURE ============ */
 
-#sharedBanner {
-  animation: reveal 0.3s ease-out forwards;
-}
 
-#sharedBanner.is-dismissing {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
 
 #shareLinkInput {
   font-family: 'Inter', system-ui, monospace;
@@ -3933,4 +3926,141 @@ html:not(.light) .tp-ring {
   .tp-ring {
     display: none !important;
   }
+}
+/* ============ SHARED REVIEWER VIEW ============ */
+
+/* Hide the generator form entirely while viewing a shared/saved reviewer.
+   Reuses the existing saved-view-mode class so no JS view flags are needed. */
+#viewReviewer.shared-view-mode .input-method-tabs,
+#viewReviewer.shared-view-mode #reviewerGeneratePane > .glass-card,
+#viewReviewer.shared-view-mode .sticky-action-bar {
+  display: none !important;
+}
+
+/* Compact shared strip */
+.shared-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.10) 0%,
+    var(--bg-card) 60%
+  );
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  animation: viewEnter 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.shared-strip.is-dismissing {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.shared-strip-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.6rem;
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.shared-strip-body { flex: 1; min-width: 0; }
+
+.shared-strip-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.shared-strip-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.16);
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+}
+.shared-strip-date {
+  font-size: 0.65rem;
+  opacity: 0.5;
+}
+
+.shared-strip-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-strip-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+.shared-strip-author {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.shared-strip-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.55rem;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.shared-strip-save:hover { background: var(--accent2); }
+.shared-strip-save:active { transform: scale(0.97); }
+
+.shared-strip-close {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.shared-strip-close:hover { background: rgba(255, 255, 255, 0.12); }
+
+html.light .shared-strip {
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 60%);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+html.light .shared-strip-close {
+  background: rgba(15, 23, 42, 0.05);
+}
+html.light .shared-strip-close:hover {
+  background: rgba(15, 23, 42, 0.09);
 }

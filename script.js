@@ -1558,6 +1558,11 @@ function showSharedReviewer() {
   const { title, author, subject, createdAtMs, data } = currentSharedReviewer;
 
   switchTab('reviewer');
+
+  // ✅ Hide the generator form while viewing a shared reviewer
+  const viewReviewer = document.getElementById('viewReviewer');
+  if (viewReviewer) viewReviewer.classList.add('saved-view-mode');
+
   const resultsContainer = document.getElementById('resultsContainer');
   resultsContainer.classList.remove('hidden');
 
@@ -1591,7 +1596,6 @@ function showSharedReviewer() {
   const authorEl = document.getElementById('sharedBannerAuthor');
   const subjectEl = document.getElementById('sharedBannerSubject');
   const dateEl = document.getElementById('sharedBannerDate');
-  const meta = document.getElementById('sharedBannerMeta');
 
   if (titleEl) titleEl.textContent = title;
 
@@ -1617,17 +1621,19 @@ function showSharedReviewer() {
     dateEl.textContent = createdAtMs ? new Date(createdAtMs).toLocaleDateString() : '';
   }
 
-  if (meta) meta.textContent = 'Save it to keep it in your library.';
-
   if (banner) {
     banner.classList.remove('hidden', 'is-dismissing');
     banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // ✅ Hide the redundant Save-to-Library button in the results toolbar.
+  //    The banner already has one. Keep Share + Save-as-Note available.
   const saveBtn = document.getElementById('saveToLibraryBtn');
   if (saveBtn) saveBtn.classList.add('hidden');
   const noteBtn = document.getElementById('saveAsNoteBtn');
-  if (noteBtn) noteBtn.classList.add('hidden');
+  if (noteBtn) noteBtn.classList.remove('hidden');
+  const shareBtn = document.getElementById('shareReviewerBtn');
+  if (shareBtn) shareBtn.classList.remove('hidden');
 
   showNotification('Shared reviewer loaded!', 'success');
   updateResultsNavCounts();
@@ -1640,10 +1646,9 @@ async function saveSharedToLibrary() {
   const ok = await persistLibraryItemWithMeta(title, data, { author, subject });
   if (ok) {
     dismissSharedReviewer();
-    const shareBtn = document.getElementById('shareReviewerBtn');
-    if (shareBtn) shareBtn.classList.remove('hidden');
+    // Now it's saved — keep it hidden (already in library).
     const saveBtn = document.getElementById('saveToLibraryBtn');
-    if (saveBtn) saveBtn.classList.remove('hidden');
+    if (saveBtn) saveBtn.classList.add('hidden');
   }
 }
 
@@ -1651,18 +1656,23 @@ function dismissSharedReviewer() {
   const banner = document.getElementById('sharedBanner');
   if (banner) {
     banner.classList.add('is-dismissing');
-    setTimeout(() => banner.classList.add('hidden'), 300);
+    setTimeout(() => banner.classList.add('hidden'), 250);
   }
 
+  // ✅ Non-destructive: keep the reviewer visible and in memory.
+  //    The user can still study it, save it, or share it after closing.
   currentSharedReviewer = null;
   removeShareParamFromUrl();
 
-  const resultsContainer = document.getElementById('resultsContainer');
-  if (resultsContainer) resultsContainer.classList.add('hidden');
-  currentResults = null;
+  // Bring back the toolbar "Save to Library" button, in case they closed
+  // the banner without saving.
+  const saveBtn = document.getElementById('saveToLibraryBtn');
+  if (saveBtn) saveBtn.classList.remove('hidden');
 
-  const qualityEl = document.getElementById('generationQuality');
-  if (qualityEl) qualityEl.textContent = '';
+  // Exit shared-view mode → generator form comes back for a fresh start
+  // when they return to this tab later.
+  const viewReviewer = document.getElementById('viewReviewer');
+  if (viewReviewer) viewReviewer.classList.remove('saved-view-mode');
 }
 
 // ============================================================
