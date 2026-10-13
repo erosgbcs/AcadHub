@@ -993,6 +993,75 @@ async function hideSkeletonRespectingMin() {
   }
   hideSkeleton();
 }
+// ============================================================
+// REVIEWER REDESIGN — Approach A
+// ============================================================
+
+function switchInputMethod(method, btn) {
+  // Update tab active state
+  const tabs = document.querySelectorAll('.input-method-tabs button');
+  tabs.forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Show/hide sections
+  const textEl = document.getElementById('inputTextMethod');
+  const fileEl = document.getElementById('inputFileMethod');
+  if (textEl) textEl.classList.toggle('hidden', method !== 'text');
+  if (fileEl) fileEl.classList.toggle('hidden', method !== 'file');
+}
+
+function updateCounter() {
+  const ta = document.getElementById('studyNotes');
+  if (!ta) return;
+  const v = ta.value;
+  const cc = document.getElementById('charCount');
+  const wc = document.getElementById('wordCount');
+  if (cc) cc.textContent = v.length.toLocaleString() + ' characters';
+  if (wc) wc.textContent = '~' + (v.trim() ? v.trim().split(/\s+/).length : 0) + ' words';
+}
+
+function updateFlashcardCount(v) {
+  const display = document.getElementById('flashcardCountDisplay');
+  if (display) display.textContent = v;
+  const hidden = document.getElementById('numFlashcards');
+  if (hidden) hidden.value = v;
+  updateSummaryLine();
+}
+
+function toggleQuizPillClass(pill) {
+  if (!pill) return;
+  const cb = pill.querySelector('input[type="checkbox"]');
+  if (cb) pill.classList.toggle('active', cb.checked);
+  updateSummaryLine();
+}
+
+function updateSummaryLine() {
+  // Flashcard count
+  const slider = document.getElementById('flashcardSlider');
+  const cards = slider ? parseInt(slider.value) || 0 : 0;
+
+  // Quiz item count — sum all checked pill inputs
+  let quiz = 0;
+  ['useTrueFalse', 'useIdentification', 'useEnumeration', 'useMultipleChoice'].forEach(id => {
+    const cb = document.getElementById(id);
+    if (cb && cb.checked) {
+      const numId = 'num' + id.slice(3); // useTrueFalse → numTrueFalse
+      const num = document.getElementById(numId);
+      quiz += parseInt(num?.value) || 0;
+    }
+  });
+
+  const preview = document.getElementById('genPreview');
+  if (preview) preview.textContent = `${cards} cards · ${quiz} quiz`;
+}
+
+// Initialize listeners once DOM is ready
+function initReviewerRedesign() {
+  updateCounter();
+  updateSummaryLine();
+}
+window.addEventListener('DOMContentLoaded', initReviewerRedesign);
+
 // AI REVIEWER - MAIN GENERATION FUNCTION
 async function handleGenerate() {
   const notes = document.getElementById('studyNotes').value.trim();
@@ -1018,6 +1087,8 @@ async function runGenerateWithMeta(meta = {}) {
   
   submitBtn.disabled = true;
   btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
+  const _genPrev = document.getElementById('genPreview');
+  if (_genPrev) _genPrev.classList.add('hidden');
   resultsContainer.classList.add('hidden');
   
   const viewReviewer = document.getElementById('viewReviewer');
@@ -1116,7 +1187,9 @@ async function runGenerateWithMeta(meta = {}) {
     if (generationAbortController === controller) {
       generationAbortController = null;
       submitBtn.disabled = false;
-      btnContent.innerHTML = '<i class="fa-solid fa-magic-sparkles mr-2"></i>Generate Study Materials';
+      btnContent.innerHTML = 'Generate';
+      const _genPrev2 = document.getElementById('genPreview');
+      if (_genPrev2) _genPrev2.classList.remove('hidden');
       hideSkeleton();
     }
   }
@@ -3983,10 +4056,7 @@ function submitEval() {
   toggleEvalModal();
   showNotification('Thank you for your feedback!', 'success');
 }
-function revealGCash() {
-  document.getElementById('gcashHidden').classList.add('hidden');
-  document.getElementById('gcashFull').classList.remove('hidden');
-}
+
 
 // Star rating functionality
 document.addEventListener('DOMContentLoaded', function() {
@@ -4149,7 +4219,7 @@ function initializeApp() {
   // --- Load theme + accent (needed in every mode) ---
 
   // --- Load theme + accent (needed in every mode) ---
-  const savedTheme = safeLocalStorageGet('theme', 'dark');
+  const savedTheme = safeLocalStorageGet('theme', 'light');
   document.documentElement.classList.remove('dark', 'light');
   document.documentElement.classList.add(savedTheme);
 

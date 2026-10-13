@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#6366f1" />
   <title>AcadHub Suite | Smart Academic Workspace</title>
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="tailwind.config.js"></script>
+  <!-- Tailwind CSS (compiled locally) -->
+  <link rel="stylesheet" href="tailwind-build.css" />
 
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
@@ -382,170 +381,169 @@
       <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
-</div>        <div class="glass-card">
-          <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Generate Study Materials</h2>
-          <form onsubmit="return false;" class="space-y-3 sm:space-y-4">
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <div class="flex items-center gap-2 text-xs opacity-70">
-                <i class="fa-solid fa-bolt text-indigo-400"></i>
-                <span>Powered by <strong>Gemini</strong> (auto-fallback to Grok)</span>
-              </div>
-              <button type="button" onclick="toggleAccuracyInfo()" class="text-xs text-indigo-400 hover:underline btn-hover">
-                <i class="fa-solid fa-circle-info mr-1"></i> See accuracy guide
-              </button>
-            </div>
+</div><!-- ===== STEP 1: INPUT ===== -->
+<div class="glass-card">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400">
+      <i class="fa-solid fa-feather-pointed mr-2"></i>Step 1 · Add content
+    </h2>
+    <span class="text-[10px] opacity-50">Required</span>
+  </div>
 
-            <div id="accuracyInfo" class="hidden col-span-full mt-2 text-xs bg-white/5 border border-white/10 rounded-xl p-3 overflow-x-auto">
-              <table class="w-full text-left">
-                <thead>
-                  <tr class="border-b border-white/10">
-                    <th class="py-2 pr-2 font-semibold">Question type</th>
-                    <th class="py-2 pl-2 font-semibold"><i class="fa-solid fa-robot mr-1"></i>AI (Gemini / Grok)</th>
-                  </tr>
-                </thead>
-                <tbody class="opacity-80">
-                  <tr class="border-b border-white/5"><td class="py-2 pr-2">Source grounding</td><td class="py-2 pl-2">Checked</td></tr>
-                  <tr class="border-b border-white/5"><td class="py-2 pr-2">Answer consistency</td><td class="py-2 pl-2">Checked</td></tr>
-                  <tr><td class="py-2 pr-2">Semantic accuracy</td><td class="py-2 pl-2">Review recommended</td></tr>
-                </tbody>
-              </table>
-              <p class="mt-2 opacity-50">The score measures source grounding and answer consistency. It cannot prove semantic accuracy.</p>
-            </div>
+  <!-- Input method tabs -->
+  <div class="input-method-tabs">
+    <button type="button" onclick="switchInputMethod('text', this)" class="active">
+      <i class="fa-solid fa-pen-to-square mr-1"></i>Paste text
+    </button>
+    <button type="button" onclick="switchInputMethod('file', this)">
+      <i class="fa-solid fa-paperclip mr-1"></i>Upload file
+    </button>
+  </div>
 
-            <!-- ===== MULTI-FILE UPLOAD (REVIEWER) ===== -->
-            <div>
-              <label class="block text-xs font-semibold mb-1">
-                Upload Documents
-                <span class="opacity-50 font-normal">(multiple files allowed)</span>
-              </label>
-              <label for="fileInput" id="fileDropZone"
-                     ondragover="handleDragOver(event)"
-                     ondragleave="handleDragLeave(event)"
-                     ondrop="handleDrop(event, 'reviewer')"
-                     class="flex flex-col items-center justify-center w-full p-6 sm:p-8 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5 btn-hover">
-                <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2">
-                  <i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-400"></i>
-                </div>
-                <p class="text-xs sm:text-sm" id="fileNameDisplay">Drop files or click to browse</p>
-                <p class="text-xs opacity-50">PDF, DOCX, TXT · up to 10 files</p>
-                <input id="fileInput" type="file" accept=".pdf,.docx,.txt,application/pdf" multiple onchange="updateFileName(this)" />
-              </label>
-
-              <div id="fileListContainer" class="hidden mt-2 space-y-1"></div>
-              <button type="button" id="clearFilesBtn" onclick="clearSelectedFiles('reviewer')"
-                      class="hidden mt-2 text-xs text-rose-400 hover:underline btn-hover">
-                <i class="fa-solid fa-trash mr-1"></i>Clear all files
-              </button>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold mb-1">Notes</label>
-              <textarea id="studyNotes" rows="4" placeholder="Paste your notes here..." class="text-sm"></textarea>
-            </div>
-
-            <!-- ===== QUICK SUMMARIZE ===== -->
-            <div class="border-t border-white/10 pt-3 sm:pt-4">
-<div class="flex items-center justify-between mb-2">
-  <label class="text-xs font-semibold"><i class="fa-solid fa-bolt mr-1"></i>Quick Summarize</label>
-  <span class="text-[10px] opacity-50">Server-powered</span>
-</div>
-
-              <button type="button" id="quickSummarizeBtn" onclick="quickSummarize()" class="w-full py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition btn-hover">
-                <i class="fa-solid fa-wand-sparkles mr-2"></i>Quick Summarize (Gemini)
-              </button>
-              <div id="previewSummaryBox" class="hidden mt-3 p-3 bg-white/5 border border-white/10 rounded-xl text-xs">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="opacity-60"><i class="fa-solid fa-eye mr-1"></i>Live Preview</span>
-                  <button type="button" onclick="openQuickSummarySheet()" class="text-indigo-400 hover:underline btn-hover">Expand</button>
-                </div>
-                <ul id="previewSummaryList" class="space-y-1 opacity-80"></ul>
-              </div>
-            </div>
-
-            <!-- ===== ADVANCED OPTIONS (collapsed by default) ===== -->
-            <button type="button" id="advancedToggleBtn"
-                    onclick="toggleAdvancedOptions()"
-                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold transition btn-hover"
-                    aria-expanded="false"
-                    aria-controls="advancedOptions">
-              <span class="flex items-center gap-2">
-                <i class="fa-solid fa-sliders text-indigo-400"></i>
-                Advanced options
-              </span>
-              <i class="fa-solid fa-chevron-down text-[10px] opacity-60 transition-transform"
-                 id="advancedToggleChevron"></i>
-            </button>
-
-            <div id="advancedOptions" class="hidden space-y-3 sm:space-y-4">
-
-            <div>
-              <label class="block text-xs font-semibold mb-1"><i class="fa-solid fa-clone mr-1"></i>Number of Flashcards</label>
-              <input type="number" id="numFlashcards" value="10" min="1" max="50" class="text-sm" />
-            </div>
-
-           <div>
-  <label class="block text-xs font-semibold mb-2"><i class="fa-solid fa-circle-question mr-1"></i>Quiz Types &amp; Questions per Type</label>
-  <div class="quiz-type-grid">
-    
-    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
-      <input type="checkbox" id="useTrueFalse" checked class="sr-only" />
-      <div class="quiz-type-head">
-        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
-        <span class="quiz-type-name">True/False</span>
-      </div>
-      <input type="number" id="numTrueFalse" value="3" min="0" max="50" class="quiz-type-count" aria-label="Number of True/False questions" />
+  <!-- Text input -->
+  <div id="inputTextMethod">
+    <textarea id="studyNotes" rows="5" placeholder="Paste your notes here — lecture transcripts, textbook excerpts, anything." oninput="updateCounter()"></textarea>
+    <div class="flex items-center justify-between mt-2 text-[11px] opacity-60">
+      <span id="charCount">0 characters</span>
+      <span id="wordCount">~0 words</span>
     </div>
-    
-    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
-      <input type="checkbox" id="useIdentification" checked class="sr-only" />
-      <div class="quiz-type-head">
-        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
-        <span class="quiz-type-name">Identification</span>
+  </div>
+
+  <!-- File input -->
+  <div id="inputFileMethod" class="hidden">
+    <label for="fileInput" id="fileDropZone"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           ondrop="handleDrop(event, 'reviewer')"
+           class="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:border-indigo-400/50 transition bg-white/5 btn-hover">
+      <div class="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2">
+        <i class="fa-solid fa-cloud-arrow-up text-xl text-indigo-400"></i>
       </div>
-      <input type="number" id="numIdentification" value="3" min="0" max="50" class="quiz-type-count" aria-label="Number of Identification questions" />
-    </div>
-    
-    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
-      <input type="checkbox" id="useEnumeration" checked class="sr-only" />
-      <div class="quiz-type-head">
-        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
-        <span class="quiz-type-name">Enumeration</span>
-      </div>
-      <input type="number" id="numEnumeration" value="2" min="0" max="50" class="quiz-type-count" aria-label="Number of Enumeration questions" />
-    </div>
-    
-    <div class="quiz-type-tile" onclick="toggleQuizTile(event)">
-      <input type="checkbox" id="useMultipleChoice" checked class="sr-only" />
-      <div class="quiz-type-head">
-        <span class="quiz-type-check"><i class="fa-solid fa-check"></i></span>
-        <span class="quiz-type-name">Multiple Choice</span>
-      </div>
-      <input type="number" id="numMultipleChoice" value="3" min="0" max="50" class="quiz-type-count" aria-label="Number of Multiple Choice questions" />
-    </div>
-    
+      <p class="text-xs font-semibold" id="fileNameDisplay">Drop files or click to browse</p>
+      <p class="text-[10px] opacity-50 mt-1">PDF, DOCX, TXT · up to 10 files</p>
+      <input id="fileInput" type="file" accept=".pdf,.docx,.txt,application/pdf" multiple onchange="updateFileName(this)" />
+    </label>
+
+    <div id="fileListContainer" class="hidden mt-2 space-y-1"></div>
+    <button type="button" id="clearFilesBtn" onclick="clearSelectedFiles('reviewer')"
+            class="hidden mt-2 text-xs text-rose-400 hover:underline btn-hover">
+      <i class="fa-solid fa-trash mr-1"></i>Clear all files
+    </button>
   </div>
 </div>
 
-            <div class="flex items-center gap-2">
-  <input type="checkbox" id="useInternet" class="accent-indigo-500" />
-  <label for="useInternet" class="text-xs"><i class="fa-solid fa-globe mr-1"></i>Boost accuracy with Wikipedia</label>
-  <label class="text-xs opacity-70 ml-2">Enrich count:</label>
-  <input type="number" id="enrichCount" value="5" min="1" max="10" class="w-14 py-1 px-2 text-xs" />
+<!-- ===== STEP 2: CONFIGURE ===== -->
+<div class="glass-card">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400">
+      <i class="fa-solid fa-sliders mr-2"></i>Step 2 · Configure
+    </h2>
+    <button type="button" onclick="toggleAccuracyInfo()" class="text-[10px] text-indigo-400 hover:underline btn-hover">
+      <i class="fa-solid fa-circle-info mr-1"></i>Accuracy guide
+    </button>
+  </div>
+
+  <!-- Accuracy info (hidden until toggled) -->
+  <div id="accuracyInfo" class="hidden mt-3 mb-4 text-xs bg-white/5 border border-white/10 rounded-xl p-3 overflow-x-auto">
+    <table class="w-full text-left">
+      <thead>
+        <tr class="border-b border-white/10">
+          <th class="py-2 pr-2 font-semibold">Question type</th>
+          <th class="py-2 pl-2 font-semibold"><i class="fa-solid fa-robot mr-1"></i>AI (Gemini / Grok)</th>
+        </tr>
+      </thead>
+      <tbody class="opacity-80">
+        <tr class="border-b border-white/5"><td class="py-2 pr-2">Source grounding</td><td class="py-2 pl-2">Checked</td></tr>
+        <tr class="border-b border-white/5"><td class="py-2 pr-2">Answer consistency</td><td class="py-2 pl-2">Checked</td></tr>
+        <tr><td class="py-2 pr-2">Semantic accuracy</td><td class="py-2 pl-2">Review recommended</td></tr>
+      </tbody>
+    </table>
+    <p class="mt-2 opacity-50">The score measures source grounding and answer consistency. It cannot prove semantic accuracy.</p>
+  </div>
+
+  <!-- Flashcard slider -->
+  <div class="mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <label class="text-xs font-semibold flex items-center gap-1">
+        <i class="fa-solid fa-clone text-cyan-400"></i>Flashcards
+      </label>
+      <span id="flashcardCountDisplay" class="text-sm font-bold text-cyan-400">10</span>
+    </div>
+    <input type="range" id="flashcardSlider" min="1" max="30" value="10" oninput="updateFlashcardCount(this.value)" />
+    <input type="hidden" id="numFlashcards" value="10" />
+    <div class="flex justify-between text-[10px] opacity-40 mt-1">
+      <span>1</span><span>15</span><span>30</span>
+    </div>
+  </div>
+
+  <!-- Quiz type pills -->
+  <div>
+    <label class="block text-xs font-semibold mb-2 flex items-center gap-1">
+      <i class="fa-solid fa-circle-question text-teal-400"></i>Quiz questions
+    </label>
+    <div class="quiz-pills">
+      <label class="quiz-pill active">
+        <input type="checkbox" id="useTrueFalse" checked onclick="event.stopPropagation(); toggleQuizPillClass(this.closest('.quiz-pill'))" />
+        <span class="flex-1">True / False</span>
+        <input type="number" id="numTrueFalse" value="3" min="0" max="50" onclick="event.stopPropagation()" oninput="updateSummaryLine()" />
+      </label>
+      <label class="quiz-pill active">
+        <input type="checkbox" id="useIdentification" checked onclick="event.stopPropagation(); toggleQuizPillClass(this.closest('.quiz-pill'))" />
+        <span class="flex-1">Identification</span>
+        <input type="number" id="numIdentification" value="3" min="0" max="50" onclick="event.stopPropagation()" oninput="updateSummaryLine()" />
+      </label>
+      <label class="quiz-pill active">
+        <input type="checkbox" id="useEnumeration" checked onclick="event.stopPropagation(); toggleQuizPillClass(this.closest('.quiz-pill'))" />
+        <span class="flex-1">Enumeration</span>
+        <input type="number" id="numEnumeration" value="2" min="0" max="50" onclick="event.stopPropagation()" oninput="updateSummaryLine()" />
+      </label>
+      <label class="quiz-pill active">
+        <input type="checkbox" id="useMultipleChoice" checked onclick="event.stopPropagation(); toggleQuizPillClass(this.closest('.quiz-pill'))" />
+        <span class="flex-1">Multiple Choice</span>
+        <input type="number" id="numMultipleChoice" value="3" min="0" max="50" onclick="event.stopPropagation()" oninput="updateSummaryLine()" />
+      </label>
+    </div>
+  </div>
+
+  <!-- Hidden back-compat controls -->
+  <div class="hidden">
+    <input type="checkbox" id="useInternet" />
+    <input type="number" id="enrichCount" value="5" />
+  </div>
 </div>
 
-</div> <!-- /#advancedOptions -->
+<!-- ===== STICKY ACTION BAR ===== -->
+<div class="sticky-action-bar">
+  <div class="flex gap-2">
+    <button type="button" id="submitBtn" onclick="handleGenerate()"
+            class="btn-primary flex-1 py-3 rounded-xl text-sm font-semibold text-white btn-hover"
+            style="display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+      <span id="btnContent">Generate</span>
+      <span id="genPreview" class="opacity-70 font-normal text-xs">10 cards · 11 quiz</span>
+    </button>
+    <button type="button" id="quickSummarizeBtn" onclick="quickSummarize()"
+            class="px-4 py-3 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition btn-hover"
+            title="Quick Summarize">
+      <i class="fa-solid fa-bolt text-amber-400"></i>
+    </button>
+  </div>
+  <p class="text-center text-[10px] opacity-40 mt-2">
+    Powered by <strong>Gemini</strong> · auto-fallback to Grok
+  </p>
 
-<button type="button" id="submitBtn" onclick="handleGenerate()" class="btn-primary w-full text-sm sm:text-base btn-hover">
-              <span id="btnContent"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate Study Materials</span>
-            </button>
-          </form>
 
-          <div id="progressContainer" class="hidden mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/10 text-center">
-            <i class="fa-solid fa-spinner animate-spin text-indigo-400 text-xl sm:text-2xl"></i>
-            <p class="text-sm mt-2 opacity-70">Processing...</p>
-          </div>
-        </div>
-<!-- inside #viewReviewer, after #progressContainer, before #resultsContainer -->
+  <!-- Preview summary (hidden until quick summarize runs) -->
+  <div id="previewSummaryBox" class="hidden mt-3 p-3 bg-white/5 border border-white/10 rounded-xl text-xs">
+    <div class="flex items-center justify-between mb-2">
+      <span class="opacity-60"><i class="fa-solid fa-eye mr-1"></i>Live Preview</span>
+      <button type="button" onclick="openQuickSummarySheet()" class="text-indigo-400 hover:underline btn-hover">Expand</button>
+    </div>
+    <ul id="previewSummaryList" class="space-y-1 opacity-80"></ul>
+  </div>
+</div>
+
+<!-- ===== SKELETON LOADER ===== -->
 <div id="skeletonContainer" class="hidden space-y-4 sm:space-y-6">
   <div class="skeleton-status">
     <span class="skeleton-dot"></span>
@@ -553,7 +551,7 @@
     <span class="skeleton-dot"></span>
     <span id="skeletonStatusText">Reading your notes…</span>
   </div>
-  
+
   <div class="glass-card border-l-4 border-l-indigo-500">
     <div class="skeleton-block skeleton-title"></div>
     <div class="skeleton-line w-90"></div>
@@ -561,7 +559,7 @@
     <div class="skeleton-line w-90"></div>
     <div class="skeleton-line w-60"></div>
   </div>
-  
+
   <div class="glass-card border-l-4 border-l-cyan-500">
     <div class="skeleton-block skeleton-title"></div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -571,7 +569,7 @@
       <div class="skeleton-block skeleton-flashcard"></div>
     </div>
   </div>
-  
+
   <div class="glass-card border-l-4 border-l-teal-500">
     <div class="skeleton-block skeleton-title"></div>
     <div class="skeleton-card mb-2">
@@ -584,7 +582,8 @@
     </div>
   </div>
 </div>
-        <div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
+
+<div id="resultsContainer" class="hidden space-y-4 sm:space-y-6">
   <div class="flex justify-end gap-2 flex-wrap">
     <button id="saveAsNoteBtn" onclick="openSaveAsNote()" class="hidden px-3 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition btn-hover">
       <i class="fa-solid fa-book-open mr-2"></i>Save as Note
@@ -1030,22 +1029,7 @@
 
     </div>
 
-    <!-- ===== DONATION CARD ===== -->
-    <div class="glass-card mt-6 text-center order-4">
-      <p class="text-xs opacity-70 mb-2"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> Support this project</p>
-      <p class="text-sm font-semibold">Donate via GCash</p>
-      <div id="gcashHidden" class="my-2">
-        <p class="text-lg font-mono font-bold tracking-wider">0993****971</p>
-        <button onclick="revealGCash()" class="mt-2 px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs rounded-lg transition btn-hover">
-          <i class="fa-solid fa-eye mr-1"></i> Show full number
-        </button>
-      </div>
-      <div id="gcashFull" class="hidden my-2">
-        <p class="text-lg font-mono font-bold tracking-wider">09935917971</p>
-        <p class="text-xs opacity-70 mt-1">Gabriel A.</p>
-      </div>
-      <p class="text-xs opacity-50 mt-2">Thank you for your support! <i class="fa-solid fa-heart text-rose-400"></i></p>
-    </div>
+
   </div>
 
 <footer class="text-center text-xs opacity-40 py-4 mt-6 sm:mt-8 space-y-3">
