@@ -77,6 +77,12 @@
     </div>
   </div>
 
+  <!-- ===== OFFLINE BANNER ===== -->
+  <div id="offlineBanner" class="offline-banner hidden">
+    <i class="fa-solid fa-wifi"></i>
+    <span>You're offline — cached data only. AI features need internet.</span>
+  </div>
+
   <!-- ===== MAIN WRAPPER ===== -->
   <div id="mainWrapper" class="max-w-3xl mx-auto w-full flex-1 flex flex-col space-y-4 sm:space-y-6 tab-position-bottom">
     <!-- ===== HEADER ===== -->
@@ -1721,5 +1727,16 @@
   <script src="animations.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <script src="script.js"></script>
+
+  <!-- ===== SERVICE WORKER (offline support) ===== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('✅ Service worker registered:', reg.scope))
+          .catch(err => console.warn('⚠️ SW registration failed:', err));
+      });
+    }
+  </script>
 </body>
 </html>

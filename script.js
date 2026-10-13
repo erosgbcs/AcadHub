@@ -392,6 +392,11 @@ function showNotification(message, type = 'success') {
 // API CALL FUNCTIONS
 // ============================================================
 async function apiCall(endpoint, options = {}) {
+  // Fail fast with a friendly message when offline
+  if (!navigator.onLine) {
+    throw new Error('You are offline. AI features need an internet connection.');
+  }
+
   const url = API_BASE_URL + endpoint;
   
   const config = {
@@ -435,6 +440,13 @@ async function checkBackendHealth() {
       state === 'offline' ? 'Backend offline — using local mode' :
                             'Checking connection…';
   };
+
+  // Fast-fail when navigator reports no connection
+  if (!navigator.onLine) {
+    backendAvailable = false;
+    setStatus('offline');
+    return false;
+  }
 
   setStatus('checking');
 
@@ -4726,6 +4738,9 @@ function initializeApp() {
   console.log('🚀 Initializing AcadHub Suite...');
   console.log('📡 Backend URL:', API_BASE_URL);
 
+  // Show offline banner if we start offline
+  updateOfflineBanner();
+
   // Move full-screen overlays to <body> so hidden view containers don't hide them
   ensureOverlaysAtBodyLevel();
 
@@ -5535,6 +5550,26 @@ function bindMcqKeyboard() {
     }
   });
 }
+// ============================================================
+// OFFLINE / ONLINE DETECTION
+// ============================================================
+function updateOfflineBanner() {
+  const banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+  banner.classList.toggle('hidden', navigator.onLine);
+}
+
+window.addEventListener('online', () => {
+  updateOfflineBanner();
+  showNotification('Back online', 'success');
+  checkBackendHealth();
+});
+
+window.addEventListener('offline', () => {
+  updateOfflineBanner();
+  showNotification('You are offline — AI features will be unavailable', 'warning');
+});
+
 // ============================================================
 // BOOTSTRAP
 // ============================================================

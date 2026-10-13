@@ -3596,3 +3596,61 @@ html.light .agenda-day-badge {
 html.light .deadline-type-icon {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
 }
+
+/* ============================================================ */
+/* OFFLINE BANNER                                               */
+/* ============================================================ */
+.offline-banner {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: offlineSlideDown 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+  max-width: calc(100vw - 2rem);
+}
+.offline-banner.hidden {
+  display: none;
+}
+.offline-banner i {
+  font-size: 0.8rem;
+}
+
+@keyframes offlineSlideDown {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+html.light .offline-banner {
+  background: #fffbeb;
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #b45309;
+}
+
+@media (max-width: 768px) {
+  .offline-banner {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(245, 158, 11, 0.95);
+    color: #1f1f1f;
+    border-color: transparent;
+  }
+  html.light .offline-banner {
+    background: #f59e0b;
+    color: #ffffff;
+  }
+}
