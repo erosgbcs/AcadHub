@@ -130,10 +130,7 @@
     <i class="fa-solid fa-wand-magic-sparkles text-base sm:text-lg"></i>
     <span>Reviewer</span>
   </button>
-  <button id="tabLibrary" onclick="switchTab('library')" class="flex-1 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition tab-inactive btn-hover flex flex-col items-center justify-center gap-0.5">
-    <i class="fa-solid fa-bookmark text-base sm:text-lg"></i>
-    <span>Library</span>
-  </button>
+
   <button id="tabTest" onclick="switchTab('test')" class="flex-1 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition tab-inactive btn-hover flex flex-col items-center justify-center gap-0.5">
     <i class="fa-solid fa-bolt text-base sm:text-lg"></i>
     <span>Test</span>
@@ -337,6 +334,19 @@
 </div>
 
 <div id="viewReviewer" class="hidden space-y-4 sm:space-y-6">
+
+  <!-- ===== PANE TOGGLE: Generate | Saved ===== -->
+  <div class="glass-card p-1.5 flex gap-1">
+    <button id="reviewerPaneGenerate" onclick="switchReviewerPane('generate')" class="flex-1 py-2 rounded-xl text-sm font-semibold transition tab-active btn-hover">
+      <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Generate
+    </button>
+    <button id="reviewerPaneSaved" onclick="switchReviewerPane('saved')" class="flex-1 py-2 rounded-xl text-sm font-semibold transition tab-inactive btn-hover">
+      <i class="fa-solid fa-bookmark mr-1"></i>Saved <span id="reviewerSavedCount" class="opacity-60">0</span>
+    </button>
+  </div>
+
+  <!-- ===== PANE 1: GENERATE ===== -->
+  <div id="reviewerGeneratePane" class="space-y-4 sm:space-y-6">
 
   <!-- Back to Generator (visible when the form is hidden) -->
   <button id="backToGeneratorBtn" onclick="exitSavedView()"
@@ -774,7 +784,20 @@
     <div id="quizContainer" class="space-y-3"></div>
   </div>
 </div>
+  </div>  <!-- /#reviewerGeneratePane -->
+
+  <!-- ===== PANE 2: SAVED (was the Library tab) ===== -->
+  <div id="reviewerSavedPane" class="hidden space-y-4">
+    <div class="glass-card">
+      <h2 class="text-lg sm:text-xl font-bold mb-4">
+        <i class="fa-solid fa-bookmark mr-2"></i>Saved Reviewers
+      </h2>
+      <div id="savedList" class="space-y-2"></div>
+      <p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p>
+    </div>
   </div>
+
+</div>
 <!-- ===== RECALL QUIZ MODE OVERLAY ===== -->
 <div id="recallModeOverlay" class="hidden fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-0 sm:p-4 sm:backdrop-blur-sm">
   <div class="glass-card w-full h-full sm:max-w-2xl sm:h-auto sm:max-h-[92vh] flex flex-col sm:rounded-2xl" style="border-radius:0;" onclick="event.stopPropagation()">
@@ -887,14 +910,7 @@
     </div>
   </div>
 </div>
-      <!-- ===== VIEW: LIBRARY ===== -->
-      <div id="viewLibrary" class="hidden space-y-4">
-        <div class="glass-card">
-          <h2 class="text-lg sm:text-xl font-bold mb-4"><i class="fa-solid fa-bookmark mr-2"></i>Saved Reviewers</h2>
-          <div id="savedList" class="space-y-2"></div>
-          <p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p>
-        </div>
-      </div>
+
 
       <!-- ===== VIEW: TEST MY LIMITS ===== -->
       <div id="viewTest" class="hidden space-y-4 sm:space-y-6">

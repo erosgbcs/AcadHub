@@ -597,6 +597,13 @@ function skipToDashboard() {
 // TAB MANAGEMENT - FIXED VERSION
 // ============================================================
 function switchTab(tab) {
+  // Redirect 'library' → Reviewer tab + Saved pane
+  if (tab === 'library') {
+    switchTab('reviewer');
+    switchReviewerPane('saved');
+    return;
+  }
+
   // Close any full-screen overlay if user switches tabs mid-study
   ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay']
   .forEach(id => document.getElementById(id)?.classList.add('hidden'));
@@ -655,10 +662,43 @@ const tabMap = {
   // Refresh data for certain tabs
   // Refresh data for certain tabs
   if (tab === 'home') renderHomeDashboard();
-  if (tab === 'library') renderSavedList();
   if (tab === 'calendar') renderCalendar();
   if (tab === 'notes') { renderNotesList(); renderSubjectFilters(); }
-}                                                    //  
+  if (tab === 'reviewer') updateSavedCount();
+}
+
+// ============================================================
+// REVIEWER PANE TOGGLE (Generate | Saved)
+// ============================================================
+function switchReviewerPane(pane) {
+  const genPane = document.getElementById('reviewerGeneratePane');
+  const savedPane = document.getElementById('reviewerSavedPane');
+  const genBtn = document.getElementById('reviewerPaneGenerate');
+  const savedBtn = document.getElementById('reviewerPaneSaved');
+  if (!genPane || !savedPane) return;
+
+  const showSaved = pane === 'saved';
+
+  genPane.classList.toggle('hidden', showSaved);
+  savedPane.classList.toggle('hidden', !showSaved);
+
+  genBtn.classList.toggle('tab-active', !showSaved);
+  genBtn.classList.toggle('tab-inactive', showSaved);
+  savedBtn.classList.toggle('tab-active', showSaved);
+  savedBtn.classList.toggle('tab-inactive', !showSaved);
+
+  if (showSaved) {
+    renderSavedList();
+    updateSavedCount();
+  }
+}
+
+function updateSavedCount() {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const el = document.getElementById('reviewerSavedCount');
+  if (el) el.textContent = saved.length;
+}
+
 // FIXED: Improved initTabListeners with direct onclick
 function initTabListeners() {
   const tabMappings = {
@@ -3343,6 +3383,8 @@ function renderSavedList() {
   const emptyMsg = document.getElementById('emptyLibrary');
   if (!container) return;
 
+  updateSavedCount();
+
   const saved = safeLocalStorageGet('acadhub_saved', []);
   container.innerHTML = '';
 
@@ -3428,6 +3470,7 @@ function loadSavedItem(index) {
   if (!item || !item.data) return;
 
   switchTab('reviewer');   
+  switchReviewerPane('generate');
 
   // ✅ NEW: enter saved-view mode — hide generator, show back button
   const viewReviewer = document.getElementById('viewReviewer');
@@ -4140,6 +4183,7 @@ migrateSavedFlashcardOrder();
   renderSubjectFilters();
   renderHomeDashboard();
   updateSettingsUI();
+  updateSavedCount();
   initQuickSummaryListeners();
   initAdvancedOptions();
 
