@@ -19,18 +19,28 @@
 
 
 html.light {
-  --bg-body: #f1f5f9;
+  /* Slightly warmer off-white — softer on eyes than pure #fff */
+  --bg-body: #eef2f7;
   --text-body: #0f172a;
-  --bg-card: rgba(255, 255, 255, 0.75);
-  --bg-card-solid: #ffffff;
-  --bg-elevated: rgba(0, 0, 0, 0.04);
-  --bg-hover: rgba(0, 0, 0, 0.06);
-  --bg-input: rgba(0, 0, 0, 0.04);
-  --border-card: rgba(0, 0, 0, 0.08);
-  --border-input: rgba(0, 0, 0, 0.12);
   --text-secondary: #475569;
   --text-muted: #64748b;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  /* Solid cards — no translucent blur on light bg (avoids muddiness) */
+  --bg-card: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-elevated: #f8fafc;
+  --bg-hover: #f1f5f9;
+  --bg-input: #f8fafc;
+
+  /* Stronger borders for legibility */
+  --border-card: rgba(15, 23, 42, 0.08);
+  --border-input: rgba(15, 23, 42, 0.12);
+
+  /* Multi-layer elevation shadow — this is the key to "lift" cards off the bg */
+  --shadow-card:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px rgba(15, 23, 42, 0.05),
+    0 0 0 1px rgba(15, 23, 42, 0.03);
 }
 
 * {
@@ -2158,4 +2168,546 @@ html.light .progress-pill.streak {
 }
 html.light .progress-pill.xp {
   color: #4338ca;
+}
+
+/* ============================================================ */
+/* REVIEWER REDESIGN — Approach A                               */
+/* ============================================================ */
+
+/* Input method tabs */
+.input-method-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-card);
+  border-radius: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+.input-method-tabs button {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.input-method-tabs button.active {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent2);
+}
+.input-method-tabs button:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-body);
+}
+
+/* Quiz pills */
+.quiz-pills {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+@media (min-width: 640px) {
+  .quiz-pills {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.quiz-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-card);
+  border-radius: 0.55rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.quiz-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.quiz-pill.active {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+.quiz-pill input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.quiz-pill input[type="number"] {
+  width: 38px;
+  padding: 0.15rem 0.25rem;
+  text-align: center;
+  font-size: 0.72rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.35rem;
+  flex-shrink: 0;
+}
+.quiz-pill span.flex-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Range slider styling for flashcard count */
+#flashcardSlider {
+  width: 100%;
+  height: 6px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 9999px;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+#flashcardSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+/* Sticky action bar — sits above the fixed bottom tab bar */
+.sticky-action-bar {
+  position: sticky;
+  bottom: 5.5rem;
+  z-index: 30;
+  padding: 0.75rem 0 0.5rem;
+  margin-top: 0.5rem;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 18, 0) 0%,
+    rgba(10, 10, 18, 0.9) 40%,
+    rgba(10, 10, 18, 1) 100%
+  );
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* When the tab bar isn't at the bottom, still keep some gap */
+@media (min-width: 1024px) {
+  .sticky-action-bar {
+    bottom: 1rem;
+  }
+}
+
+/* Textarea live counter block */
+#charCount, #wordCount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Light mode adjustments */
+html.light .quiz-pill {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+html.light .quiz-pill:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+html.light .quiz-pill.active {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+html.light .input-method-tabs {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+html.light #flashcardSlider {
+  background: rgba(0, 0, 0, 0.08);
+}
+html.light .sticky-action-bar {
+  background: linear-gradient(
+    180deg,
+    rgba(241, 245, 249, 0) 0%,
+    rgba(241, 245, 249, 0.9) 40%,
+    rgba(241, 245, 249, 1) 100%
+  );
+}
+
+/* ============================================================ */
+/* LIGHT MODE POLISH — depth, contrast, and color vibrancy      */
+/* ============================================================ */
+
+/* ----- Body: soft radial glow behind everything ----- */
+html.light body {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(var(--accent-rgb), 0.06), transparent 60%),
+    var(--bg-body);
+  background-attachment: fixed;
+}
+
+/* ----- Cards: replace blur with crisp solid + shadow ----- */
+html.light .glass-card {
+  background: var(--bg-card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-card);
+}
+
+/* Hover state for interactive cards */
+html.light .glass-card.btn-hover:hover,
+html.light .note-card:hover,
+html.light .saved-card:hover {
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 8px 20px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.25);
+}
+
+/* ----- Header card: crisp accent bar ----- */
+html.light #mainWrapper > .glass-card.header {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* ----- Tab bar: prominent, elevated ----- */
+html.light #tabContainer {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-card);
+  border-bottom: none;
+  box-shadow:
+    0 -1px 0 rgba(15, 23, 42, 0.04),
+    0 -8px 24px rgba(15, 23, 42, 0.08);
+}
+
+/* Active tab: solid accent background with white text */
+html.light #tabContainer button.tab-active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.35);
+}
+
+html.light #tabContainer button.tab-active i {
+  color: #ffffff;
+}
+
+/* Inactive tabs: dark text for contrast */
+html.light #tabContainer button.tab-inactive {
+  color: #64748b;
+}
+
+html.light #tabContainer button.tab-inactive:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
+}
+
+/* ----- Inputs: clearer borders, subtle inset ----- */
+html.light input,
+html.light textarea,
+html.light select {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02);
+}
+
+html.light input:focus,
+html.light textarea:focus,
+html.light select:focus {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px rgba(var(--accent-rgb), 0.12),
+    inset 0 1px 2px rgba(15, 23, 42, 0.02);
+  background: #ffffff;
+}
+
+/* ----- Primary buttons: stronger shadow ----- */
+html.light .btn-primary {
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.3);
+}
+
+html.light .btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.4);
+}
+
+/* ----- Gradient text: darker colors for readability ----- */
+html.light .bg-gradient-to-r.from-indigo-400.to-cyan-300,
+html.light h1.bg-gradient-to-r {
+  background: linear-gradient(to right, var(--accent), #0891b2) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* ----- Flashcard front/back: solid, elevated ----- */
+html.light .flashcard-front,
+html.light .flashcard-back {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--border-card);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+/* ----- Quiz options: clearly clickable ----- */
+html.light .quiz-option {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+html.light .quiz-option:hover {
+  background: #f8fafc;
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.1);
+}
+
+/* ----- Modals: heavier backdrop, crisper card ----- */
+html.light [data-modal] {
+  background: rgba(15, 23, 42, 0.35) !important;
+}
+
+html.light [data-modal] > .glass-card {
+  box-shadow:
+    0 20px 50px rgba(15, 23, 42, 0.2),
+    0 4px 12px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+/* ----- Subject / quiz pills: filled when active ----- */
+html.light .quiz-pill.active {
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+html.light .subject-filter-pill.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.25);
+}
+
+html.light .subject-filter-pill.active .note-subject-dot {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ----- Gen meta tiles: solid fill when active ----- */
+html.light .gen-meta-tile.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.25);
+}
+
+/* ----- Progress pills: richer colors ----- */
+html.light .progress-pill.streak {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #b45309;
+}
+
+html.light .progress-pill.xp {
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: #3730a3;
+}
+
+/* ----- Status dots: darker borders ----- */
+html.light .status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+html.light .status-dot.offline {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+html.light .status-dot.checking {
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+}
+
+/* ----- Skeleton loaders: warmer shimmer ----- */
+html.light .skeleton-block {
+  background: linear-gradient(
+    90deg,
+    #e2e8f0 0%,
+    #f1f5f9 50%,
+    #e2e8f0 100%
+  );
+  background-size: 200% 100%;
+}
+
+html.light .skeleton-card {
+  background: #ffffff;
+  border: 1px solid var(--border-card);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+/* ----- Results nav: cleaner active state ----- */
+html.light .results-nav-btn.active {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.2);
+}
+
+html.light .results-nav-count {
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+}
+
+/* ----- Splash screen: light gradient + softer glows ----- */
+html.light .splash-screen {
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+}
+
+html.light .splash-glow-1 {
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.18) 0%, transparent 70%);
+  opacity: 0.7;
+}
+
+html.light .splash-glow-2 {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
+  opacity: 0.6;
+}
+
+html.light .splash-logo-inner {
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.04) inset,
+    0 8px 32px rgba(var(--accent-rgb), 0.25),
+    0 0 60px rgba(6, 182, 212, 0.15);
+}
+
+html.light .splash-tagline {
+  color: #64748b;
+}
+
+html.light .splash-footer {
+  color: #94a3b8;
+}
+
+html.light .splash-progress-bar {
+  background: rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+
+html.light .splash-progress-text {
+  color: #64748b;
+}
+
+/* Particles: darker, more visible */
+html.light .particle {
+  color: var(--accent);
+  opacity: 0.10;
+}
+
+/* ----- Deadline rows: brighter hover ----- */
+html.light .deadline-row:hover {
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+/* ----- Calendar: brighter day cells ----- */
+html.light .calendar-day {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+html.light .calendar-day:hover {
+  background: #f8fafc;
+  border-color: var(--accent);
+}
+
+html.light .calendar-day.today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+html.light .calendar-day.selected {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.3);
+}
+
+html.light .calendar-day.selected .task-dot {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* ----- Yellow/green/rose accents: darker for contrast ----- */
+html.light .text-amber-400 { color: #d97706 !important; }
+html.light .text-emerald-400 { color: #059669 !important; }
+html.light .text-rose-400 { color: #dc2626 !important; }
+html.light .text-cyan-400 { color: #0891b2 !important; }
+html.light .text-teal-400 { color: #0d9488 !important; }
+
+/* Alert/pill backgrounds slightly more saturated */
+html.light .bg-amber-500\/10 { background: rgba(245, 158, 11, 0.12) !important; }
+html.light .bg-emerald-500\/10 { background: rgba(16, 185, 129, 0.1) !important; }
+html.light .bg-rose-500\/10 { background: rgba(239, 68, 68, 0.08) !important; }
+html.light .bg-indigo-500\/10 { background: rgba(var(--accent-rgb), 0.08) !important; }
+
+/* Study mode card: crisper in light */
+html.light #studyCard {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--border-card);
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.06),
+    0 12px 32px rgba(15, 23, 42, 0.04);
+}
+
+/* Study mode action buttons: solid pastels */
+html.light button[onclick*="rateStudyCard('forgot')"] {
+  background: #fef2f2;
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+}
+
+html.light button[onclick*="rateStudyCard('hard')"] {
+  background: #fffbeb;
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #b45309;
+}
+
+html.light button[onclick*="rateStudyCard('easy')"] {
+  background: #ecfdf5;
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #047857;
+}
+
+/* ----- Toast notifications: brighter ----- */
+html.light #appNotification {
+  box-shadow:
+    0 4px 16px rgba(15, 23, 42, 0.12),
+    0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* ----- Backend "checking" pulse ----- */
+html.light .status-dot.checking {
+  animation: statusPulseLight 1.4s ease-in-out infinite;
+}
+
+@keyframes statusPulseLight {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+/* ----- Reduced motion: keep everything static ----- */
+@media (prefers-reduced-motion: reduce) {
+  html.light body {
+    background-attachment: scroll;
+  }
 }
