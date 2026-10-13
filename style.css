@@ -2841,3 +2841,51 @@ html, body {
     opacity: 0.3 !important;
   }
 }
+
+/* ============================================================ */
+/* MCQ STUDY MODE                                               */
+/* ============================================================ */
+.mcq-study-option {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mcq-study-option:not(:disabled):hover {
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+
+.mcq-study-option.mcq-correct {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #34d399;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2) inset;
+}
+
+.mcq-study-option.mcq-wrong {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #f87171;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2) inset;
+}
+
+html.light .mcq-study-option {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+html.light .mcq-study-option:not(:disabled):hover {
+  background: #f8fafc;
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+html.light .mcq-study-option.mcq-correct {
+  background: #ecfdf5 !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #047857;
+}
+html.light .mcq-study-option.mcq-wrong {
+  background: #fef2f2 !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #b91c1c;
+}

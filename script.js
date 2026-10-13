@@ -605,7 +605,7 @@ function switchTab(tab) {
   }
 
   // Close any full-screen overlay if user switches tabs mid-study
-  ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay']
+  ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay', 'mcqStudyOverlay', 'mcqCompleteOverlay']
   .forEach(id => document.getElementById(id)?.classList.add('hidden'));
   document.body.style.overflow = '';
   
@@ -1630,6 +1630,15 @@ function updateResultsNavCounts() {
     const total = idCount + enumCount;
     recallCount.textContent = total;
     recallBtn.classList.toggle('hidden', total === 0);
+  }
+
+  // MCQ Study button visibility + count
+  const mcqBtn = document.getElementById('mcqStudyBtn');
+  const mcqCountEl = document.getElementById('mcqStudyCount');
+  if (mcqBtn && mcqCountEl) {
+    const mcqCount = currentResults?.quiz?.multipleChoice?.length || 0;
+    mcqCountEl.textContent = mcqCount;
+    mcqBtn.classList.toggle('hidden', mcqCount === 0);
   }
 }
 
@@ -4569,16 +4578,6 @@ function syncThemeControls() {
   const bgPicker = document.getElementById('bgPicker');
   if (bgPicker) bgPicker.value = t.bgBody || '#0a0a12';
   
-  const radiusSlider = document.getElementById('radiusSlider');
-  const radiusValue = document.getElementById('radiusValue');
-  if (radiusSlider) radiusSlider.value = t.radiusCard;
-  if (radiusValue) radiusValue.textContent = t.radiusCard + 'rem';
-  
-  const blurSlider = document.getElementById('blurSlider');
-  const blurValue = document.getElementById('blurValue');
-  if (blurSlider) blurSlider.value = t.blur;
-  if (blurValue) blurValue.textContent = t.blur + 'px';
-  
   const densitySelect = document.getElementById('densitySelect');
   if (densitySelect) densitySelect.value = String(t.density);
 }
@@ -4873,6 +4872,222 @@ function bindRecallKeyboard() {
     }
     
     if (e.key === 'Escape' && !typing) exitRecallStudyMode();
+  });
+}
+
+// ============================================================
+// MCQ STUDY MODE (Multiple Choice Drill)
+// ============================================================
+let mcqQueue = [];
+let mcqOriginalQueue = [];
+let mcqIndex = 0;
+let mcqAnswered = false;
+let mcqSessionStats = { correct: 0, wrong: 0 };
+let mcqKbBound = false;
+
+function buildMcqQueue() {
+  const quiz = (currentResults && currentResults.quiz) || {};
+  return (quiz.multipleChoice || []).map((q, i) => ({
+    index: i,
+    question: q.question,
+    options: q.options || [],
+    correct: q.correct,
+    key: 'mcq:' + String(q.question || '').trim().toLowerCase()
+  }));
+}
+
+function openMcqStudyMode() {
+  const pool = buildMcqQueue();
+  if (!pool.length) {
+    showNotification('No multiple choice questions available.', 'warning');
+    return;
+  }
+
+  mcqQueue = pool;
+  mcqOriginalQueue = [...pool];
+  mcqIndex = 0;
+  mcqAnswered = false;
+  mcqSessionStats = { correct: 0, wrong: 0 };
+
+  document.getElementById('mcqStudyOverlay').classList.remove('hidden');
+  document.getElementById('mcqCompleteOverlay').classList.add('hidden');
+  document.body.style.overflow = 'hidden';
+
+  bindMcqKeyboard();
+  renderMcqCard();
+}
+
+function exitMcqStudyMode() {
+  document.getElementById('mcqStudyOverlay').classList.add('hidden');
+  document.getElementById('mcqCompleteOverlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function renderMcqCard() {
+  if (!mcqQueue.length || mcqIndex >= mcqQueue.length) {
+    showMcqComplete();
+    return;
+  }
+
+  const item = mcqQueue[mcqIndex];
+
+  document.getElementById('mcqCurrent').textContent = mcqIndex + 1;
+  document.getElementById('mcqTotal').textContent = mcqQueue.length;
+
+  const pct = Math.round((mcqIndex / mcqQueue.length) * 100);
+  document.getElementById('mcqProgressFill').style.width = pct + '%';
+
+  document.getElementById('mcqQuestion').textContent = item.question;
+
+  const optionsContainer = document.getElementById('mcqOptions');
+  optionsContainer.innerHTML = '';
+
+  (item.options || []).forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mcq-study-option w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm transition';
+    btn.dataset.index = i;
+    btn.innerHTML = `<span class="font-semibold mr-2 text-indigo-400">${String.fromCharCode(65 + i)}.</span>${opt}`;
+    btn.onclick = () => selectMcqOption(i);
+    optionsContainer.appendChild(btn);
+  });
+
+  document.getElementById('mcqFeedback').classList.add('hidden');
+  mcqAnswered = false;
+}
+
+function selectMcqOption(index) {
+  if (mcqAnswered) return;
+  mcqAnswered = true;
+
+  const item = mcqQueue[mcqIndex];
+  const buttons = document.querySelectorAll('#mcqOptions .mcq-study-option');
+
+  buttons.forEach((btn, i) => {
+    btn.disabled = true;
+    btn.style.cursor = 'default';
+    if (i === item.correct) {
+      btn.classList.add('mcq-correct');
+    } else if (i === index && index !== item.correct) {
+      btn.classList.add('mcq-wrong');
+    } else {
+      btn.classList.add('opacity-40');
+    }
+  });
+
+  const isCorrect = index === item.correct;
+  if (isCorrect) mcqSessionStats.correct++;
+  else mcqSessionStats.wrong++;
+
+  // Persist rating so browse-mode flashcards show a badge
+  const ratings = safeLocalStorageGet('acadhub_flashcard_ratings', {});
+  ratings[item.key] = isCorrect ? 'easy' : 'forgot';
+  safeLocalStorageSet('acadhub_flashcard_ratings', ratings);
+
+  // XP: +2 per question
+  addXp(XP_REWARDS.recallItem, { silent: true });
+
+  // Feedback block
+  const feedback = document.getElementById('mcqFeedback');
+  const msg = document.getElementById('mcqFeedbackMsg');
+  if (isCorrect) {
+    msg.className = 'p-3 rounded-xl text-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
+    msg.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>Correct!';
+  } else {
+    msg.className = 'p-3 rounded-xl text-sm bg-rose-500/10 border border-rose-500/30 text-rose-300';
+    const correctText = item.options[item.correct] || '';
+    msg.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i>Not quite. Correct answer: <strong>${String.fromCharCode(65 + item.correct)}. ${correctText}</strong>`;
+  }
+  feedback.classList.remove('hidden');
+
+  const nextBtn = document.getElementById('mcqNextBtn');
+  if (nextBtn) {
+    nextBtn.innerHTML = (mcqIndex === mcqQueue.length - 1)
+      ? '<i class="fa-solid fa-flag-checkered mr-2"></i>Finish'
+      : 'Next Question <i class="fa-solid fa-arrow-right ml-2"></i>';
+  }
+}
+
+function nextMcqCard() {
+  if (!mcqAnswered) return;
+  mcqIndex++;
+  mcqAnswered = false;
+  if (mcqIndex >= mcqQueue.length) {
+    showMcqComplete();
+  } else {
+    renderMcqCard();
+  }
+}
+
+function showMcqComplete() {
+  const total = mcqSessionStats.correct + mcqSessionStats.wrong;
+  const pct = total ? Math.round((mcqSessionStats.correct / total) * 100) : 0;
+
+  document.getElementById('mcqSummaryCorrect').textContent = mcqSessionStats.correct;
+  document.getElementById('mcqSummaryWrong').textContent = mcqSessionStats.wrong;
+  document.getElementById('mcqSummaryScore').textContent = pct + '%';
+  document.getElementById('mcqMissedCount').textContent = mcqSessionStats.wrong;
+
+  const reviewBtn = document.getElementById('mcqReviewWrongBtn');
+  if (reviewBtn) reviewBtn.style.display = mcqSessionStats.wrong > 0 ? 'block' : 'none';
+
+  // Session XP bonus
+  if (total > 0) addXp(XP_REWARDS.recallSession);
+
+  document.getElementById('mcqStudyOverlay').classList.add('hidden');
+  document.getElementById('mcqCompleteOverlay').classList.remove('hidden');
+}
+
+function restartMcqSession() {
+  mcqQueue = [...mcqOriginalQueue];
+  mcqIndex = 0;
+  mcqAnswered = false;
+  mcqSessionStats = { correct: 0, wrong: 0 };
+  document.getElementById('mcqCompleteOverlay').classList.add('hidden');
+  document.getElementById('mcqStudyOverlay').classList.remove('hidden');
+  renderMcqCard();
+}
+
+function mcqReviewWrong() {
+  const ratings = safeLocalStorageGet('acadhub_flashcard_ratings', {});
+  mcqQueue = mcqOriginalQueue.filter(item => ratings[item.key] === 'forgot');
+
+  if (!mcqQueue.length) {
+    showNotification('No missed questions to review.', 'info');
+    return;
+  }
+
+  mcqIndex = 0;
+  mcqAnswered = false;
+  mcqSessionStats = { correct: 0, wrong: 0 };
+  document.getElementById('mcqCompleteOverlay').classList.add('hidden');
+  document.getElementById('mcqStudyOverlay').classList.remove('hidden');
+  renderMcqCard();
+}
+
+function bindMcqKeyboard() {
+  if (mcqKbBound) return;
+  mcqKbBound = true;
+
+  document.addEventListener('keydown', (e) => {
+    const overlay = document.getElementById('mcqStudyOverlay');
+    if (!overlay || overlay.classList.contains('hidden')) return;
+
+    if (e.key === 'Escape') { exitMcqStudyMode(); return; }
+
+    if (!mcqAnswered) {
+      // A/B/C/D to select
+      const idx = e.key.toUpperCase().charCodeAt(0) - 65;
+      if (idx >= 0 && idx < 26) {
+        const item = mcqQueue[mcqIndex];
+        if (item && idx < item.options.length) {
+          selectMcqOption(idx);
+        }
+      }
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      nextMcqCard();
+    }
   });
 }
 // ============================================================
@@ -5879,7 +6094,7 @@ function getAllUserSubjects() {
 // Otherwise a hidden parent (`#viewReviewer`, `#resultsContainer`)
 // makes `display: none` cascade down and the overlay can't render.
 function ensureOverlaysAtBodyLevel() {
-  ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay']
+  ['studyModeOverlay', 'studyCompleteOverlay', 'recallModeOverlay', 'recallCompleteOverlay', 'mcqStudyOverlay', 'mcqCompleteOverlay']
     .forEach(id => {
       const el = document.getElementById(id);
       if (el && el.parentElement !== document.body) {
