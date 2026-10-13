@@ -1543,6 +1543,19 @@
         </button>
       </div>
 
+      <!-- Touch particles toggle -->
+      <div class="flex items-center justify-between pt-2 pb-2">
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold">Touch Effects</label>
+          <button onclick="previewParticles()" class="text-[10px] text-indigo-400 hover:underline btn-hover" title="Preview particles">
+            <i class="fa-solid fa-sparkles"></i>
+          </button>
+        </div>
+        <button id="settingsParticlesToggle" onclick="toggleParticles()" class="w-10 h-6 rounded-full bg-white/10 relative transition btn-hover">
+          <span id="settingsParticlesDot" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition"></span>
+        </button>
+      </div>
+
 
       <!-- Reset -->
       <button onclick="resetThemeOverrides()"
@@ -1740,6 +1753,7 @@
   <script src="animations.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <script src="sounds.js"></script>
+  <script src="particles.js"></script>
   <script src="script.js"></script>
 
   <!-- ===== SERVICE WORKER (offline support) ===== -->

@@ -22,7 +22,7 @@ const SoundEngine = (function () {
       if (!Ctx) return null;
       ctx = new Ctx();
       masterGain = ctx.createGain();
-      masterGain.gain.value = 0.35;
+      masterGain.gain.value = 0.90;   
       masterGain.connect(ctx.destination);
     } catch (e) {
       console.warn('AudioContext unavailable:', e);

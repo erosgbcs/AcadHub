@@ -781,6 +781,37 @@ function updateSoundToggleUI() {
   dot.style.left = on ? '1.25rem' : '0.25rem';
 }
 
+// ============================================================
+// PARTICLE CONTROLS
+// ============================================================
+function toggleParticles() {
+  if (typeof TouchParticles === 'undefined') return;
+  const next = !TouchParticles.isEnabled();
+  TouchParticles.setEnabled(next);
+  updateParticlesToggleUI();
+  showNotification(next ? 'Touch effects on' : 'Touch effects off', 'info');
+  if (next) {
+    // Immediate feedback — play a preview burst
+    setTimeout(() => TouchParticles.preview(), 120);
+  }
+}
+
+function previewParticles() {
+  if (typeof TouchParticles === 'undefined') return;
+  if (!TouchParticles.isEnabled()) {
+    showNotification('Enable touch effects first', 'warning');
+    return;
+  }
+  TouchParticles.preview();
+}
+
+function updateParticlesToggleUI() {
+  const dot = document.getElementById('settingsParticlesDot');
+  if (!dot) return;
+  const on = (typeof TouchParticles !== 'undefined') && TouchParticles.isEnabled();
+  dot.style.left = on ? '1.25rem' : '0.25rem';
+}
+
 function closeSettingsModal() {
   document.getElementById('settingsModal').classList.add('hidden');
 }
@@ -4835,6 +4866,7 @@ renderThemePresets();
   renderHomeDashboard();
   updateSettingsUI();
   updateSoundToggleUI();
+  updateParticlesToggleUI();
   updateSavedCount();
   initQuickSummaryListeners();
   initAdvancedOptions();
