@@ -351,7 +351,11 @@ async def generate_with_groq(text: str, quiz_types: dict, flashcard_count: int) 
     req = urllib.request.Request(
         GROQ_URL,
         data=body,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "User-Agent": "AcadHub/2.0 (python-urllib)",
+        },
         method="POST",
     )
     def call():
@@ -391,7 +395,11 @@ async def generate_summary_with_groq(text: str) -> list[str]:
     req = urllib.request.Request(
         GROQ_URL,
         data=body,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "User-Agent": "AcadHub/2.0 (python-urllib)",
+        },
         method="POST",
     )
     def call():
