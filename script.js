@@ -5076,11 +5076,11 @@ function bindMcqKeyboard() {
     if (e.key === 'Escape') { exitMcqStudyMode(); return; }
 
     if (!mcqAnswered) {
-      // A/B/C/D to select
-      const idx = e.key.toUpperCase().charCodeAt(0) - 65;
-      if (idx >= 0 && idx < 26) {
+      // A/B/C/D to select (only single-character letter keys)
+      if (e.key.length === 1 && /[a-z]/i.test(e.key)) {
+        const idx = e.key.toUpperCase().charCodeAt(0) - 65;
         const item = mcqQueue[mcqIndex];
-        if (item && idx < item.options.length) {
+        if (item && idx >= 0 && idx < item.options.length) {
           selectMcqOption(idx);
         }
       }
@@ -5383,7 +5383,7 @@ function getProgress() {
   const thisMonday = getMondayOfWeek();
 
   if (!p || typeof p !== 'object') {
-    p = { streak: 0, lastStudyDate: null, weeklyXp: 0, weekStart: thisMonday, totalXp: 0 };
+    p = { streak: 0, lastStudyDate: null, weeklyXp: 0, weekStart: thisMonday, totalXp: 0, dailyXp: {} };
   }
 
   p.streak = Number(p.streak) || 0;
@@ -5391,6 +5391,7 @@ function getProgress() {
   p.totalXp = Number(p.totalXp) || 0;
   p.weekStart = p.weekStart || thisMonday;
   p.lastStudyDate = p.lastStudyDate || null;
+  p.dailyXp = (p.dailyXp && typeof p.dailyXp === 'object') ? p.dailyXp : {};
 
   let dirty = false;
 
@@ -5409,6 +5410,14 @@ function getProgress() {
       dirty = true;
     }
   }
+
+  // Prune dailyXp entries older than 30 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = localDateStr(cutoff);
+  Object.keys(p.dailyXp).forEach(d => {
+    if (d < cutoffStr) { delete p.dailyXp[d]; dirty = true; }
+  });
 
   if (dirty) safeLocalStorageSet(PROGRESS_LS_KEY, p);
   return p;
@@ -5443,6 +5452,9 @@ function addXp(amount, opts = {}) {
   p.weeklyXp = (p.weeklyXp || 0) + num;
   p.totalXp = (p.totalXp || 0) + num;
 
+  if (!p.dailyXp) p.dailyXp = {};
+  p.dailyXp[today] = (p.dailyXp[today] || 0) + num;
+
   safeLocalStorageSet(PROGRESS_LS_KEY, p);
 
   if (!silent) {
@@ -5451,38 +5463,139 @@ function addXp(amount, opts = {}) {
   }
 }
 
+// ---- XP Level system ----
+const XP_PER_LEVEL = 100;
+
+const LEVEL_RANKS = [
+  { min: 1,  max: 2,  label: 'Novice'   },
+  { min: 3,  max: 4,  label: 'Learner'  },
+  { min: 5,  max: 6,  label: 'Scholar'  },
+  { min: 7,  max: 9,  label: 'Expert'   },
+  { min: 10, max: 14, label: 'Master'   },
+  { min: 15, max: Infinity, label: 'Legend' },
+];
+
+function getLevelInfo(totalXp) {
+  const level = Math.floor(totalXp / XP_PER_LEVEL) + 1;
+  const xpInLevel = totalXp % XP_PER_LEVEL;
+  const xpForNext = XP_PER_LEVEL;
+  const rank = LEVEL_RANKS.find(r => level >= r.min && level <= r.max) || LEVEL_RANKS[0];
+  return { level, xpInLevel, xpForNext, rank: rank.label };
+}
+
+// ---- Cards mastered: SRS interval >= 21 days ----
+function countMasteredCards() {
+  const srs = getSrsData();
+  return Object.values(srs).filter(r => (r.interval || 0) >= 21).length;
+}
+
+// ---- Weekly activity: last 7 days ----
+function getWeeklyXpData() {
+  const p = getProgress();
+  const out = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = localDateStr(d);
+    out.push({
+      date: key,
+      xp: p.dailyXp[key] || 0,
+      dayLabel: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1),
+      isToday: i === 0,
+    });
+  }
+  return out;
+}
+
+function renderHomeStats() {
+  const p = getProgress();
+  const notes = getNotes();
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+
+  const notesEl = document.getElementById('statNotes');
+  if (notesEl) notesEl.textContent = notes.length;
+
+  const revEl = document.getElementById('statReviewers');
+  if (revEl) revEl.textContent = saved.length;
+
+  const mastEl = document.getElementById('statMastered');
+  if (mastEl) mastEl.textContent = countMasteredCards();
+
+  const xpEl = document.getElementById('statTotalXp');
+  if (xpEl) xpEl.textContent = p.totalXp;
+}
+
+function renderWeeklyChart() {
+  const container = document.getElementById('weeklyActivityChart');
+  const totalEl = document.getElementById('weeklyActivityTotal');
+  if (!container) return;
+
+  const data = getWeeklyXpData();
+  const max = Math.max(...data.map(d => d.xp), 1);
+  const sum = data.reduce((a, d) => a + d.xp, 0);
+
+  if (totalEl) totalEl.textContent = `${sum} XP earned`;
+
+  container.innerHTML = data.map(d => {
+    const heightPct = d.xp > 0 ? Math.max(8, (d.xp / max) * 100) : 4;
+    return `
+      <div class="weekly-bar-wrap" title="${d.date}: ${d.xp} XP">
+        <div class="weekly-bar ${d.xp > 0 ? 'has-xp' : 'no-xp'} ${d.isToday ? 'is-today' : ''}" style="height:${heightPct}%"></div>
+        <span class="weekly-bar-label ${d.isToday ? 'is-today' : ''}">${d.dayLabel}</span>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderHomeProgress() {
   const strip = document.getElementById('homeProgressStrip');
   const streakPill = document.getElementById('streakPill');
   const xpPill = document.getElementById('xpPill');
-  if (!strip || !streakPill || !xpPill) return;
-
   const p = getProgress();
 
-  // Streak pill
-  if (p.streak > 0) {
-    streakPill.style.display = 'inline-flex';
-    const cnt = document.getElementById('streakCount');
-    const pl = document.getElementById('streakPlural');
-    if (cnt) cnt.textContent = p.streak;
-    if (pl) pl.textContent = p.streak === 1 ? '' : 's';
-  } else {
-    streakPill.style.display = 'none';
+  // ---- Level badge ----
+  const info = getLevelInfo(p.totalXp);
+  const levelNum = document.getElementById('homeLevelNum');
+  const levelRank = document.getElementById('homeLevelRank');
+  const levelFill = document.getElementById('homeLevelFill');
+  const levelProgressLabel = document.getElementById('homeLevelProgressLabel');
+  const totalXpLabel = document.getElementById('homeTotalXpLabel');
+
+  if (levelNum) levelNum.textContent = info.level;
+  if (levelRank) levelRank.textContent = info.rank;
+  if (levelFill) levelFill.style.width = ((info.xpInLevel / info.xpForNext) * 100) + '%';
+  if (levelProgressLabel) levelProgressLabel.textContent = `${info.xpInLevel} / ${info.xpForNext} XP to Lv ${info.level + 1}`;
+  if (totalXpLabel) totalXpLabel.textContent = `${p.totalXp} XP total`;
+
+  // ---- Pills (existing) ----
+  if (strip && streakPill && xpPill) {
+    if (p.streak > 0) {
+      streakPill.style.display = 'inline-flex';
+      const cnt = document.getElementById('streakCount');
+      const pl = document.getElementById('streakPlural');
+      if (cnt) cnt.textContent = p.streak;
+      if (pl) pl.textContent = p.streak === 1 ? '' : 's';
+    } else {
+      streakPill.style.display = 'none';
+    }
+
+    if (p.weeklyXp > 0) {
+      xpPill.style.display = 'inline-flex';
+      const xp = document.getElementById('weeklyXp');
+      if (xp) xp.textContent = p.weeklyXp;
+    } else {
+      xpPill.style.display = 'none';
+    }
+
+    const bothHidden = streakPill.style.display === 'none'
+                    && xpPill.style.display === 'none';
+    strip.style.display = bothHidden ? 'none' : 'flex';
   }
 
-  // XP pill
-  if (p.weeklyXp > 0) {
-    xpPill.style.display = 'inline-flex';
-    const xp = document.getElementById('weeklyXp');
-    if (xp) xp.textContent = p.weeklyXp;
-  } else {
-    xpPill.style.display = 'none';
-  }
-
-  // Show/hide the whole strip
-  const bothHidden = streakPill.style.display === 'none'
-                  && xpPill.style.display === 'none';
-  strip.style.display = bothHidden ? 'none' : 'flex';
+  // ---- Stats + chart ----
+  renderHomeStats();
+  renderWeeklyChart();
 }
 
 
@@ -5589,9 +5702,10 @@ function renderHomeDashboard() {
     renderDueBySubject(due);
   }
 
-    renderUpcomingDeadlines();
+  renderUpcomingDeadlines();
   renderRecentItems();
   renderHomeProgress();
+  renderHomeStats();
 }
 // ---- Study ahead (ignore scheduling) ----
 // ---- Study ahead (ignore scheduling) ----

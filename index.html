@@ -146,23 +146,77 @@
 <!-- ===== VIEW: HOME DASHBOARD ===== -->
 <div id="viewHome" class="space-y-4 sm:space-y-6">
   
-  <!-- Greeting -->
-<div class="glass-card">
-  <h2 id="homeGreeting" class="text-lg sm:text-xl font-bold">Good evening 👋</h2>
-  <p id="homeSubline" class="text-xs opacity-70 mt-1">Here's what's waiting for you.</p>
-
-  <!-- Progress pills: streak + weekly XP -->
-  <div id="homeProgressStrip" class="items-center gap-2 mt-3 flex-wrap" style="display:none;">
-    <div id="streakPill" class="progress-pill streak" style="display:none;" title="Days in a row you've studied">
-      <i class="fa-solid fa-fire"></i>
-      <span><strong id="streakCount">0</strong> day<span id="streakPlural">s</span> streak</span>
+  <!-- Hero greeting + level + streak -->
+  <div class="glass-card home-hero">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0 flex-1">
+        <h2 id="homeGreeting" class="text-lg sm:text-xl font-bold">Good evening 👋</h2>
+        <p id="homeSubline" class="text-xs opacity-70 mt-1">Here's what's waiting for you.</p>
+      </div>
+      <div id="homeLevelBadge" class="home-level-badge" title="Level up by earning XP">
+        <span class="home-level-num" id="homeLevelNum">1</span>
+        <span class="home-level-label" id="homeLevelRank">Novice</span>
+      </div>
     </div>
-    <div id="xpPill" class="progress-pill xp" style="display:none;" title="XP earned this week">
-      <i class="fa-solid fa-star"></i>
-      <span><strong id="weeklyXp">0</strong> XP this week</span>
+
+    <!-- Level progress bar -->
+    <div class="mt-3">
+      <div class="flex items-center justify-between text-[10px] opacity-60 mb-1">
+        <span id="homeLevelProgressLabel">0 / 100 XP to Lv 2</span>
+        <span id="homeTotalXpLabel">0 XP total</span>
+      </div>
+      <div class="home-level-track">
+        <div id="homeLevelFill" class="home-level-fill" style="width:0%;"></div>
+      </div>
+    </div>
+
+    <!-- Progress pills: streak + weekly XP -->
+    <div id="homeProgressStrip" class="items-center gap-2 mt-3 flex-wrap" style="display:none;">
+      <div id="streakPill" class="progress-pill streak" style="display:none;" title="Days in a row you've studied">
+        <i class="fa-solid fa-fire"></i>
+        <span><strong id="streakCount">0</strong> day<span id="streakPlural">s</span> streak</span>
+      </div>
+      <div id="xpPill" class="progress-pill xp" style="display:none;" title="XP earned this week">
+        <i class="fa-solid fa-star"></i>
+        <span><strong id="weeklyXp">0</strong> XP this week</span>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- Quick stats row -->
+  <div class="grid grid-cols-4 gap-2">
+    <button onclick="switchTab('notes')" class="home-stat-card">
+      <i class="fa-solid fa-file-lines text-cyan-400"></i>
+      <p id="statNotes" class="home-stat-num">0</p>
+      <p class="home-stat-label">Notes</p>
+    </button>
+    <button onclick="switchTab('reviewer'); switchReviewerPane('saved');" class="home-stat-card">
+      <i class="fa-solid fa-clone text-indigo-400"></i>
+      <p id="statReviewers" class="home-stat-num">0</p>
+      <p class="home-stat-label">Sets</p>
+    </button>
+    <button onclick="switchTab('reviewer'); switchReviewerPane('saved');" class="home-stat-card">
+      <i class="fa-solid fa-medal text-amber-400"></i>
+      <p id="statMastered" class="home-stat-num">0</p>
+      <p class="home-stat-label">Mastered</p>
+    </button>
+    <button onclick="switchTab('test')" class="home-stat-card">
+      <i class="fa-solid fa-bolt text-emerald-400"></i>
+      <p id="statTotalXp" class="home-stat-num">0</p>
+      <p class="home-stat-label">Total XP</p>
+    </button>
+  </div>
+
+  <!-- Weekly activity chart -->
+  <div class="glass-card" id="weeklyActivityCard">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-400">
+        <i class="fa-solid fa-chart-simple mr-2"></i>This Week
+      </h3>
+      <span id="weeklyActivityTotal" class="text-xs opacity-60">0 XP earned</span>
+    </div>
+    <div id="weeklyActivityChart" class="weekly-chart"></div>
+  </div>
   
   <!-- PRIMARY: Today's Study Plan -->
 <div class="glass-card border-l-4 border-l-indigo-500" id="studyPlanCard">
