@@ -2711,3 +2711,133 @@ html.light .status-dot.checking {
     background-attachment: scroll;
   }
 }
+
+/* Quiz pills */
+.quiz-pills {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+@media (min-width: 640px) {
+  .quiz-pills {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.quiz-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-card);
+  border-radius: 0.55rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  min-width: 0; /* FIX: Allows the grid item to shrink */
+  width: 100%;  /* FIX: Ensures it fills the grid cell */
+}
+.quiz-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.quiz-pill.active {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+.quiz-pill input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.quiz-pill input[type="number"] {
+  width: 45px; /* FIX: Wider to fit 2 digits comfortably */
+  padding: 0.15rem 0.25rem;
+  text-align: center;
+  font-size: 0.72rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.35rem;
+  flex-shrink: 0; /* FIX: Prevents input from squishing */
+}
+.quiz-pill span.flex-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0; /* FIX: Allows text to truncate */
+}
+
+/* Stack pills on very small screens to prevent cramping */
+@media (max-width: 380px) {
+  .quiz-pills {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================ */
+/* MOBILE PERFORMANCE OPTIMIZATIONS                             */
+/* ============================================================ */
+
+/* Prevent rubber-band bounce scrolling which causes repaints */
+html, body {
+  overscroll-behavior-y: none;
+}
+
+@media (max-width: 768px) {
+  
+  /* 1. Kill expensive blur effects on mobile */
+  .glass-card,
+  #tabContainer,
+  #resultsNav,
+  .backdrop-blur-sm,
+  .sm\:backdrop-blur-sm,
+  [data-modal] > .glass-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* 2. Give the no-blur elements solid backgrounds to maintain contrast */
+  html:not(.light) .glass-card {
+    background: var(--bg-card-solid) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important; /* Shadows also cost rendering power */
+  }
+  
+  html.light .glass-card {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+  }
+
+  /* 3. Solid backgrounds for fixed navigation bars */
+  html:not(.light) #tabContainer, 
+  html:not(.light) #resultsNav {
+    background: var(--bg-body) !important;
+    border-top: 1px solid var(--border-card) !important;
+  }
+  
+  html.light #tabContainer,
+  html.light #resultsNav {
+    background: #ffffff !important;
+    border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
+  }
+
+  /* 4. Hardware accelerate fixed elements */
+  #tabContainer {
+    transform: translateX(-50%) translateZ(0);
+    will-change: transform;
+  }
+  
+  /* 5. Disable splash screen particles on mobile to free up GPU */
+  .splash-particles {
+    display: none !important;
+  }
+  
+  .splash-glow {
+    animation: none !important;
+    opacity: 0.3 !important;
+  }
+}
