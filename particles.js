@@ -5,7 +5,7 @@ const TouchParticles = (function () {
   let container = null;
   let enabled = true;
   const LS_KEY = 'acadhub_particles_enabled';
-  const MAX_LIVE = 60;    // safety cap
+  const MAX_LIVE = 120;   // was 60 — doubled for denser bursts
 
   // ---- Load preference ----
   try {
@@ -29,9 +29,20 @@ const TouchParticles = (function () {
   }
 
   // ---- Color palette (matches app accent scheme) ----
-  const PALETTE = ['#a5b4fc', '#67e8f9', '#c4b5fd', '#f0abfc', '#fde68a', '#a7f3d0'];
+  // Dark mode → pastel tones (glow softly on dark bg)
+  // Light mode → saturated tones (pop against white bg)
+  const PALETTE_DARK = [
+    '#a5b4fc', '#67e8f9', '#c4b5fd', '#f0abfc',
+    '#fde68a', '#a7f3d0', '#fca5a5', '#fdba74'
+  ];
+  const PALETTE_LIGHT = [
+    '#6366f1', '#06b6d4', '#8b5cf6', '#ec4899',
+    '#f59e0b', '#10b981', '#ef4444', '#f97316'
+  ];
   function pickColor() {
-    return PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    const isLight = document.documentElement.classList.contains('light');
+    const palette = isLight ? PALETTE_LIGHT : PALETTE_DARK;
+    return palette[Math.floor(Math.random() * palette.length)];
   }
 
   // ---- Live particle count ----
@@ -47,7 +58,7 @@ const TouchParticles = (function () {
 
     const c = ensureContainer();
 
-    // 1. Soft glow ripple at impact point
+    // 1. Glow ripple at impact point
     const ripple = document.createElement('div');
     ripple.className = 'tp-ripple';
     ripple.style.left = x + 'px';
@@ -56,19 +67,28 @@ const TouchParticles = (function () {
     c.appendChild(ripple);
     ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
 
+    // 1b. Bright secondary ring — a crisp expanding circle outline
+    const ring = document.createElement('div');
+    ring.className = 'tp-ring';
+    ring.style.left = x + 'px';
+    ring.style.top = y + 'px';
+    ring.style.setProperty('--tp-color', pickColor());
+    c.appendChild(ring);
+    ring.addEventListener('animationend', () => ring.remove(), { once: true });
+
     // 2. Sparkle particles radiating outward
-    const count = 6 + Math.floor(Math.random() * 4);  // 6-9
+    const count = 12 + Math.floor(Math.random() * 5);  // 12-16 (was 6-9)
     for (let i = 0; i < count; i++) {
       const p = document.createElement('div');
       p.className = 'tp-particle';
 
       // Spread evenly around a circle, plus slight randomness
       const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.7;
-      const distance = 28 + Math.random() * 46;
+      const distance = 38 + Math.random() * 60;         // was 28-74
       const dx = Math.cos(angle) * distance;
       const dy = Math.sin(angle) * distance;
-      const size = 4 + Math.random() * 5;
-      const duration = 0.55 + Math.random() * 0.4;
+      const size = 7 + Math.random() * 7;               // was 4-9
+      const duration = 0.65 + Math.random() * 0.45;     // was 0.55-0.95
       const color = pickColor();
 
       p.style.left = x + 'px';

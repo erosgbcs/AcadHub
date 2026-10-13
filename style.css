@@ -88,7 +88,9 @@ body {
   }
 }
 
-input, textarea, select {
+input:not([type="color"]):not([type="range"]),
+textarea,
+select {
   width: 100%;
   padding: 0.7rem 1rem;
   background: var(--bg-input);
@@ -97,6 +99,36 @@ input, textarea, select {
   color: var(--text-body);
   font-size: 0.9rem;
   transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+/* Color picker: compact swatch, not full width */
+input[type="color"] {
+  width: 3rem !important;
+  height: 2rem !important;
+  min-width: 3rem;
+  padding: 0.15rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+input[type="color"]:hover {
+  border-color: var(--accent);
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 0.35rem;
+}
+input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 0.35rem;
 }
 
 input:focus, textarea:focus, select:focus {
@@ -3756,6 +3788,10 @@ html:not(.light) .calendar-day.selected.overdue-day {
 /* TOUCH PARTICLES                                              */
 /* ============================================================ */
 
+/* ============================================================ */
+/* TOUCH PARTICLES — HIGH VISIBILITY                            */
+/* ============================================================ */
+
 #touchParticlesLayer {
   position: fixed;
   inset: 0;
@@ -3771,24 +3807,27 @@ html:not(.light) .calendar-day.selected.overdue-day {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  opacity: 0.95;
+  opacity: 1;
   animation: tpFly var(--tp-duration, 0.7s) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
-  box-shadow: 0 0 6px var(--tp-color, #a5b4fc);
+  /* Layered glow: tight core + soft halo */
+  box-shadow:
+    0 0 10px 2px var(--tp-color, #a5b4fc),
+    0 0 20px 4px color-mix(in srgb, var(--tp-color, #a5b4fc) 45%, transparent);
   will-change: transform, opacity;
 }
 
 @keyframes tpFly {
   0% {
-    transform: translate(-50%, -50%) scale(0.35);
+    transform: translate(-50%, -50%) scale(0.45);
     opacity: 1;
   }
-  60% {
-    opacity: 0.9;
+  40% {
+    opacity: 1;
   }
   100% {
     transform:
       translate(calc(-50% + var(--tp-dx, 0px)), calc(-50% + var(--tp-dy, 0px)))
-      scale(0);
+      scale(0.15);
     opacity: 0;
   }
 }
@@ -3796,26 +3835,26 @@ html:not(.light) .calendar-day.selected.overdue-day {
 /* ---- Glow ripple at impact ---- */
 .tp-ripple {
   position: absolute;
-  width: 80px;
-  height: 80px;
-  transform: translate(-50%, -50%) scale(0.08);
+  width: 140px;
+  height: 140px;
+  transform: translate(-50%, -50%) scale(0.05);
   border-radius: 50%;
   pointer-events: none;
   background: radial-gradient(
     circle,
     var(--tp-color, #a5b4fc) 0%,
-    transparent 65%
+    color-mix(in srgb, var(--tp-color, #a5b4fc) 40%, transparent) 35%,
+    transparent 70%
   );
-  opacity: 0.55;
-  animation: tpRipple 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  opacity: 0.75;
+  animation: tpRipple 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
   will-change: transform, opacity;
-  filter: blur(0.5px);
 }
 
 @keyframes tpRipple {
   0% {
-    transform: translate(-50%, -50%) scale(0.08);
-    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.05);
+    opacity: 0.85;
   }
   100% {
     transform: translate(-50%, -50%) scale(1);
@@ -3823,20 +3862,76 @@ html:not(.light) .calendar-day.selected.overdue-day {
   }
 }
 
-/* Light mode: darken particles slightly for contrast on white */
+/* ---- Secondary expanding ring (crisp outline) ---- */
+.tp-ring {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  transform: translate(-50%, -50%) scale(0.15);
+  border-radius: 50%;
+  pointer-events: none;
+  border: 3px solid var(--tp-color, #a5b4fc);
+  opacity: 0.9;
+  animation: tpRing 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  box-shadow: 0 0 12px var(--tp-color, #a5b4fc);
+}
+
+@keyframes tpRing {
+  0% {
+    transform: translate(-50%, -50%) scale(0.15);
+    opacity: 0.95;
+    border-width: 4px;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+/* ============================================================ */
+/* LIGHT MODE — MAXIMUM VISIBILITY                              */
+/* ============================================================ */
 html.light .tp-particle {
-  box-shadow: 0 0 6px var(--tp-color, #6366f1), 0 0 2px rgba(15, 23, 42, 0.25);
-  opacity: 0.85;
+  /* Heavier glow for white background */
+  box-shadow:
+    0 0 12px 3px var(--tp-color, #6366f1),
+    0 0 24px 6px color-mix(in srgb, var(--tp-color, #6366f1) 50%, transparent);
+  opacity: 1;
 }
 
 html.light .tp-ripple {
-  opacity: 0.45;
+  opacity: 0.65;
+  /* Add a subtle dark outer edge so the ripple is visible on white */
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--tp-color, #6366f1) 40%, transparent));
+}
+
+html.light .tp-ring {
+  border-width: 3.5px;
+  opacity: 1;
+  box-shadow: 0 0 10px var(--tp-color, #6366f1);
+}
+
+/* ============================================================ */
+/* DARK MODE — Enhanced (previously too subtle)                 */
+/* ============================================================ */
+html:not(.light) .tp-particle {
+  box-shadow:
+    0 0 12px 2px var(--tp-color, #a5b4fc),
+    0 0 28px 6px color-mix(in srgb, var(--tp-color, #a5b4fc) 40%, transparent);
+}
+
+html:not(.light) .tp-ring {
+  border-width: 3px;
+  box-shadow: 0 0 14px var(--tp-color, #a5b4fc);
 }
 
 /* Respect reduced-motion: hide everything */
 @media (prefers-reduced-motion: reduce) {
   .tp-particle,
-  .tp-ripple {
+  .tp-ripple,
+  .tp-ring {
     display: none !important;
   }
 }
