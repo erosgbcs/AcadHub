@@ -1610,16 +1610,17 @@ function setActiveResultsNav(id) {
 }
 
 function updateResultsNavCounts() {
+  // Use data arrays for the full count, not the DOM
   const summaryCount = document.querySelectorAll('#summaryList > li').length;
-  const flashcardCount = document.querySelectorAll('#flashcardGrid > .flashcard').length;
-  const quizCount = document.querySelectorAll('#quizContainer > div').length;
-  
+  const flashcardCount = allFlashcards?.length || 0;
+  const quizCount = allQuizItems?.length || 0;
+
   const map = { summary: summaryCount, flashcards: flashcardCount, quiz: quizCount };
   document.querySelectorAll('.results-nav-count').forEach(el => {
     const key = el.dataset.count;
     if (key in map) el.textContent = map[key];
   });
-  
+
   // Recall Quiz button visibility + count
   const recallBtn = document.getElementById('recallQuizBtn');
   const recallCount = document.getElementById('recallQuizCount');
@@ -1637,32 +1638,45 @@ function initResultsNav() {
     document.querySelectorAll('.results-nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.section;
-        const el = getResultsSectionEl(id);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Hide all sections
+        RESULTS_SECTION_IDS.forEach(secId => {
+          const el = getResultsSectionEl(secId);
+          if (el) el.classList.add('hidden');
+        });
+
+        // Show target section
+        const targetEl = getResultsSectionEl(id);
+        if (targetEl) targetEl.classList.remove('hidden');
+
         setActiveResultsNav(id);
+
+        // Scroll to top of results container for clean view
+        const nav = document.getElementById('resultsNav');
+        if (nav) {
+          const top = nav.getBoundingClientRect().top + window.scrollY - 60;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
       });
     });
     resultsNavBound = true;
   }
 
-  if (resultsObserver) resultsObserver.disconnect();
-  resultsObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const id = entry.target.dataset.sectionId;
-        if (id) setActiveResultsNav(id);
-      }
-    });
-  }, {
-    root: null,
-    rootMargin: '-40% 0px -55% 0px',
-    threshold: 0
+  // Initial setup: show only summary by default
+  RESULTS_SECTION_IDS.forEach(secId => {
+    const el = getResultsSectionEl(secId);
+    if (el) {
+      if (secId === 'summary') el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    }
   });
+  setActiveResultsNav('summary');
 
-  RESULTS_SECTION_IDS.forEach(id => {
-    const el = getResultsSectionEl(id);
-    if (el) resultsObserver.observe(el);
-  });
+  // Remove the old IntersectionObserver (no longer needed)
+  if (resultsObserver) {
+    resultsObserver.disconnect();
+    resultsObserver = null;
+  }
 }
 // ============================================================
 // NOTES FEATURE
@@ -2881,23 +2895,45 @@ function renderSummary(summary) {
   });
 }
 
+// ============================================================
+// PAGINATED RENDERING (Smooth scrolling for large sets)
+// ============================================================
+const ITEMS_PER_PAGE = 10;
+
+let allFlashcards = [];
+let flashcardOffset = 0;
+let allQuizItems = [];
+let quizOffset = 0;
+
+// ---- Flashcards ----
 function renderFlashcards(flashcards) {
+  allFlashcards = flashcards || [];
+  flashcardOffset = 0;
   const grid = document.getElementById('flashcardGrid');
   grid.innerHTML = '';
 
   const studyBtn = document.getElementById('studyModeBtn');
   if (studyBtn) {
-    studyBtn.classList.toggle('hidden', !flashcards || flashcards.length === 0);
+    studyBtn.classList.toggle('hidden', !allFlashcards || allFlashcards.length === 0);
   }
 
-  if (!flashcards || flashcards.length === 0) {
+  if (!allFlashcards || allFlashcards.length === 0) {
     grid.innerHTML = '<p class="text-sm opacity-50 text-center col-span-full">No flashcards generated.</p>';
+    const btn = document.getElementById('loadMoreFlashcardsBtn');
+    if (btn) btn.classList.add('hidden');
     return;
   }
 
+  renderFlashcardBatch();
+}
+
+function renderFlashcardBatch() {
+  const grid = document.getElementById('flashcardGrid');
+  const batch = allFlashcards.slice(flashcardOffset, flashcardOffset + ITEMS_PER_PAGE);
   const ratings = getFlashcardRatings();
 
-  flashcards.forEach((card, index) => {
+  batch.forEach((card, index) => {
+    const globalIndex = flashcardOffset + index;
     const div = document.createElement('div');
     div.className = 'flashcard reveal-item';
     div.style.animationDelay = (index * 0.05) + 's';
@@ -2926,71 +2962,104 @@ function renderFlashcards(flashcards) {
 
     grid.appendChild(div);
   });
+
+  flashcardOffset += batch.length;
+
+  const btn = document.getElementById('loadMoreFlashcardsBtn');
+  if (btn) {
+    if (flashcardOffset >= allFlashcards.length) {
+      btn.classList.add('hidden');
+    } else {
+      btn.classList.remove('hidden');
+      btn.innerHTML = `<i class="fa-solid fa-chevron-down mr-1"></i> Show more (${allFlashcards.length - flashcardOffset} remaining)`;
+    }
+  }
 }
+
+function loadMoreFlashcards() {
+  renderFlashcardBatch();
+}
+// ---- Quiz ----
 function renderQuiz(quiz) {
+  allQuizItems = [];
+  let questionNumber = 0;
+
+  // Flatten the quiz object into a single array for pagination
+  (quiz.trueFalse || []).forEach(q => allQuizItems.push({ type: 'tf', data: q, num: ++questionNumber }));
+  (quiz.identification || []).forEach(q => allQuizItems.push({ type: 'id', data: q, num: ++questionNumber }));
+  (quiz.multipleChoice || []).forEach(q => allQuizItems.push({ type: 'mcq', data: q, num: ++questionNumber }));
+  (quiz.enumeration || []).forEach(q => allQuizItems.push({ type: 'enum', data: q, num: ++questionNumber }));
+
+  quizOffset = 0;
   const container = document.getElementById('quizContainer');
   container.innerHTML = '';
 
-  let questionNumber = 0;
+  if (allQuizItems.length === 0) {
+    const btn = document.getElementById('loadMoreQuizBtn');
+    if (btn) btn.classList.add('hidden');
+    return;
+  }
 
-  (quiz.trueFalse || []).forEach((q) => {
-    questionNumber++;
+  renderQuizBatch();
+}
+
+function renderQuizBatch() {
+  const container = document.getElementById('quizContainer');
+  const batch = allQuizItems.slice(quizOffset, quizOffset + ITEMS_PER_PAGE);
+
+  batch.forEach(item => {
+    const q = item.data;
     const div = document.createElement('div');
     div.className = 'bg-white/5 p-4 rounded-lg reveal-item';
-    div.innerHTML = `
-      <p class="text-sm font-semibold mb-2">${questionNumber}. ${q.question}</p>
-      <div class="flex gap-2">
-        <button class="quiz-option px-4 py-2 bg-white/10 rounded-lg text-sm" onclick="checkAnswer(this, ${q.answer}, true)">True</button>
-        <button class="quiz-option px-4 py-2 bg-white/10 rounded-lg text-sm" onclick="checkAnswer(this, ${q.answer}, false)">False</button>
-      </div>
-    `;
-    container.appendChild(div);
-  });
 
-  (quiz.identification || []).forEach((q) => {
-    questionNumber++;
-    const div = document.createElement('div');
-    div.className = 'bg-white/5 p-4 rounded-lg reveal-item';
-    div.innerHTML = `
-      <p class="text-sm font-semibold mb-2">${questionNumber}. ${q.question}</p>
-      <button class="quiz-option px-3 py-1 bg-white/10 rounded-lg text-sm mt-2" onclick="revealAnswer(this)">Show Answer</button>
-      <p class="text-xs text-emerald-400 mt-2 hidden">Answer: ${q.answer}</p>
-    `;
-    container.appendChild(div);
-  });
-
-  (quiz.multipleChoice || []).forEach((q) => {
-    questionNumber++;
-    const div = document.createElement('div');
-    div.className = 'bg-white/5 p-4 rounded-lg reveal-item';
-    let optionsHTML = '';
-    (q.options || []).forEach((option, optIndex) => {
-      optionsHTML += `
-        <button class="quiz-option w-full text-left px-4 py-2 bg-white/10 rounded-lg text-sm mt-1"
-                onclick="checkMCQAnswer(this, ${q.correct}, ${optIndex})">
-          ${String.fromCharCode(65 + optIndex)}. ${option}
-        </button>
+    if (item.type === 'tf') {
+      div.innerHTML = `
+        <p class="text-sm font-semibold mb-2">${item.num}. ${q.question}</p>
+        <div class="flex gap-2">
+          <button class="quiz-option px-4 py-2 bg-white/10 rounded-lg text-sm" onclick="checkAnswer(this, ${q.answer}, true)">True</button>
+          <button class="quiz-option px-4 py-2 bg-white/10 rounded-lg text-sm" onclick="checkAnswer(this, ${q.answer}, false)">False</button>
+        </div>
       `;
-    });
+    } else if (item.type === 'id' || item.type === 'enum') {
+      div.innerHTML = `
+        <p class="text-sm font-semibold mb-2">${item.num}. ${q.question}</p>
+        <button class="quiz-option px-3 py-1 bg-white/10 rounded-lg text-sm mt-2" onclick="revealAnswer(this)">Show Answer</button>
+        <p class="text-xs text-emerald-400 mt-2 hidden">Answer: ${q.answer}</p>
+      `;
+    } else if (item.type === 'mcq') {
+      let optionsHTML = '';
+      (q.options || []).forEach((option, optIndex) => {
+        optionsHTML += `
+          <button class="quiz-option w-full text-left px-4 py-2 bg-white/10 rounded-lg text-sm mt-1"
+                  onclick="checkMCQAnswer(this, ${q.correct}, ${optIndex})">
+            ${String.fromCharCode(65 + optIndex)}. ${option}
+          </button>
+        `;
+      });
+      div.innerHTML = `
+        <p class="text-sm font-semibold mb-2">${item.num}. ${q.question}</p>
+        ${optionsHTML}
+      `;
+    }
 
-    div.innerHTML = `
-      <p class="text-sm font-semibold mb-2">${questionNumber}. ${q.question}</p>
-      ${optionsHTML}
-    `;
     container.appendChild(div);
   });
 
-  (quiz.enumeration || []).forEach((q) => {
-    questionNumber++;
-    const div = document.createElement('div');
-    div.className = 'bg-white/5 p-4 rounded-lg reveal-item';
-    div.innerHTML = `
-      <p class="text-sm font-semibold mb-2">${questionNumber}. ${q.question}</p>
-      <button class="quiz-option px-3 py-1 bg-white/10 rounded-lg text-sm mt-2" onclick="revealAnswer(this)">Show Answer</button>
-      <p class="text-xs text-emerald-400 mt-2 hidden">Answer: ${q.answer}</p>
-    `;
-    container.appendChild(div);
-  });
+  quizOffset += batch.length;
+
+  const btn = document.getElementById('loadMoreQuizBtn');
+  if (btn) {
+    if (quizOffset >= allQuizItems.length) {
+      btn.classList.add('hidden');
+    } else {
+      btn.classList.remove('hidden');
+      btn.innerHTML = `<i class="fa-solid fa-chevron-down mr-1"></i> Show more (${allQuizItems.length - quizOffset} remaining)`;
+    }
+  }
+}
+
+function loadMoreQuiz() {
+  renderQuizBatch();
 }
 
 // QUIZ INTERACTION
