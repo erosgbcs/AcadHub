@@ -377,7 +377,7 @@ async def generate_with_groq(text: str, quiz_types: dict, flashcard_count: int) 
     result.setdefault("flashcards", [])
     result.setdefault("quiz", [])
     result["quality"] = assess_quality(result, text)
-    result["_provider"] = "grok"
+    result["_provider"] = "groq"
     return result
 
 async def generate_summary_with_groq(text: str) -> list[str]:
