@@ -26,12 +26,12 @@ app.add_middleware(
 )
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-GROK_API_KEY   = os.environ.get("GROK_API_KEY", "").strip()
+GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "").strip()
 GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp").strip()
-GROK_MODEL     = os.environ.get("GROK_MODEL", "grok-4").strip()
+GROQ_MODEL     = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
 
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-GROK_URL = "https://api.x.ai/v1/chat/completions"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 STOP_WORDS = {
     "about","after","again","against","also","because","before","being",
@@ -336,11 +336,11 @@ async def generate_summary_with_gemini(text: str) -> list[str]:
     s = parsed.get("summary", [])
     return [str(i) for i in s][:8] if isinstance(s, list) else []
 
-async def generate_with_grok(text: str, quiz_types: dict, flashcard_count: int) -> dict:
-    if not GROK_API_KEY:
-        raise HTTPException(500, "GROK_API_KEY not configured.")
+async def generate_with_groq(text: str, quiz_types: dict, flashcard_count: int) -> dict:
+    if not GROQ_API_KEY:
+        raise HTTPException(500, "GROQ_API_KEY not configured.")
     body = json.dumps({
-        "model": GROK_MODEL,
+        "model": GROQ_MODEL,
         "messages": [
             {"role": "system", "content": "You return valid JSON only, no prose."},
             {"role": "user", "content": build_ai_prompt(text, quiz_types, flashcard_count)},
@@ -349,9 +349,9 @@ async def generate_with_grok(text: str, quiz_types: dict, flashcard_count: int) 
         "temperature": 0.2,
     }).encode("utf-8")
     req = urllib.request.Request(
-        GROK_URL,
+        GROQ_URL,
         data=body,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROK_API_KEY}"},
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
         method="POST",
     )
     def call():
@@ -360,14 +360,14 @@ async def generate_with_grok(text: str, quiz_types: dict, flashcard_count: int) 
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise HTTPException(502, f"Grok failed: {detail[:300]}") from exc
+            raise HTTPException(502, f"Groq failed: {detail[:300]}") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
-            raise HTTPException(502, "Grok unreachable.") from exc
+            raise HTTPException(502, "Groq unreachable.") from exc
     resp = await asyncio.to_thread(call)
     try:
         gen = resp["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(502, "Grok returned no content.") from exc
+        raise HTTPException(502, "Groq returned no content.") from exc
     result = parse_json_response(gen)
     result.setdefault("summary", [])
     result.setdefault("flashcards", [])
@@ -376,11 +376,11 @@ async def generate_with_grok(text: str, quiz_types: dict, flashcard_count: int) 
     result["_provider"] = "grok"
     return result
 
-async def generate_summary_with_grok(text: str) -> list[str]:
-    if not GROK_API_KEY:
-        raise HTTPException(500, "GROK_API_KEY not configured.")
+async def generate_summary_with_groq(text: str) -> list[str]:
+    if not GROQ_API_KEY:
+        raise HTTPException(500, "GROQ_API_KEY not configured.")
     body = json.dumps({
-        "model": GROK_MODEL,
+        "model": GROQ_MODEL,
         "messages": [
             {"role": "system", "content": "You return valid JSON only, no prose."},
             {"role": "user", "content": build_summary_prompt(text)},
@@ -389,9 +389,9 @@ async def generate_summary_with_grok(text: str) -> list[str]:
         "temperature": 0.2,
     }).encode("utf-8")
     req = urllib.request.Request(
-        GROK_URL,
+        GROQ_URL,
         data=body,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROK_API_KEY}"},
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
         method="POST",
     )
     def call():
@@ -400,14 +400,14 @@ async def generate_summary_with_grok(text: str) -> list[str]:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise HTTPException(502, f"Grok failed: {detail[:300]}") from exc
+            raise HTTPException(502, f"Groq failed: {detail[:300]}") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
-            raise HTTPException(502, "Grok unreachable.") from exc
+            raise HTTPException(502, "Groq unreachable.") from exc
     resp = await asyncio.to_thread(call)
     try:
         gen = resp["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(502, "Grok returned no content.") from exc
+        raise HTTPException(502, "Groq returned no content.") from exc
     parsed = parse_json_response(gen)
     s = parsed.get("summary", [])
     return [str(i) for i in s][:8] if isinstance(s, list) else []
@@ -420,9 +420,9 @@ async def generate_with_ai(text: str, quiz_types: dict, flashcard_count: int) ->
         except HTTPException as exc:
             errors.append(f"Gemini: {exc.detail}")
             print(f"[fallback] Gemini failed → {exc.detail}")
-    if GROK_API_KEY:
+    if GROQ_API_KEY:
         try:
-            return await generate_with_grok(text, quiz_types, flashcard_count)
+            return await generate_with_groq(text, quiz_types, flashcard_count)
         except HTTPException as exc:
             errors.append(f"Grok: {exc.detail}")
     raise HTTPException(502, "All AI providers failed. " + " | ".join(errors) if errors else "No AI provider configured.")
@@ -435,9 +435,9 @@ async def generate_summary_ai(text: str) -> list[str]:
         except HTTPException as exc:
             errors.append(f"Gemini: {exc.detail}")
             print(f"[fallback] Gemini summary failed → {exc.detail}")
-    if GROK_API_KEY:
+    if GROQ_API_KEY:
         try:
-            return await generate_summary_with_grok(text)
+            return await generate_summary_with_groq(text)
         except HTTPException as exc:
             errors.append(f"Grok: {exc.detail}")
     return split_sentences(text)[:8]
@@ -447,7 +447,7 @@ def health() -> dict:
     return {
         "status": "ok",
         "service": "acadhub-api",
-        "providers": {"gemini": bool(GEMINI_API_KEY), "grok": bool(GROK_API_KEY)},
+        "providers": {"gemini": bool(GEMINI_API_KEY), "grok": bool(GROQ_API_KEY)},
     }
 
 @app.post("/api/generate-reviewer")
