@@ -1,7 +1,7 @@
-"""AcadHub local backend.
+"""AcadHub backend.
 
-Provides the API consumed by the static frontend. The generator is intentionally
-local and deterministic so the app remains useful without an AI provider key.
+Uses Gemini as primary provider with automatic Grok (xAI) fallback.
+API keys are read from environment variables — never exposed to the client.
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import os
 import re
 import urllib.error
 import urllib.parse
@@ -19,7 +20,7 @@ from typing import Any
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="AcadHub API", version="1.0.0")
+app = FastAPI(title="AcadHub API", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,6 +28,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================================
+# SERVER-SIDE API KEYS + MODELS (set as env vars)
+# ============================================================
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+GROK_API_KEY   = os.environ.get("GROK_API_KEY", "").strip()
+GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
+GROK_MODEL     = os.environ.get("GROK_MODEL", "grok-4").strip()
+
+GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    f"{GEMINI_MODEL}:generateContent"
+)
+GROK_URL = "https://api.x.ai/v1/chat/completions"
 
 STOP_WORDS = {
     "about", "after", "again", "against", "also", "because", "before", "being",
@@ -36,6 +51,9 @@ STOP_WORDS = {
 }
 
 
+# ============================================================
+# HELPERS (unchanged)
+# ============================================================
 def clean_text(value: str) -> str:
     return re.sub(r"\s+", " ", value or "").strip()
 
@@ -96,6 +114,7 @@ def parse_quiz_types(raw: str | None) -> dict[str, int]:
 
 
 def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int) -> dict[str, Any]:
+    """Local NLP generator — used only by test/flashcards/quiz/enrich endpoints."""
     text = clean_text(text)
     sentences = split_sentences(text)
     terms = keywords(text, max(flashcard_count * 3, 30))
@@ -103,7 +122,6 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
     if not summary:
         summary = ["Add more complete sentences to generate a useful summary."]
 
-    # ---------- Flashcards (with fallback to unused sentences) ----------
     flashcards: list[dict[str, str]] = []
     used_sentences: set[str] = set()
 
@@ -119,7 +137,6 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
         definition = source or f"A key concept found in the study material: {term}."
         flashcards.append({"term": term.title(), "definition": definition})
 
-    # Fill remaining slots from unused sentences
     if len(flashcards) < flashcard_count:
         for sentence in sentences:
             if len(flashcards) >= flashcard_count:
@@ -134,10 +151,8 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
             used_sentences.add(sentence)
             flashcards.append({"term": term, "definition": sentence})
 
-    # ---------- Quiz ----------
     quiz: list[dict[str, Any]] = []
 
-    # True/False — vary true/false, use real sentences
     for index in range(quiz_types.get("truefalse", 0)):
         if not sentences:
             quiz.append({
@@ -147,22 +162,19 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
             })
             continue
         sentence = sentences[index % len(sentences)]
-        # Alternate True/False — even index = True, odd = False
         is_true = index % 2 == 0
         if is_true:
             question = f"True or False: {sentence}"
             answer = "True"
         else:
-            # Flip a keyword in the sentence to make it false
             words = sentence.split()
             flipped = list(words)
             for i, w in enumerate(words):
                 if w.lower() in STOP_WORDS or len(w) < 4:
                     continue
-                flipped[i] = "NOT_" + w  # placeholder, will strip below
+                flipped[i] = "NOT_" + w
                 break
             if "NOT_" not in " ".join(flipped):
-                # no suitable word to flip — keep it true
                 question = f"True or False: {sentence}"
                 answer = "True"
             else:
@@ -171,7 +183,6 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
                 answer = "False"
         quiz.append({"type": "truefalse", "question": question, "answer": answer})
 
-    # Identification — vary the stem
     ident_stems = [
         "Identify the key term: {term}.",
         "What term matches this description: {term}?",
@@ -187,7 +198,6 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
             "answer": term.title(),
         })
 
-    # Enumeration — vary the requested count
     enum_stems = [
         ("List three important concepts from the notes.", 3),
         ("Enumerate two key terms discussed in the material.", 2),
@@ -207,7 +217,6 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
             "answer": items,
         })
 
-    # ---------- Multiple choice family (real distractors, varied stems) ----------
     distractor_pool = [t.title() for t in terms if len(t) >= 4]
     fallback_distractors = [
         "An unrelated concept",
@@ -216,13 +225,11 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
     ]
 
     def make_mcq(qtype: str, position: int) -> dict[str, Any]:
-        # Pick a source sentence (cycles if we run out)
         if sentences:
             source_sentence = sentences[position % len(sentences)]
         else:
             source_sentence = "the study material"
 
-        # Correct answer = real keyword from that sentence
         sentence_words = re.findall(r"[A-Za-z][A-Za-z'-]{4,}", source_sentence)
         sentence_keywords = [w for w in sentence_words if w.lower() not in STOP_WORDS]
 
@@ -233,14 +240,12 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
         else:
             correct = "the study material"
 
-        # Distractors = other real keywords from the text
         candidates = [t for t in distractor_pool if t.lower() != correct.lower()]
         if len(candidates) < 3:
             for f in fallback_distractors:
                 if f.lower() != correct.lower() and f not in candidates:
                     candidates.append(f)
 
-        # Deterministic varied distractor selection
         wrong: list[str] = []
         i = position
         safety = 0
@@ -251,31 +256,18 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
             i += 1
             safety += 1
 
-        # Shuffle options by rotating based on position
         options = [correct] + wrong[:3]
         rotate = position % max(1, len(options))
         options = options[rotate:] + options[:rotate]
 
-        # Truncate the source snippet for the stem
         excerpt = source_sentence if len(source_sentence) <= 90 else source_sentence[:87].rstrip() + "..."
 
         stem_templates = {
-            "what": (
-                f"Which term best completes this idea: \"{excerpt}\"?"
-            ),
-            "who": (
-                f"Which term is most associated with: \"{excerpt}\"?"
-            ),
-            "where": (
-                f"Which concept is referenced here: \"{excerpt}\"?"
-            ),
-            "when": (
-                f"Which term relates to this statement: \"{excerpt}\"?"
-            ),
-            "multiplechoice": (
-                f"Based on the notes, which of these is a key concept related to: "
-                f"\"{excerpt}\"?"
-            ),
+            "what": f"Which term best completes this idea: \"{excerpt}\"?",
+            "who": f"Which term is most associated with: \"{excerpt}\"?",
+            "where": f"Which concept is referenced here: \"{excerpt}\"?",
+            "when": f"Which term relates to this statement: \"{excerpt}\"?",
+            "multiplechoice": f"Based on the notes, which of these is a key concept related to: \"{excerpt}\"?",
         }
         question = stem_templates.get(qtype, stem_templates["multiplechoice"])
 
@@ -297,6 +289,7 @@ def build_materials(text: str, quiz_types: dict[str, int], flashcard_count: int)
     materials["quality"] = assess_quality(materials, text)
     return materials
 
+
 async def read_notes(notes: str | None, files: list[UploadFile] | None) -> str:
     chunks = [clean_text(notes or "")]
     for file in (files or []):
@@ -312,47 +305,23 @@ async def read_notes(notes: str | None, files: list[UploadFile] | None) -> str:
         elif filename.endswith(".pdf"):
             try:
                 from pypdf import PdfReader
-
                 reader = PdfReader(io.BytesIO(raw))
                 chunks.append("\n".join(page.extract_text() or "" for page in reader.pages))
             except Exception as exc:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Could not read PDF file: {file.filename}",
-                ) from exc
+                raise HTTPException(400, f"Could not read PDF file: {file.filename}") from exc
 
         elif filename.endswith(".docx"):
             try:
                 from docx import Document
-
                 document = Document(io.BytesIO(raw))
                 chunks.append("\n".join(p.text for p in document.paragraphs))
             except Exception as exc:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Could not read DOCX file: {file.filename}",
-                ) from exc
+                raise HTTPException(400, f"Could not read DOCX file: {file.filename}") from exc
 
     text = clean_text(" ".join(chunks))
     if not text:
-        raise HTTPException(
-            status_code=400,
-            detail="Please provide notes or a readable document.",
-        )
+        raise HTTPException(400, "Please provide notes or a readable document.")
     return text
-
-async def generate_response(
-    notes: str | None = Form(None),
-    file: list[UploadFile] = File(default=[]),
-    quiz_types: str | None = Form(None),
-    num_flashcards: int = Form(10),
-) -> dict[str, Any]:
-    text = await read_notes(notes, file)
-    return build_materials(
-        text,
-        parse_quiz_types(quiz_types),
-        max(1, min(num_flashcards, 50)),
-    )
 
 
 def parse_json_response(value: str) -> dict[str, Any]:
@@ -361,9 +330,9 @@ def parse_json_response(value: str) -> dict[str, Any]:
     try:
         parsed = json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=502, detail="Gemini returned invalid JSON.") from exc
+        raise HTTPException(status_code=502, detail="AI returned invalid JSON.") from exc
     if not isinstance(parsed, dict):
-        raise HTTPException(status_code=502, detail="Gemini returned an invalid response shape.")
+        raise HTTPException(status_code=502, detail="AI returned an invalid response shape.")
     return parsed
 
 
@@ -384,47 +353,6 @@ NOTES:
 """
 
 
-async def generate_with_gemini(
-    text: str,
-    api_key: str,
-    quiz_types: dict[str, int],
-    flashcard_count: int,
-) -> dict[str, Any]:
-    prompt = build_ai_prompt(text, quiz_types, flashcard_count)
-    request_body = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
-    }).encode("utf-8")
-    request = urllib.request.Request(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
-        f"?key={urllib.parse.quote(api_key)}",
-        data=request_body,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    def call_gemini() -> dict[str, Any]:
-        try:
-            with urllib.request.urlopen(request, timeout=45) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="ignore")
-            raise HTTPException(status_code=502, detail=f"Gemini request failed: {detail[:300]}") from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
-            raise HTTPException(status_code=502, detail="Gemini could not be reached.") from exc
-
-    response = await asyncio.to_thread(call_gemini)
-    try:
-        generated_text = response["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(status_code=502, detail="Gemini returned no generated content.") from exc
-    result = parse_json_response(generated_text)
-    result.setdefault("summary", [])
-    result.setdefault("flashcards", [])
-    result.setdefault("quiz", [])
-    result["quality"] = assess_quality(result, text)
-    return result
-
 def build_summary_prompt(text: str) -> str:
     return f"""Summarize the notes below into a JSON object with exactly one key:
 summary: an array of concise, standalone bullet-point strings (max 8 items)
@@ -436,104 +364,258 @@ NOTES:
 """
 
 
-async def generate_summary_with_gemini(text: str, api_key: str) -> list[str]:
+# ============================================================
+# GEMINI
+# ============================================================
+async def generate_with_gemini(
+    text: str,
+    quiz_types: dict[str, int],
+    flashcard_count: int,
+) -> dict[str, Any]:
+    if not GEMINI_API_KEY:
+        raise HTTPException(500, "GEMINI_API_KEY is not configured on the server.")
+
+    prompt = build_ai_prompt(text, quiz_types, flashcard_count)
+    request_body = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        f"{GEMINI_URL}?key={urllib.parse.quote(GEMINI_API_KEY)}",
+        data=request_body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    def call() -> dict[str, Any]:
+        try:
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            raise HTTPException(502, f"Gemini request failed: {detail[:300]}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise HTTPException(502, "Gemini could not be reached.") from exc
+
+    response = await asyncio.to_thread(call)
+    try:
+        generated_text = response["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise HTTPException(502, "Gemini returned no generated content.") from exc
+
+    result = parse_json_response(generated_text)
+    result.setdefault("summary", [])
+    result.setdefault("flashcards", [])
+    result.setdefault("quiz", [])
+    result["quality"] = assess_quality(result, text)
+    result["_provider"] = "gemini"
+    return result
+
+
+async def generate_summary_with_gemini(text: str) -> list[str]:
+    if not GEMINI_API_KEY:
+        raise HTTPException(500, "GEMINI_API_KEY is not configured on the server.")
+
     prompt = build_summary_prompt(text)
     request_body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
     }).encode("utf-8")
     request = urllib.request.Request(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
-        f"?key={urllib.parse.quote(api_key)}",
+        f"{GEMINI_URL}?key={urllib.parse.quote(GEMINI_API_KEY)}",
         data=request_body,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
 
-    def call_gemini() -> dict[str, Any]:
+    def call() -> dict[str, Any]:
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise HTTPException(status_code=502, detail=f"Gemini request failed: {detail[:300]}") from exc
+            raise HTTPException(502, f"Gemini request failed: {detail[:300]}") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
-            raise HTTPException(status_code=502, detail="Gemini could not be reached.") from exc
+            raise HTTPException(502, "Gemini could not be reached.") from exc
 
-    response = await asyncio.to_thread(call_gemini)
+    response = await asyncio.to_thread(call)
     try:
         generated_text = response["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(status_code=502, detail="Gemini returned no generated content.") from exc
+        raise HTTPException(502, "Gemini returned no generated content.") from exc
 
     parsed = parse_json_response(generated_text)
     summary = parsed.get("summary", [])
     if not isinstance(summary, list):
         return []
     return [str(item) for item in summary][:8]
-async def generate_with_deepseek(
+
+
+# ============================================================
+# GROK (xAI — OpenAI-compatible API)
+# ============================================================
+async def generate_with_grok(
     text: str,
-    api_key: str,
     quiz_types: dict[str, int],
     flashcard_count: int,
 ) -> dict[str, Any]:
+    if not GROK_API_KEY:
+        raise HTTPException(500, "GROK_API_KEY is not configured on the server.")
+
     request_body = json.dumps({
-        "model": "deepseek-chat",
+        "model": GROK_MODEL,
         "messages": [
-            {"role": "system", "content": "Return valid JSON only."},
+            {"role": "system", "content": "You return valid JSON only, no prose."},
             {"role": "user", "content": build_ai_prompt(text, quiz_types, flashcard_count)},
         ],
         "response_format": {"type": "json_object"},
         "temperature": 0.2,
     }).encode("utf-8")
     request = urllib.request.Request(
-        "https://api.deepseek.com/chat/completions",
+        GROK_URL,
         data=request_body,
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {GROK_API_KEY}",
         },
         method="POST",
     )
 
-    def call_deepseek() -> dict[str, Any]:
+    def call() -> dict[str, Any]:
         try:
             with urllib.request.urlopen(request, timeout=45) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
-            raise HTTPException(status_code=502, detail=f"DeepSeek request failed: {detail[:300]}") from exc
+            raise HTTPException(502, f"Grok request failed: {detail[:300]}") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
-            raise HTTPException(status_code=502, detail="DeepSeek could not be reached.") from exc
+            raise HTTPException(502, "Grok could not be reached.") from exc
 
-    response = await asyncio.to_thread(call_deepseek)
+    response = await asyncio.to_thread(call)
     try:
         generated_text = response["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(status_code=502, detail="DeepSeek returned no generated content.") from exc
+        raise HTTPException(502, "Grok returned no generated content.") from exc
+
     result = parse_json_response(generated_text)
     result.setdefault("summary", [])
     result.setdefault("flashcards", [])
     result.setdefault("quiz", [])
     result["quality"] = assess_quality(result, text)
+    result["_provider"] = "grok"
     return result
 
 
-@app.get("/api/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "acadhub-api"}
+async def generate_summary_with_grok(text: str) -> list[str]:
+    if not GROK_API_KEY:
+        raise HTTPException(500, "GROK_API_KEY is not configured on the server.")
+
+    request_body = json.dumps({
+        "model": GROK_MODEL,
+        "messages": [
+            {"role": "system", "content": "You return valid JSON only, no prose."},
+            {"role": "user", "content": build_summary_prompt(text)},
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2,
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        GROK_URL,
+        data=request_body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {GROK_API_KEY}",
+        },
+        method="POST",
+    )
+
+    def call() -> dict[str, Any]:
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            raise HTTPException(502, f"Grok request failed: {detail[:300]}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise HTTPException(502, "Grok could not be reached.") from exc
+
+    response = await asyncio.to_thread(call)
+    try:
+        generated_text = response["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise HTTPException(502, "Grok returned no generated content.") from exc
+
+    parsed = parse_json_response(generated_text)
+    summary = parsed.get("summary", [])
+    if not isinstance(summary, list):
+        return []
+    return [str(item) for item in summary][:8]
 
 
-@app.post("/api/generate-reviewer-local")
-async def generate_reviewer_local(
-    notes: str | None = Form(None),
-    file: list[UploadFile] = File(default=[]),
-    quiz_types: str | None = Form(None),
-    num_flashcards: int = Form(10),
-    use_internet: bool = Form(False),
-    enrich_count: int = Form(5),
+# ============================================================
+# AUTO-FALLBACK WRAPPERS — try Gemini → Grok
+# ============================================================
+async def generate_with_ai(
+    text: str,
+    quiz_types: dict[str, int],
+    flashcard_count: int,
 ) -> dict[str, Any]:
-    return await generate_response(notes, file, quiz_types, num_flashcards)
+    errors: list[str] = []
+
+    if GEMINI_API_KEY:
+        try:
+            return await generate_with_gemini(text, quiz_types, flashcard_count)
+        except HTTPException as exc:
+            errors.append(f"Gemini: {exc.detail}")
+            print(f"⚠️ Gemini failed, falling back to Grok → {exc.detail}")
+
+    if GROK_API_KEY:
+        try:
+            return await generate_with_grok(text, quiz_types, flashcard_count)
+        except HTTPException as exc:
+            errors.append(f"Grok: {exc.detail}")
+
+    raise HTTPException(
+        status_code=502,
+        detail="All AI providers failed. " + " | ".join(errors) if errors
+        else "No AI provider is configured on the server.",
+    )
+
+
+async def generate_summary_ai(text: str) -> list[str]:
+    errors: list[str] = []
+
+    if GEMINI_API_KEY:
+        try:
+            return await generate_summary_with_gemini(text)
+        except HTTPException as exc:
+            errors.append(f"Gemini: {exc.detail}")
+            print(f"⚠️ Gemini summary failed, falling back to Grok → {exc.detail}")
+
+    if GROK_API_KEY:
+        try:
+            return await generate_summary_with_grok(text)
+        except HTTPException as exc:
+            errors.append(f"Grok: {exc.detail}")
+
+    # Final fallback: local sentence extraction (no AI)
+    return split_sentences(text)[:8]
+
+
+# ============================================================
+# ROUTES
+# ============================================================
+@app.get("/api/health")
+def health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "service": "acadhub-api",
+        "providers": {
+            "gemini": bool(GEMINI_API_KEY),
+            "grok": bool(GROK_API_KEY),
+        },
+    }
+
 
 @app.post("/api/generate-reviewer")
 async def generate_reviewer(
@@ -541,21 +623,24 @@ async def generate_reviewer(
     file: list[UploadFile] = File(default=[]),
     quiz_types: str | None = Form(None),
     num_flashcards: int = Form(10),
-    provider: str = Form("local"),
-    api_key: str | None = Form(None),
+    use_internet: bool = Form(False),
+    enrich_count: int = Form(5),
 ) -> dict[str, Any]:
     text = await read_notes(notes, file)
-    parsed_quiz_types = parse_quiz_types(quiz_types)
-    flashcard_count = max(1, min(num_flashcards, 50))
-    if provider.lower() == "gemini":
-        if not api_key:
-            raise HTTPException(status_code=400, detail="A Gemini API key is required.")
-        return await generate_with_gemini(text, api_key, parsed_quiz_types, flashcard_count)
-    if provider.lower() == "deepseek":
-        if not api_key:
-            raise HTTPException(status_code=400, detail="A DeepSeek API key is required.")
-        return await generate_with_deepseek(text, api_key, parsed_quiz_types, flashcard_count)
-    return build_materials(text, parsed_quiz_types, flashcard_count)
+    return await generate_with_ai(
+        text,
+        parse_quiz_types(quiz_types),
+        max(1, min(num_flashcards, 50)),
+    )
+
+
+@app.post("/api/summary")
+async def summary(
+    notes: str | None = Form(None),
+    file: list[UploadFile] = File(default=[]),
+) -> dict[str, Any]:
+    text = await read_notes(notes, file)
+    return {"summary": await generate_summary_ai(text)}
 
 
 @app.post("/api/generate-test")
@@ -570,28 +655,6 @@ async def generate_test(
     materials = build_materials(text, {"multiplechoice": count}, 1)
     return {"questions": materials["quiz"]}
 
-
-@app.post("/api/reviewer")
-async def reviewer(payload: dict[str, Any]) -> dict[str, Any]:
-    text = clean_text(str(payload.get("notes", "")))
-    return build_materials(text, payload.get("quiz_types", {}), int(payload.get("num_flashcards", 10)))
-
-
-@app.post("/api/summary")
-async def summary(
-    notes: str | None = Form(None),
-    file: list[UploadFile] = File(default=[]),
-    api_key: str | None = Form(None),
-    provider: str = Form("local"),
-) -> dict[str, Any]:
-    text = await read_notes(notes, file)
-
-    if provider.lower() == "gemini":
-        if not api_key:
-            raise HTTPException(status_code=400, detail="A Gemini API key is required.")
-        return {"summary": await generate_summary_with_gemini(text, api_key)}
-
-    return {"summary": split_sentences(text)[:8]}
 
 @app.post("/api/flashcards")
 async def flashcards(notes: str = Form(""), num_flashcards: int = Form(10)) -> dict[str, Any]:

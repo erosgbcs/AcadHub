@@ -25,39 +25,7 @@ let auth = null;
 let firebaseAvailable = false;
 const SUBJECT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#8b5cf6', '#64748b'];
 
-// ============================================================
-// AI API KEYS (Settings-owned, synced to Firestore)
-// ============================================================
-const AI_KEY_LS = {
-  gemini: 'acadhub_gemini_key',
-  deepseek: 'acadhub_deepseek_key',
-};
-const AI_KEY_FS = {
-  gemini: 'geminiApiKey',
-  deepseek: 'deepseekApiKey',
-};
 
-function getAiApiKey(provider) {
-  if (!provider || provider === 'local') return '';
-  const slot = AI_KEY_LS[provider];
-  return slot ? (safeLocalStorageGet(slot, '') || '') : '';
-}
-
-function setAiApiKey(provider, key) {
-  const slot = AI_KEY_LS[provider];
-  if (!slot) return false;
-  if (key) return safeLocalStorageSet(slot, key);
-  try { localStorage.removeItem(slot); return true; } catch (_) { return false; }
-}
-
-// One-time migration from old slot
-(function migrateLegacyGeminiKey() {
-  const legacy = safeLocalStorageGet('quick_summary_gemini_key', '');
-  if (legacy && !safeLocalStorageGet(AI_KEY_LS.gemini, '')) {
-    safeLocalStorageSet(AI_KEY_LS.gemini, legacy);
-    try { localStorage.removeItem('quick_summary_gemini_key'); } catch (_) {}
-  }
-})();
 let actionSheetIndex = null;
 try {
   if (typeof firebase !== 'undefined') {
@@ -89,12 +57,10 @@ try {
 // BACKEND API CONFIGURATION
 // ============================================================
 const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const API_BASE_URL = window.ACADHUB_API_URL || (isLocalHost ? 'http://127.0.0.1:8000' : 'https://acadhub-spacy.onrender.com');
+const API_BASE_URL = window.ACADHUB_API_URL || (isLocalHost ? 'http://127.0.0.1:8000' : 'https://acad-hub-rho.vercel.app');
 
 const API_ENDPOINTS = {
   health: '/api/health',
-  generateLocal: '/api/generate-reviewer-local',
-  generateJSON: '/api/reviewer',
   generateAI: '/api/generate-reviewer',
   generateTest: '/api/generate-test',
   summary: '/api/summary',
@@ -759,19 +725,7 @@ function toggleTheme() {
   updateSettingsUI();
 }
 
-function changeTabPosition(position) {
-  const mainWrapper = document.getElementById('mainWrapper');
-  mainWrapper.classList.remove('tab-position-top', 'tab-position-bottom', 'tab-position-left');
-  mainWrapper.classList.add('tab-position-' + position);
 
-  safeLocalStorageSet('tab_position', position);
-
-  if (firebaseAvailable && auth && auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).set({
-      tabPosition: position
-    }, { merge: true }).catch(err => console.error('Error saving tab position:', err));
-  }
-}
 
 function updateSettingsUI() {
   const html = document.documentElement;
@@ -782,25 +736,7 @@ function updateSettingsUI() {
   }
 }
 
-// AI PROVIDER UI
-function updateProviderUI() {
-  const provider = document.getElementById('aiProvider').value;
-  const hint = document.getElementById('apiKeyHint');
-  const nameEl = document.getElementById('apiKeyHintProvider');
-  if (!hint) return;
-  
-  if (provider === 'local') { hint.classList.add('hidden'); return; }
-  
-  const label = provider === 'gemini' ? 'Gemini' : 'DeepSeek';
-  const hasKey = !!getAiApiKey(provider);
-  
-  if (hasKey) {
-    hint.classList.add('hidden');
-  } else {
-    if (nameEl) nameEl.textContent = label;
-    hint.classList.remove('hidden');
-  }
-}
+
 function toggleAccuracyInfo() {
   const info = document.getElementById('accuracyInfo');
   info.classList.toggle('hidden');
@@ -1040,18 +976,6 @@ async function runGenerateWithMeta(meta = {}) {
   const selectedFiles = fileStore.reviewer;
   const hasFile = selectedFiles.length > 0;
   
-  const provider = document.getElementById('aiProvider').value;
-  const apiKey = getAiApiKey(provider);
-  
-  if ((provider === 'gemini' || provider === 'deepseek') && !apiKey) {
-    showNotification(
-      `Add your ${provider === 'gemini' ? 'Gemini' : 'DeepSeek'} key in Settings first.`,
-      'error'
-    );
-    toggleSettingsModal();
-    return;
-  }
-  
   submitBtn.disabled = true;
   btnContent.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Generating...';
   resultsContainer.classList.add('hidden');
@@ -1086,14 +1010,7 @@ async function runGenerateWithMeta(meta = {}) {
     formData.append('use_internet', document.getElementById('useInternet').checked);
     formData.append('enrich_count', document.getElementById('enrichCount').value || '5');
     
-    let result;
-    if (provider === 'local') {
-      result = await apiCall(API_ENDPOINTS.generateLocal, { formData, signal });
-    } else {
-      formData.append('api_key', apiKey);
-      formData.append('provider', provider);
-      result = await apiCall(API_ENDPOINTS.generateAI, { formData, signal });
-    }
+    const result = await apiCall(API_ENDPOINTS.generateAI, { formData, signal });
     
     const transformedData = transformBackendResponse(result);
     
@@ -3558,7 +3475,7 @@ function exitSavedView() {
 // ============================================================
 let previewDebounceTimer = null;
 
-async function requestSummaryOnly(apiKey) {
+async function requestSummaryOnly() {
   const notes = document.getElementById('studyNotes').value.trim();
   const fileInput = document.getElementById('fileInput');
   const hasFile = fileInput.files.length > 0;
@@ -3568,8 +3485,6 @@ async function requestSummaryOnly(apiKey) {
   const formData = new FormData();
   if (notes) formData.append('notes', notes);
   if (hasFile) formData.append('file', fileInput.files[0]);
-  formData.append('api_key', apiKey);
-  formData.append('provider', 'gemini');
 
   const result = await apiCall(API_ENDPOINTS.summary, { formData });
   return Array.isArray(result.summary) ? result.summary : [];
@@ -3602,20 +3517,13 @@ async function quickSummarize() {
     return;
   }
 
-  const apiKey = getAiApiKey('gemini');
-if (!apiKey) {
-  showNotification('Add your Gemini key in Settings first.', 'error');
-  toggleSettingsModal();
-  return;
-}
-
   openQuickSummarySheet();
   document.getElementById('quickSummaryLoading').classList.remove('hidden');
   document.getElementById('quickSummaryList').innerHTML = '';
   document.getElementById('quickSummaryEmpty').classList.add('hidden');
 
   try {
-    const summary = await requestSummaryOnly(apiKey);
+    const summary = await requestSummaryOnly();
     renderQuickSummaryList(summary, 'quickSummaryList');
 
     const saveBtn = document.getElementById('saveQuickSummaryBtn');
@@ -3667,11 +3575,8 @@ async function runLivePreview() {
     return;
   }
 
-  const apiKey = getAiApiKey('gemini');
-if (!apiKey) return;
-
   try {
-    const summary = await requestSummaryOnly(apiKey);
+    const summary = await requestSummaryOnly();
     if (summary && summary.length > 0) {
       renderQuickSummaryList(summary, 'previewSummaryList');
       document.getElementById('previewSummaryBox').classList.remove('hidden');
@@ -3812,19 +3717,12 @@ async function logout() {
     }
   }
   cachedAuthorName = null;
-currentSharedTitle = '';
-currentSharedAuthor = null;
-currentSharedSubject = null;
+  currentSharedTitle = '';
+  currentSharedAuthor = null;
+  currentSharedSubject = null;
 
-Object.values(AI_KEY_LS).forEach(slot => {
-  try { localStorage.removeItem(slot); } catch (_) {}
-});
-loadAiKeysIntoSettings();
-updateProviderUI();
-updateQuickSummaryKeyHint();
-
-closeAuthModal();
-showNotification('Logged out successfully.', 'info');
+  closeAuthModal();
+  showNotification('Logged out successfully.', 'info');
 }
 async function migrateFirestoreData(user) {
   if (!firebaseAvailable || !db || !user) return;
@@ -3934,10 +3832,6 @@ if (userDoc.exists) {
     safeLocalStorageSet('theme', userData.mode);
   }
   
-  if (userData.tabPosition) {
-    changeTabPosition(userData.tabPosition);
-  }
-  
   if (userData.theme) {
     currentTheme = userData.theme;
     applyTheme(currentTheme);
@@ -3946,25 +3840,6 @@ if (userDoc.exists) {
     renderThemePresets();
   }
 
-  // ---- AI API keys sync ----
-  ['gemini', 'deepseek'].forEach(provider => {
-    const fsField  = AI_KEY_FS[provider];
-    const slot     = AI_KEY_LS[provider];
-    const cloudKey = userData[fsField];
-    const localKey = safeLocalStorageGet(slot, '');
-
-    if (cloudKey) {
-      safeLocalStorageSet(slot, cloudKey);
-    } else if (localKey) {
-      db.collection('users').doc(user.uid)
-        .set({ [fsField]: localKey }, { merge: true })
-        .catch(err => console.warn(provider + ' key backfill failed:', err));
-    }
-  });
-
-  loadAiKeysIntoSettings();
-  updateProviderUI();
-  updateQuickSummaryKeyHint();
 }
 
         // Re-render UI
@@ -4246,8 +4121,6 @@ migrateSavedFlashcardOrder();
   renderNotesList();
   renderSubjectFilters();
   renderHomeDashboard();
-  updateProviderUI();
-  updateQuickSummaryKeyHint();
   updateSettingsUI();
   initQuickSummaryListeners();
   initAdvancedOptions();
@@ -4516,116 +4389,12 @@ function toggleSettingsModal() {
     updateSettingsUI();
     syncThemeControls();
     renderThemePresets();
-    loadAiKeysIntoSettings();
   }
 }
 
 // ============================================================
-// SETTINGS AI-KEY UI
+// AI keys are now server-side (Vercel env vars) — no client management
 // ============================================================
-function loadAiKeysIntoSettings() {
-  ['gemini', 'deepseek'].forEach(provider => {
-    const cap    = provider.charAt(0).toUpperCase() + provider.slice(1);
-    const input  = document.getElementById('settings' + cap + 'Key');
-    const status = document.getElementById('settings' + cap + 'Status');
-    const eye    = document.getElementById('settings' + cap + 'KeyEye');
-    if (!input) return;
-
-    const key = getAiApiKey(provider);
-    input.value = key;
-    input.type  = 'password';
-
-    if (eye) {
-      eye.classList.remove('fa-eye-slash');
-      eye.classList.add('fa-eye');
-    }
-
-    if (status) {
-      if (key) {
-        status.textContent = '✓ ···' + key.slice(-4);
-        status.className = 'ml-auto text-[10px] font-normal text-emerald-400';
-      } else {
-        status.textContent = 'not set';
-        status.className = 'ml-auto text-[10px] font-normal opacity-50';
-      }
-    }
-  });
-}
-
-function toggleSettingsKeyVisibility(provider) {
-  const cap   = provider.charAt(0).toUpperCase() + provider.slice(1);
-  const input = document.getElementById('settings' + cap + 'Key');
-  const eye   = document.getElementById('settings' + cap + 'KeyEye');
-  if (!input || !eye) return;
-
-  const show = input.type === 'password';
-  input.type = show ? 'text' : 'password';
-  eye.classList.toggle('fa-eye',       !show);
-  eye.classList.toggle('fa-eye-slash',  show);
-}
-
-async function saveSettingsAiKey(provider) {
-  const cap   = provider.charAt(0).toUpperCase() + provider.slice(1);
-  const label = provider === 'gemini' ? 'Gemini' : 'DeepSeek';
-  const input = document.getElementById('settings' + cap + 'Key');
-  if (!input) return;
-
-  const key = input.value.trim();
-  if (!key) { showNotification('Paste a key first.', 'warning'); return; }
-
-  setAiApiKey(provider, key);
-
-  const fsField = AI_KEY_FS[provider];
-
-  if (firebaseAvailable && auth && auth.currentUser) {
-    try {
-      await db.collection('users').doc(auth.currentUser.uid)
-        .set({ [fsField]: key }, { merge: true });
-      showNotification(label + ' key saved and synced to your account.', 'success');
-    } catch (err) {
-      console.error('Key sync failed:', err);
-      showNotification('Saved on this device. Cloud sync failed.', 'warning');
-    }
-  } else {
-    showNotification(label + ' key saved on this device.', 'success');
-  }
-
-  loadAiKeysIntoSettings();
-  updateProviderUI();
-  updateQuickSummaryKeyHint();
-}
-
-async function clearSettingsAiKey(provider) {
-  const cap   = provider.charAt(0).toUpperCase() + provider.slice(1);
-  const label = provider === 'gemini' ? 'Gemini' : 'DeepSeek';
-  if (!confirm('Remove your saved ' + label + ' API key?')) return;
-
-  setAiApiKey(provider, '');
-  const input = document.getElementById('settings' + cap + 'Key');
-  if (input) input.value = '';
-
-  const fsField = AI_KEY_FS[provider];
-
-  if (firebaseAvailable && auth && auth.currentUser) {
-    try {
-      await db.collection('users').doc(auth.currentUser.uid)
-        .set({ [fsField]: firebase.firestore.FieldValue.delete() }, { merge: true });
-    } catch (err) {
-      console.error('Key delete failed:', err);
-    }
-  }
-
-  loadAiKeysIntoSettings();
-  updateProviderUI();
-  updateQuickSummaryKeyHint();
-  showNotification(label + ' key removed.', 'info');
-}
-
-function updateQuickSummaryKeyHint() {
-  const hint = document.getElementById('quickSummaryKeyHint');
-  if (!hint) return;
-  hint.classList.toggle('hidden', !!getAiApiKey('gemini'));
-}
 
 function stopTipCarousel() {
   if (tipInterval) {

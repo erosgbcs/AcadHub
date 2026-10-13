@@ -463,63 +463,44 @@ html.light #testResultsContainer .text-2xl {
   padding: 1.5rem;
 }
 
-/* Tab positioning */
-.tab-position-top #tabContainer { order: 2; }
-.tab-position-top #viewsContainer { order: 3; }
-
-/* Bottom tabs — fixed to viewport bottom on mobile, static on desktop */
-@media (max-width: 640px) {
-  .tab-position-bottom #mainWrapper {
-    padding-bottom: 5.5rem;
-  }
-  .tab-position-bottom #tabContainer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 45;
-    margin: 0;
-    border-radius: 1rem 1rem 0 0;
-    background: var(--bg-card);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid var(--border-card);
-    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
-  }
-  .tab-position-bottom #tabContainer button {
-    min-width: calc(33% - 0.25rem);
-    padding: 0.6rem 0.4rem;
-    font-size: 0.7rem;
-  }
+/* ============ TAB BAR — permanently fixed at bottom ============ */
+#mainWrapper {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
 }
 
-@media (min-width: 641px) {
-  .tab-position-bottom #tabContainer { order: 4; }
-  .tab-position-bottom #viewsContainer { order: 3; }
+#tabContainer {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(48rem, calc(100vw - 2rem));
+  z-index: 45;
+  margin: 0;
+  border-radius: 1rem 1rem 0 0;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-card);
+  border-bottom: none;
+  padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+  flex-wrap: nowrap;
 }
 
-.tab-position-left #mainWrapper {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-start;
+html.light #tabContainer {
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
 }
-.tab-position-left #tabContainer {
-  width: 180px;
-  flex-direction: column;
-  position: sticky;
-  top: 1rem;
-}
-.tab-position-left #tabContainer button {
-  width: 100%;
-  text-align: left;
-}
-.tab-position-left #viewsContainer {
-  flex: 1;
+
+#tabContainer button {
+  flex: 1 1 0;
   min-width: 0;
+  padding: 0.6rem 0.35rem;
+  font-size: 0.7rem;
 }
-.tab-position-left .glass-card.header {
-  width: 100%;
-}
+
+/* Keep tabs below content in the flex flow */
+#tabContainer  { order: 4; }
+#viewsContainer { order: 3; }
 
 /* Calendar styles */
 #calendarGrid {
@@ -666,13 +647,10 @@ html.light #wakeUpOverlay .animate-spin {
 /* Ensure tab container and buttons are above other elements */
 /* Tab container — must sit BELOW modals (which start at z-50) */
 #tabContainer {
-  position: relative;
-  z-index: 40 !important;   /* was 100 */
+  z-index: 45;
 }
 
 #tabContainer button {
-  position: relative;
-  z-index: 41 !important;   /* was 101 */
   pointer-events: auto !important;
   cursor: pointer !important;
   -webkit-tap-highlight-color: transparent;
@@ -680,13 +658,8 @@ html.light #wakeUpOverlay .animate-spin {
   -webkit-user-select: none;
 }
 
-.tab-active {
-  position: relative;
-  z-index: 42 !important;   /* was 102 */
-}
-
 /* Ensure no other elements overlap the tabs */
-#mainWrapper > * {
+#mainWrapper > *:not(#tabContainer) {
   position: relative;
 }
 
@@ -699,21 +672,7 @@ html.light #wakeUpOverlay .animate-spin {
 }
 
 /* Make sure tab buttons are always clickable even on mobile */
-@media (max-width: 640px) {
-  #tabContainer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    padding: 0.5rem;
-  }
-  
-  #tabContainer button {
-    flex: 1 1 auto;
-    min-width: calc(50% - 0.25rem);
-    padding: 0.75rem 0.5rem;
-    font-size: 0.75rem;
-  }
-}
+
 
 
 
@@ -730,12 +689,7 @@ html.light #wakeUpOverlay .animate-spin {
   }
 }
 
-/* Ensure buttons inside tab container don't have disabled state */
-#tabContainer button:disabled {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  opacity: 1 !important;
-}
+
 
 /* ============ ACTION SHEETS (bottom sheet menus) ============ */
 .subject-pill {
