@@ -2382,11 +2382,10 @@ html.light .sticky-action-bar {
 /* ============================================================ */
 
 /* ----- Body: soft radial glow behind everything ----- */
+/* IMPORTANT: no background-attachment: fixed — that forces a full
+   repaint every scroll frame and was the cause of light-mode lag. */
 html.light body {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(var(--accent-rgb), 0.06), transparent 60%),
-    var(--bg-body);
-  background-attachment: fixed;
+  background: var(--bg-body);
 }
 
 /* ----- Cards: replace blur with crisp solid + shadow ----- */
