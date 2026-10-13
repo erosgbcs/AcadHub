@@ -28,7 +28,7 @@ app.add_middleware(
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "").strip()
 GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp").strip()
-GROQ_MODEL     = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
+GROQ_MODEL     = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b").strip()
 
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
