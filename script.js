@@ -36,7 +36,7 @@ const SAVED_FILTERS_LS = 'acadhub_saved_filters';
 let savedSortMode = 'newest';
 let savedTypeFilter = 'all';
 let savedSubjectFilter = 'all';
-let extendingItemIndex = null;
+let extendingItemId = null;   // ← stable ID instead of volatile array index
 
 function loadSavedFilters() {
   const s = safeLocalStorageGet(SAVED_FILTERS_LS, {});
@@ -1275,7 +1275,7 @@ async function runGenerateWithMeta(meta = {}) {
     }
     
     // ---- Extend mode: merge into an existing saved deck instead ----
-    if (extendingItemIndex !== null) {
+    if (extendingItemId !== null) {
       await hideSkeletonRespectingMin();
       await mergeExtendIntoExisting(transformedData);
       // Restore the normal generate button
@@ -2754,10 +2754,15 @@ function studyPrev() {
 function rateStudyCard(rating) {
   const card = studyQueue[studyIndex];
   if (!card) return;
-  
-  // ✅ SRS hook — feeds the Home Dashboard due queue
-  if (dueReviewMode && card.key) {
-    scheduleNext(card.key, rating, dueReviewSubjectMap[card.key] || null);
+
+  // ✅ Always advance the SRS — the mastery bar and the Home due-queue
+  //    both depend on this. Subject is taken from the current due-session
+  //    map if available, otherwise from the currently open deck.
+  if (card.key) {
+    const subj = dueReviewMode
+      ? (dueReviewSubjectMap[card.key] || null)
+      : ((currentResults && currentResults.subject) || null);
+    scheduleNext(card.key, rating, subj);
   }
   
   studyRatings = getFlashcardRatings();
@@ -4816,18 +4821,67 @@ async function deleteSavedItem(index) {
   saved.splice(index, 1);
   safeLocalStorageSet('acadhub_saved', saved);
 
+  // ---- Prune SRS records whose cards are no longer referenced by any deck ----
+  const { orphaned } = pruneOrphanedSrs();
+
   if (firebaseAvailable && auth && auth.currentUser && item?.id) {
     try {
-      await db.collection('users').doc(auth.currentUser.uid)
+      const uid = auth.currentUser.uid;
+      await db.collection('users').doc(uid)
         .collection('library').doc(item.id).delete();
+
+      // Also remove the orphaned SRS docs from Firestore (best-effort)
+      if (orphaned.length) {
+        const batch = db.batch();
+        orphaned.forEach(key => {
+          const ref = db.collection('users').doc(uid)
+            .collection('srs').doc(srsDocId(key));
+          batch.delete(ref);
+        });
+        await batch.commit().catch(err => {
+          console.warn('SRS cloud cleanup failed:', err);
+        });
+      }
     } catch (err) {
       console.error('Error deleting from Firebase:', err);
       showNotification('Deleted locally, but cloud sync failed.', 'warning');
     }
   }
 
+  // ---- Refresh the UI ----
   renderSavedList();
+  renderHomeDashboard();       // ← was missing: refreshes ring, chips, mastery count
   showNotification('Reviewer deleted.', 'info');
+}
+
+// Prune SRS entries whose keys no longer appear in ANY saved deck.
+// Returns { live, orphaned } so callers can sync the change to Firestore.
+function pruneOrphanedSrs() {
+  const all = safeLocalStorageGet('acadhub_saved', []);
+  const live = new Set();
+
+  all.forEach(it => {
+    (it?.data?.flashcards || []).forEach(c => {
+      const k = flashcardKey(c);
+      if (k) live.add(k);
+    });
+  });
+
+  const srs = getSrsData();
+  const orphaned = [];
+  Object.keys(srs).forEach(k => {
+    if (!live.has(k)) {
+      orphaned.push(k);
+      delete srs[k];
+    }
+  });
+
+  if (orphaned.length) {
+    setSrsData(srs);
+    console.log(`🧹 Pruned ${orphaned.length} orphaned SRS record(s)`);
+  }
+
+  return { live, orphaned };
 }
 async function loadFromFirestore(collectionName) {
   if (!firebaseAvailable || !auth || !auth.currentUser) return [];
@@ -6041,14 +6095,17 @@ function renderDueBySubject(due) {
   const max = Math.max(...sorted.map(g => g.count), 1);
 
   container.innerHTML = sorted.map(g => {
+    // escapeHtml handles &, <, >, ", ' — safe inside a double-quoted attribute.
+    // The browser decodes entities when exposing `dataset.subject` as a string,
+    // so no JS-string escaping is needed at all.
     const safeName = escapeHtml(g.name);
-    const jsName = safeName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     return `
       <div class="sp-subject-row"
            role="button"
            tabindex="0"
-           onclick="startSubjectSession('${jsName}')"
-           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();startSubjectSession('${jsName}')}">
+           data-subject="${safeName}"
+           onclick="startSubjectSession(this.dataset.subject)"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();startSubjectSession(this.dataset.subject)}">
         <span class="sp-subject-dot" style="background:${g.color};"></span>
         <span class="sp-subject-name">
           ${safeName}
@@ -7169,7 +7226,7 @@ function extendDeck(index) {
   const item = saved[index];
   if (!item) return;
 
-  extendingItemIndex = index;
+  extendingItemId = item.id;
 
   switchTab('reviewer');
   switchReviewerPane('generate');
@@ -7217,7 +7274,7 @@ function extendDeck(index) {
 }
 
 function cancelExtend() {
-  extendingItemIndex = null;
+  extendingItemId = null;
   const btnLabel = document.getElementById('btnContent');
   if (btnLabel) btnLabel.textContent = 'Generate';
   const banner = document.getElementById('extendBanner');
@@ -7229,9 +7286,9 @@ function cancelExtend() {
 }
 
 async function mergeExtendIntoExisting(newData) {
-  if (extendingItemIndex === null) return;
+  if (extendingItemId === null) return;
   const saved = safeLocalStorageGet('acadhub_saved', []);
-  const item = saved[extendingItemIndex];
+  const item = saved.find(x => x.id === extendingItemId);
   if (!item) { cancelExtend(); return; }
 
   const existing = item.data || {};
