@@ -4082,3 +4082,114 @@ html.light .shared-strip-close:hover {
   background: rgba(15, 23, 42, 0.09);
 }
 .hidden { display: none !important; }
+
+/* ============================================================ */
+/* SAVED LIST — SORT, FILTER, MASTERY, EXTEND                   */
+/* ============================================================ */
+
+#savedSortSelect {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-body);
+  cursor: pointer;
+  width: auto !important;
+  max-width: 10rem;
+}
+
+/* Type tag pill (Reviewer / Summary) */
+.saved-type-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.08rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.saved-type-tag.reviewer {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+.saved-type-tag.summary {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+html.light .saved-type-tag.reviewer { color: #4338ca; }
+html.light .saved-type-tag.summary { color: #b45309; }
+
+/* Mastery progress bar in card */
+.saved-mastery {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.saved-mastery-track {
+  flex: 1;
+  height: 4px;
+  max-width: 110px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+html.light .saved-mastery-track {
+  background: rgba(15, 23, 42, 0.06);
+}
+.saved-mastery-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+.saved-mastery-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Extend button on Reviewer cards */
+.saved-extend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.45rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.saved-extend-btn:hover { background: rgba(16, 185, 129, 0.2); }
+.saved-extend-btn:active { transform: scale(0.96); }
+html.light .saved-extend-btn { color: #047857; }
+
+/* Extend-mode banner above the generator form */
+#extendBanner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.10) 0%, var(--bg-card) 60%);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-left-width: 4px !important;
+  border-left-color: #10b981 !important;
+  border-radius: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  animation: viewEnter 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+html.light #extendBanner {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 60%);
+}

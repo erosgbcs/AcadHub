@@ -864,11 +864,31 @@
   <!-- ===== PANE 2: SAVED (was the Library tab) ===== -->
   <div id="reviewerSavedPane" class="hidden space-y-4">
     <div class="glass-card">
-      <h2 class="text-lg sm:text-xl font-bold mb-4">
-        <i class="fa-solid fa-bookmark mr-2"></i>Saved Reviewers
-      </h2>
+      <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <h2 class="text-lg sm:text-xl font-bold">
+          <i class="fa-solid fa-bookmark mr-2"></i>Saved
+        </h2>
+        <select id="savedSortSelect" onchange="setSavedSort(this.value)">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="alpha">A → Z</option>
+          <option value="cards">Most cards</option>
+          <option value="mastered">Most mastered</option>
+        </select>
+      </div>
+
+      <!-- Type filter: All / Reviewers / Summaries -->
+      <div id="savedTypeFilters" class="flex gap-1.5 mb-2 flex-wrap"></div>
+
+      <!-- Subject filter: auto-populated -->
+      <div id="savedSubjectFilters" class="flex gap-1.5 mb-3 overflow-x-auto pb-1"></div>
+
       <div id="savedList" class="space-y-2"></div>
       <p id="emptyLibrary" class="text-sm opacity-50 text-center py-8">No saved reviewers yet.</p>
+      <p id="emptySavedFilter" class="hidden text-sm opacity-50 text-center py-8">
+        No items match your filters.
+        <button onclick="resetSavedFilters()" class="text-indigo-400 hover:underline ml-1">Clear filters</button>
+      </p>
     </div>
   </div>
 

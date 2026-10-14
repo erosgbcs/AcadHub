@@ -25,6 +25,60 @@ let auth = null;
 let firebaseAvailable = false;
 const SUBJECT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#8b5cf6', '#64748b'];
 
+// ---- Saved list filter/sort state ----
+const SAVED_FILTERS_LS = 'acadhub_saved_filters';
+let savedSortMode = 'newest';
+let savedTypeFilter = 'all';
+let savedSubjectFilter = 'all';
+let extendingItemIndex = null;
+
+function loadSavedFilters() {
+  const s = safeLocalStorageGet(SAVED_FILTERS_LS, {});
+  savedSortMode = s.sort || 'newest';
+  savedTypeFilter = s.type || 'all';
+  savedSubjectFilter = s.subject || 'all';
+}
+function persistSavedFilters() {
+  safeLocalStorageSet(SAVED_FILTERS_LS, {
+    sort: savedSortMode,
+    type: savedTypeFilter,
+    subject: savedSubjectFilter,
+  });
+}
+function setSavedSort(v) { savedSortMode = v; persistSavedFilters(); renderSavedList(); }
+function setSavedTypeFilter(v) { savedTypeFilter = v; persistSavedFilters(); renderSavedList(); }
+function setSavedSubjectFilter(v) { savedSubjectFilter = v; persistSavedFilters(); renderSavedList(); }
+function resetSavedFilters() {
+  savedSortMode = 'newest';
+  savedTypeFilter = 'all';
+  savedSubjectFilter = 'all';
+  persistSavedFilters();
+  renderSavedList();
+}
+
+function getSavedItemType(item) {
+  const hasCards = (item?.data?.flashcards?.length || 0) > 0;
+  const q = item?.data?.quiz || {};
+  const hasQuiz = Object.values(q).some(arr => Array.isArray(arr) && arr.length > 0);
+  return (hasCards || hasQuiz) ? 'reviewer' : 'summary';
+}
+
+function getDeckMastery(item) {
+  const cards = item?.data?.flashcards || [];
+  if (!cards.length) return null;
+  const srs = getSrsData();
+  const seen = new Set();
+  let mastered = 0;
+  cards.forEach(c => {
+    const key = flashcardKey(c);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    const r = srs[key];
+    if (r && (r.interval || 0) >= 21) mastered++;
+  });
+  return { mastered, total: seen.size };
+}
+
 
 let actionSheetIndex = null;
 try {
@@ -1214,6 +1268,30 @@ async function runGenerateWithMeta(meta = {}) {
       qualityEl.textContent = `Generation quality: ${transformedData.quality.score}% (source and answer consistency)${badge}`;
     }
     
+    // ---- Extend mode: merge into an existing saved deck instead ----
+    if (extendingItemIndex !== null) {
+      await hideSkeletonRespectingMin();
+      await mergeExtendIntoExisting(transformedData);
+      // Restore the normal generate button
+      const bl = document.getElementById('btnContent');
+      if (bl) bl.textContent = 'Generate';
+
+      // Exit saved-view-mode so the generator form returns next time
+      const vr = document.getElementById('viewReviewer');
+      if (vr) vr.classList.remove('saved-view-mode');
+      const backBtn = document.getElementById('backToGeneratorBtn');
+      if (backBtn) backBtn.classList.add('hidden');
+
+      // Hide the stale results container
+      const rc = document.getElementById('resultsContainer');
+      if (rc) rc.classList.add('hidden');
+
+      // Take the user to the Saved pane so they see the updated deck
+      switchReviewerPane('saved');
+
+      return;
+    }
+
     // ---- Attach the metadata collected from the meta sheet ----
     const subjectObj = meta.subjectId ? getNoteSubject(meta.subjectId) : null;
     
@@ -4059,45 +4137,123 @@ function bindCalendarSwipe() {
 function renderSavedList() {
   const container = document.getElementById('savedList');
   const emptyMsg = document.getElementById('emptyLibrary');
+  const filterEmpty = document.getElementById('emptySavedFilter');
   if (!container) return;
 
   updateSavedCount();
+  renderSavedTypeFilters();
+  renderSavedSubjectFilters();
 
-  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const sortSel = document.getElementById('savedSortSelect');
+  if (sortSel) sortSel.value = savedSortMode;
+
+  const allSaved = safeLocalStorageGet('acadhub_saved', []);
+  let filtered = [...allSaved];
+
+  // --- Type filter ---
+  if (savedTypeFilter !== 'all') {
+    filtered = filtered.filter(it => getSavedItemType(it) === savedTypeFilter);
+  }
+
+  // --- Subject filter ---
+  if (savedSubjectFilter === 'uncategorized') {
+    filtered = filtered.filter(it => !it.subject || !it.subject.name);
+  } else if (savedSubjectFilter !== 'all') {
+    filtered = filtered.filter(it => it.subject && it.subject.name === savedSubjectFilter);
+  }
+
+  // --- Sort ---
+  filtered.sort((a, b) => {
+    switch (savedSortMode) {
+      case 'oldest':
+        return (a.date || '').localeCompare(b.date || '');
+      case 'alpha':
+        return (a.title || '').localeCompare(b.title || '');
+      case 'cards':
+        return ((b.data?.flashcards?.length) || 0) - ((a.data?.flashcards?.length) || 0);
+      case 'mastered': {
+        const am = getDeckMastery(a)?.mastered || 0;
+        const bm = getDeckMastery(b)?.mastered || 0;
+        return bm - am;
+      }
+      case 'newest':
+      default:
+        return (b.date || '').localeCompare(a.date || '');
+    }
+  });
+
   container.innerHTML = '';
 
-  if (saved.length === 0) {
+  if (allSaved.length === 0) {
     if (emptyMsg) emptyMsg.style.display = 'block';
+    if (filterEmpty) filterEmpty.classList.add('hidden');
     return;
   }
   if (emptyMsg) emptyMsg.style.display = 'none';
 
-  saved.forEach((item, index) => {
+  if (filtered.length === 0) {
+    if (filterEmpty) filterEmpty.classList.remove('hidden');
+    return;
+  }
+  if (filterEmpty) filterEmpty.classList.add('hidden');
+
+  filtered.forEach((item) => {
+    const index = allSaved.indexOf(item);
     const div = document.createElement('div');
     div.className = 'saved-card bg-white/5 border border-white/10 rounded-lg p-3';
 
-    const subjectPill = item.subject
+    const type = getSavedItemType(item);
+    const typeTag = type === 'reviewer'
+      ? '<span class="saved-type-tag reviewer"><i class="fa-solid fa-wand-magic-sparkles"></i>Reviewer</span>'
+      : '<span class="saved-type-tag summary"><i class="fa-solid fa-bolt"></i>Summary</span>';
+
+    const subjectPill = (item.subject && item.subject.name)
       ? `<span class="subject-pill" style="background:${item.subject.color}22; color:${item.subject.color}; border:1px solid ${item.subject.color}55;">
-           <i class="fa-solid fa-tag" style="font-size:0.6rem;"></i>${item.subject.name}
+           <i class="fa-solid fa-tag" style="font-size:0.6rem;"></i>${escapeHtml(item.subject.name)}
          </span>`
       : '';
 
+    const cardCount = item.data?.flashcards?.length || 0;
+    const mastery = getDeckMastery(item);
+
+    const masteryHTML = mastery ? `
+      <div class="saved-mastery">
+        <div class="saved-mastery-track">
+          <div class="saved-mastery-fill" style="width:${mastery.total ? (mastery.mastered / mastery.total) * 100 : 0}%;"></div>
+        </div>
+        <span class="saved-mastery-label">${mastery.mastered}/${mastery.total} mastered</span>
+      </div>` : '';
+
     div.innerHTML = `
-      <div class="flex items-center justify-between gap-2">
+      <div class="flex items-start justify-between gap-2">
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium truncate">${item.title || 'Untitled Reviewer'}</p>
+          <div class="flex items-center gap-1.5 flex-wrap mb-1">
+            ${typeTag}
+            ${cardCount > 0 ? `<span class="saved-meta-chip">${cardCount} cards</span>` : ''}
+          </div>
+          <p class="text-sm font-medium truncate">${escapeHtml(item.title || 'Untitled Reviewer')}</p>
           <p class="text-xs opacity-50">${item.date ? new Date(item.date).toLocaleDateString() : 'No date'}</p>
           ${subjectPill}
+          ${masteryHTML}
         </div>
-        <button class="card-menu-btn btn-hover" onclick="openItemActionSheet(${index})" title="More options">
-          <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
-        </button>
+        <div class="flex items-center gap-1 shrink-0">
+          ${type === 'reviewer' ? `
+            <button class="saved-extend-btn"
+                    onclick="event.stopPropagation(); extendDeck(${index})"
+                    title="Add more cards to this deck">
+              <i class="fa-solid fa-plus"></i> Extend
+            </button>` : ''}
+          <button class="card-menu-btn btn-hover"
+                  onclick="event.stopPropagation(); openItemActionSheet(${index})"
+                  title="More options">
+            <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
+          </button>
+        </div>
       </div>
     `;
 
     let pressTimer = null;
     let moved = false;
-
     div.addEventListener('touchstart', () => {
       moved = false;
       pressTimer = setTimeout(() => {
@@ -4107,16 +4263,55 @@ function renderSavedList() {
         }
       }, 500);
     }, { passive: true });
-
-    div.addEventListener('touchmove', () => {
-      moved = true;
-      clearTimeout(pressTimer);
-    }, { passive: true });
-
+    div.addEventListener('touchmove', () => { moved = true; clearTimeout(pressTimer); }, { passive: true });
     div.addEventListener('touchend', () => clearTimeout(pressTimer));
 
     container.appendChild(div);
   });
+}
+
+function renderSavedTypeFilters() {
+  const c = document.getElementById('savedTypeFilters');
+  if (!c) return;
+  const chips = [
+    { k: 'all',      label: 'All',       icon: 'fa-layer-group' },
+    { k: 'reviewer', label: 'Reviewers', icon: 'fa-wand-magic-sparkles' },
+    { k: 'summary',  label: 'Summaries', icon: 'fa-bolt' },
+  ];
+  c.innerHTML = chips.map(ch => `
+    <button class="subject-filter-pill ${savedTypeFilter === ch.k ? 'active' : ''}"
+            onclick="setSavedTypeFilter('${ch.k}')">
+      <i class="fa-solid ${ch.icon}"></i>${ch.label}
+    </button>
+  `).join('');
+}
+
+function renderSavedSubjectFilters() {
+  const c = document.getElementById('savedSubjectFilters');
+  if (!c) return;
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const map = new Map();
+  let uncategorized = 0;
+  saved.forEach(it => {
+    const s = it.subject;
+    if (s && s.name) {
+      const key = s.name;
+      if (!map.has(key)) map.set(key, { name: s.name, color: s.color || '#94a3b8', count: 0 });
+      map.get(key).count++;
+    } else {
+      uncategorized++;
+    }
+  });
+  const pills = [];
+  pills.push(`<button class="subject-filter-pill ${savedSubjectFilter === 'all' ? 'active' : ''}" onclick="setSavedSubjectFilter('all')"><i class="fa-solid fa-tag"></i>All subjects</button>`);
+  map.forEach(s => {
+    const safe = escapeHtml(s.name).replace(/'/g, "\\'");
+    pills.push(`<button class="subject-filter-pill ${savedSubjectFilter === s.name ? 'active' : ''}" onclick="setSavedSubjectFilter('${safe}')"><span class="note-subject-dot" style="background:${s.color};"></span>${escapeHtml(s.name)} <span class="opacity-60">${s.count}</span></button>`);
+  });
+  if (uncategorized > 0) {
+    pills.push(`<button class="subject-filter-pill ${savedSubjectFilter === 'uncategorized' ? 'active' : ''}" onclick="setSavedSubjectFilter('uncategorized')"><span class="note-subject-dot" style="background:#94a3b8;"></span>Uncategorized <span class="opacity-60">${uncategorized}</span></button>`);
+  }
+  c.innerHTML = pills.join('');
 }
 
 // ============================================================
@@ -4869,6 +5064,7 @@ renderThemePresets();
   currentTypeFilter = safeLocalStorageGet('acadhub_calendar_type_filter', 'all');
   setTimeout(() => setCalendarView(currentCalendarView), 50);
 
+  loadSavedFilters();
   renderSavedList();
   renderCalendar();
   renderNotesList();
@@ -6851,4 +7047,129 @@ function ensureOverlaysAtBodyLevel() {
         document.body.appendChild(el);
       }
     });
+}
+
+// ============================================================
+// EXTEND DECK — add more cards / quiz to an existing saved deck
+// ============================================================
+function extendDeck(index) {
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[index];
+  if (!item) return;
+
+  extendingItemIndex = index;
+
+  switchTab('reviewer');
+  switchReviewerPane('generate');
+
+  // Clear previous input so the user starts fresh with new material
+  const notesEl = document.getElementById('studyNotes');
+  if (notesEl) notesEl.value = '';
+
+  // Change button label
+  const btnLabel = document.getElementById('btnContent');
+  if (btnLabel) {
+    const shortTitle = (item.title || 'deck').slice(0, 22);
+    btnLabel.textContent = `Add to "${shortTitle}"`;
+  }
+
+  // Inject / show the extend banner above the generator form
+  let banner = document.getElementById('extendBanner');
+  const pane = document.getElementById('reviewerGeneratePane');
+  if (!banner && pane) {
+    banner = document.createElement('div');
+    banner.id = 'extendBanner';
+    banner.innerHTML = `
+      <div class="flex items-center gap-2 min-w-0">
+        <i class="fa-solid fa-plus text-emerald-400"></i>
+        <div class="min-w-0">
+          <p class="text-xs font-semibold">Extending deck</p>
+          <p id="extendBannerTitle" class="text-xs opacity-60 truncate"></p>
+        </div>
+      </div>
+      <button onclick="cancelExtend()" class="text-xs opacity-60 hover:opacity-100 shrink-0">Cancel</button>
+    `;
+    pane.insertBefore(banner, pane.firstChild);
+  }
+  const titleEl = document.getElementById('extendBannerTitle');
+  if (titleEl) titleEl.textContent = item.title || 'Untitled Reviewer';
+  if (banner) banner.classList.remove('hidden');
+
+  showNotification('Paste new notes and tap Generate — we\'ll merge into "' + (item.title || 'deck') + '".', 'info');
+}
+
+function cancelExtend() {
+  extendingItemIndex = null;
+  const btnLabel = document.getElementById('btnContent');
+  if (btnLabel) btnLabel.textContent = 'Generate';
+  const banner = document.getElementById('extendBanner');
+  if (banner) banner.classList.add('hidden');
+}
+
+async function mergeExtendIntoExisting(newData) {
+  if (extendingItemIndex === null) return;
+  const saved = safeLocalStorageGet('acadhub_saved', []);
+  const item = saved[extendingItemIndex];
+  if (!item) { cancelExtend(); return; }
+
+  const existing = item.data || {};
+
+  // Dedupe flashcards by term
+  const existingCards = existing.flashcards || [];
+  const seen = new Set(existingCards.map(c => String(flashcardKey(c)).toLowerCase()));
+  const newCards = (newData.flashcards || []).filter(c => {
+    const k = String(flashcardKey(c)).toLowerCase();
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  // Merge quiz arrays (dedupe by question text)
+  const oldQuiz = existing.quiz || {};
+  const newQuiz = newData.quiz || {};
+  const mergeQ = (a = [], b = []) => {
+    const qSeen = new Set(a.map(x => String(x.question || '').toLowerCase()));
+    return [...a, ...b.filter(x => {
+      const k = String(x.question || '').toLowerCase();
+      if (qSeen.has(k)) return false;
+      qSeen.add(k);
+      return true;
+    })];
+  };
+
+  item.data = {
+    ...existing,
+    summary: [...(existing.summary || []), ...(newData.summary || [])].slice(0, 12),
+    flashcards: [...existingCards, ...newCards],
+    quiz: {
+      trueFalse:       mergeQ(oldQuiz.trueFalse,       newQuiz.trueFalse),
+      identification:  mergeQ(oldQuiz.identification,  newQuiz.identification),
+      multipleChoice:  mergeQ(oldQuiz.multipleChoice,  newQuiz.multipleChoice),
+      enumeration:     mergeQ(oldQuiz.enumeration,     newQuiz.enumeration),
+      fillBlank:       mergeQ(oldQuiz.fillBlank,       newQuiz.fillBlank),
+    },
+    quality: newData.quality || existing.quality,
+  };
+  item.date = new Date().toISOString();
+
+  safeLocalStorageSet('acadhub_saved', saved);
+
+  if (firebaseAvailable && auth && auth.currentUser && item.id) {
+    try {
+      await db.collection('users').doc(auth.currentUser.uid)
+        .collection('library').doc(item.id).set(item, { merge: true });
+    } catch (err) { console.warn('Extend sync failed:', err); }
+  }
+
+  const added = newCards.length;
+  showNotification(
+    added > 0
+      ? `Added ${added} new card${added === 1 ? '' : 's'} to "${item.title}"`
+      : 'No new cards added (all duplicates)',
+    added > 0 ? 'success' : 'info'
+  );
+
+  cancelExtend();
+  renderSavedList();
+  renderHomeDashboard();
 }
