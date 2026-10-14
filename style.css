@@ -4193,3 +4193,27 @@ html.light .saved-extend-btn { color: #047857; }
 html.light #extendBanner {
   background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 60%);
 }
+/* ============================================================ */
+/* SUBMIT BUTTON — SINGLE-LINE LABEL                            */
+/* ============================================================ */
+
+/* Force the button label to stay on one line and ellipsize
+   if the title is still too long, instead of wrapping and
+   turning the sticky bar into a two-story block. */
+#submitBtn #btnContent {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+/* Let the flex row handle shrinking gracefully */
+#submitBtn {
+  min-width: 0;
+}
+
+#submitBtn > * {
+  min-width: 0;
+}

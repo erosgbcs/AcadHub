@@ -25,6 +25,12 @@ let auth = null;
 let firebaseAvailable = false;
 const SUBJECT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#8b5cf6', '#64748b'];
 
+// ---- Mastery threshold ----
+// A card is considered "mastered" once its spaced-repetition interval
+// reaches this many days. Lower = easier to fill the bar (more motivating);
+// higher = stricter (closer to Anki's classic 21-day "mature" cutoff).
+const MASTERY_THRESHOLD_DAYS = 7;   // ← change this to 3, 7, 14, 21, 30 …
+
 // ---- Saved list filter/sort state ----
 const SAVED_FILTERS_LS = 'acadhub_saved_filters';
 let savedSortMode = 'newest';
@@ -74,7 +80,7 @@ function getDeckMastery(item) {
     if (!key || seen.has(key)) return;
     seen.add(key);
     const r = srs[key];
-    if (r && (r.interval || 0) >= 21) mastered++;
+    if (r && (r.interval || 0) >= MASTERY_THRESHOLD_DAYS) mastered++;
   });
   return { mastered, total: seen.size };
 }
@@ -6266,10 +6272,10 @@ function getLevelInfo(totalXp) {
   return { level, xpInLevel, xpForNext, rank: rank.label };
 }
 
-// ---- Cards mastered: SRS interval >= 21 days ----
+// ---- Cards mastered: SRS interval >= MASTERY_THRESHOLD_DAYS ----
 function countMasteredCards() {
   const srs = getSrsData();
-  return Object.values(srs).filter(r => (r.interval || 0) >= 21).length;
+  return Object.values(srs).filter(r => (r.interval || 0) >= MASTERY_THRESHOLD_DAYS).length;
 }
 
 // ---- Weekly activity: last 7 days ----
@@ -7066,12 +7072,18 @@ function extendDeck(index) {
   const notesEl = document.getElementById('studyNotes');
   if (notesEl) notesEl.value = '';
 
-  // Change button label
+  // Change button label — keep it short so it doesn't wrap
   const btnLabel = document.getElementById('btnContent');
   if (btnLabel) {
-    const shortTitle = (item.title || 'deck').slice(0, 22);
+    const fullTitle = item.title || 'deck';
+    // Prefer the first segment (before " — " / " · ") for a clean single line
+    const shortTitle = fullTitle.split(/\s+[—·]\s+/)[0].trim().slice(0, 14);
     btnLabel.textContent = `Add to "${shortTitle}"`;
   }
+
+  // Hide the card/quiz counter while extending — it crowds the button
+  const genPrevHide = document.getElementById('genPreview');
+  if (genPrevHide) genPrevHide.classList.add('hidden');
 
   // Inject / show the extend banner above the generator form
   let banner = document.getElementById('extendBanner');
@@ -7104,6 +7116,10 @@ function cancelExtend() {
   if (btnLabel) btnLabel.textContent = 'Generate';
   const banner = document.getElementById('extendBanner');
   if (banner) banner.classList.add('hidden');
+
+  // Bring back the "10 cards · 11 quiz" preview
+  const gp = document.getElementById('genPreview');
+  if (gp) gp.classList.remove('hidden');
 }
 
 async function mergeExtendIntoExisting(newData) {
