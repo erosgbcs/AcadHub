@@ -1325,7 +1325,13 @@ async function runGenerateWithMeta(meta = {}) {
     currentSharedReviewer = null;
     const sharedBanner = document.getElementById('sharedBanner');
     if (sharedBanner) sharedBanner.classList.add('hidden');
-    
+
+    // Reset the "today's start" anchor so the ring reflects the new queue
+    safeLocalStorageSet('acadhub_daily_start', {
+      date: localDateStr(),
+      count: 0,
+    });
+
     showNotification('Study materials generated successfully!', 'success');
     
   } catch (err) {
@@ -6034,16 +6040,52 @@ function renderDueBySubject(due) {
   const sorted = Object.values(groups).sort((a, b) => b.count - a.count);
   const max = Math.max(...sorted.map(g => g.count), 1);
 
-  container.innerHTML = sorted.map(g => `
-    <div class="due-subject-row">
-      <span class="w-2 h-2 rounded-full shrink-0" style="background:${g.color}"></span>
-      <span class="flex-1 truncate opacity-80">${escapeHtml(g.name)}</span>
-      <span class="font-mono opacity-60 text-xs">${g.count}</span>
-      <div class="bar-track">
-        <div class="bar-fill" style="width:${(g.count / max) * 100}%; background:${g.color}"></div>
+  container.innerHTML = sorted.map(g => {
+    const safeName = escapeHtml(g.name);
+    const jsName = safeName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return `
+      <div class="sp-subject-row"
+           role="button"
+           tabindex="0"
+           onclick="startSubjectSession('${jsName}')"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();startSubjectSession('${jsName}')}">
+        <span class="sp-subject-dot" style="background:${g.color};"></span>
+        <span class="sp-subject-name">
+          ${safeName}
+          <span class="sp-subject-start">Start →</span>
+        </span>
+        <div class="sp-subject-right">
+          <div class="sp-subject-bar"><span style="background:${g.color}; width:${(g.count / max) * 100}%"></span></div>
+          <span class="sp-subject-count">${g.count}</span>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+}
+
+// ---- Study just one subject's due cards ----
+function startSubjectSession(subjectName) {
+  const due = computeDueQueue();
+  const want = String(subjectName || '').trim().toLowerCase();
+  const cards = due.filter(c => {
+    const name = ((c.subject && c.subject.name) || 'Uncategorized').toLowerCase();
+    return name === want;
+  });
+  if (!cards.length) {
+    showNotification('No cards due for "' + subjectName + '".', 'info');
+    return;
+  }
+  launchDueSession(cards);
+}
+
+// ---- Review estimate helpers ----
+function estimateReviewMinutes(n) {
+  // ~20s per card average, rounded up, min 1
+  return Math.max(1, Math.round(n * 20 / 60));
+}
+function estimateReviewXp(n) {
+  if (n <= 0) return 0;
+  return n * XP_REWARDS.flashcard + XP_REWARDS.session;
 }
 
 // ---- Render recent items ----
@@ -6464,6 +6506,7 @@ function renderHomeDashboard() {
       }
     }
   } else {
+    // Shared header text
     if (sublineEl) sublineEl.textContent = `${due.length} card${due.length === 1 ? '' : 's'} waiting for you.`;
     if (planSubline) planSubline.textContent = 'Your daily review queue is ready.';
     if (badgeEl) {
@@ -6475,19 +6518,82 @@ function renderHomeDashboard() {
     if (caughtUpEl) caughtUpEl.classList.add('hidden');
     if (contentEl) contentEl.classList.remove('hidden');
 
+    // ---- Split new vs review ----
+    const newCount    = due.filter(c => c.isNew).length;
+    const reviewCount = due.length - newCount;
+
+    // ---- Big count ----
     const countEl = document.getElementById('dueCount');
     if (countEl) countEl.textContent = due.length;
 
-    const pluralEl = document.getElementById('dueCountPlural');
-    if (pluralEl) pluralEl.textContent = due.length === 1 ? '' : 's';
-
-    const breakdownEl = document.getElementById('dueBreakdown');
-    if (breakdownEl) {
-      const newCount = due.filter(c => c.isNew).length;
-      const reviewCount = due.length - newCount;
-      breakdownEl.textContent = `${newCount} new · ${reviewCount} review`;
+    // ---- Subline inside hero ----
+    const subEl = document.getElementById('spDueSub');
+    if (subEl) {
+      subEl.textContent = reviewCount > 0
+        ? 'Mix of new and review'
+        : 'All new cards today';
     }
 
+    // ---- Chips ----
+    const chipNew    = document.getElementById('spChipNew');
+    const chipReview = document.getElementById('spChipReview');
+    const chipTime   = document.getElementById('spChipTime');
+    const chipXp     = document.getElementById('spChipXp');
+
+    if (chipNew) {
+      chipNew.classList.toggle('is-empty', newCount === 0);
+      const span = chipNew.querySelector('span');
+      if (span) span.textContent = `${newCount} new`;
+    }
+    if (chipReview) {
+      chipReview.classList.toggle('is-empty', reviewCount === 0);
+      const span = chipReview.querySelector('span');
+      if (span) span.textContent = `${reviewCount} review`;
+    }
+    if (chipTime) {
+      const mins = estimateReviewMinutes(due.length);
+      const span = chipTime.querySelector('span');
+      if (span) span.textContent = `~${mins} min`;
+    }
+    if (chipXp) {
+      const xp = estimateReviewXp(due.length);
+      const span = chipXp.querySelector('span');
+      if (span) span.textContent = `+${xp} XP`;
+    }
+
+    // ---- Mix bar ----
+    const mixNew = document.getElementById('spMixNew');
+    const mixRev = document.getElementById('spMixReview');
+    const total  = Math.max(1, due.length);
+    if (mixNew) mixNew.style.width = (newCount / total * 100).toFixed(1) + '%';
+    if (mixRev) mixRev.style.width = (reviewCount / total * 100).toFixed(1) + '%';
+
+    // ---- Progress ring ----
+    // Track today's starting queue size so the ring reflects daily progress.
+    const todayKey = localDateStr();
+    let dayStart = safeLocalStorageGet('acadhub_daily_start', null);
+    if (!dayStart || dayStart.date !== todayKey || dayStart.count < due.length) {
+      dayStart = { date: todayKey, count: due.length };
+      safeLocalStorageSet('acadhub_daily_start', dayStart);
+    }
+    const sessionStart   = Math.max(dayStart.count, due.length);
+    const completedToday = Math.max(0, sessionStart - due.length);
+    const progressPct    = sessionStart > 0 ? completedToday / sessionStart : 0;
+
+    const ringFill = document.getElementById('spRingFill');
+    if (ringFill) {
+      const C = 258; // 2π × 41
+      ringFill.style.strokeDashoffset = String(C * (1 - progressPct));
+    }
+
+    // ---- Footline ----
+    const footEl = document.getElementById('spFootlineText');
+    if (footEl) {
+      const totalXp = estimateReviewXp(due.length);
+      footEl.textContent = `Finish the queue to earn up to +${totalXp} XP`;
+    }
+
+    // ---- Subject list ----
     renderDueBySubject(due);
   }
 

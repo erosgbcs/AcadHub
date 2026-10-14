@@ -284,22 +284,50 @@
 
   <!-- State: Has due cards -->
   <div id="dueContent" class="hidden">
-    <div class="flex items-baseline gap-3 mb-4">
-      <p id="dueCount" class="text-4xl font-bold text-indigo-400 leading-none">0</p>
-      <div class="flex flex-col">
-        <p class="text-xs font-semibold opacity-80">card<span id="dueCountPlural">s</span> due</p>
-        <p id="dueBreakdown" class="text-[10px] opacity-50 mt-0.5">0 new · 0 review</p>
+    <!-- Hero: progress ring + count + meta chips -->
+    <div class="sp-hero">
+      <div class="sp-ring-wrap">
+        <svg class="sp-ring" viewBox="0 0 92 92" aria-hidden="true">
+          <circle class="sp-ring-track" cx="46" cy="46" r="41" />
+          <circle id="spRingFill" class="sp-ring-fill" cx="46" cy="46" r="41" />
+        </svg>
+        <span id="dueCount" class="sp-ring-num">0</span>
+      </div>
+      <div class="sp-meta">
+        <p class="sp-label">cards to review</p>
+        <p id="spDueSub" class="sp-sub">Your daily queue is ready</p>
+        <div class="sp-chips">
+          <span id="spChipNew" class="sp-chip sp-new"><i class="fa-solid fa-sparkles"></i><span>0 new</span></span>
+          <span id="spChipReview" class="sp-chip sp-review"><i class="fa-solid fa-rotate"></i><span>0 review</span></span>
+          <span id="spChipTime" class="sp-chip sp-time"><i class="fa-solid fa-clock"></i><span>~0 min</span></span>
+          <span id="spChipXp" class="sp-chip sp-xp"><i class="fa-solid fa-star"></i><span>+0 XP</span></span>
+        </div>
       </div>
     </div>
 
-    <div id="dueBySubject" class="space-y-2 mb-4"></div>
+    <!-- Queue shape: new vs review proportion -->
+    <div id="spMixBar" class="sp-mix-bar" title="Queue composition">
+      <span id="spMixNew" class="sp-mix-seg sp-mix-new" style="width:100%"></span>
+      <span id="spMixReview" class="sp-mix-seg sp-mix-review" style="width:0%"></span>
+    </div>
 
-    <button onclick="startDueReviewSession()" class="btn-primary w-full btn-hover">
-      <i class="fa-solid fa-play mr-2"></i>Start Review Session
+    <!-- Subject list -->
+    <div id="dueBySubject" class="sp-subjects"></div>
+
+    <!-- CTA -->
+    <button onclick="startDueReviewSession()" class="sp-cta-primary btn-hover">
+      <i class="fa-solid fa-play"></i>
+      <span>Start Review Session</span>
+      <i class="fa-solid fa-arrow-right sp-cta-arrow"></i>
     </button>
-    <button onclick="studyAhead()" class="w-full mt-2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] font-semibold opacity-70 btn-hover">
-      Or study future cards
+    <button onclick="studyAhead()" class="sp-cta-secondary">
+      Or study ahead (ignore schedule)
     </button>
+
+    <p class="sp-footline">
+      <i class="fa-solid fa-bolt"></i>
+      <span id="spFootlineText">Finish the queue to earn bonus XP</span>
+    </p>
   </div>
 </div>
   
