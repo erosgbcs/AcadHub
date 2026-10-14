@@ -6639,8 +6639,9 @@ function renderHomeDashboard() {
 
     const ringFill = document.getElementById('spRingFill');
     if (ringFill) {
-      const C = 258; // 2π × 41
-      ringFill.style.strokeDashoffset = String(C * (1 - progressPct));
+      // Ensure a minimum visible portion (2%) so it never looks empty/broken
+      const displayPct = Math.max(progressPct, 0.02); 
+      ringFill.style.strokeDashoffset = String(100 - (displayPct * 100));
     }
 
     // ---- Footline ----

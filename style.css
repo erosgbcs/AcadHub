@@ -4257,8 +4257,8 @@ html.light .sp-ring-track {
 }
 .sp-ring-fill {
   stroke: var(--accent);
-  stroke-dasharray: 258;         /* 2π × 41 */
-  stroke-dashoffset: 258;         /* empty by default */
+  stroke-dasharray: 100;         /* Normalized via pathLength */
+  stroke-dashoffset: 100;         /* Empty by default */
   transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sp-ring-num {
