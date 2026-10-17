@@ -4874,3 +4874,32 @@ html.light .tour-btn-prev:hover:not(:disabled) {
     transition: none !important;
   }
 }
+
+/* ============================================================ */
+/* SETTINGS TOGGLES FIX (LIGHT MODE)                            */
+/* ============================================================ */
+html.light #settingsThemeToggle,
+html.light #settingsSoundToggle,
+html.light #settingsParticlesToggle {
+  background-color: #cbd5e1 !important; /* Visible slate/gray track */
+  border: 1px solid #94a3b8 !important; /* Clear border */
+}
+
+html.light #settingsThemeDot,
+html.light #settingsSoundDot,
+html.light #settingsParticlesDot {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important; /* Shadow so the white dot is visible */
+}
+
+/* Dark mode enhancement (optional, to make them look premium) */
+html:not(.light) #settingsThemeToggle,
+html:not(.light) #settingsSoundToggle,
+html:not(.light) #settingsParticlesToggle {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+html:not(.light) #settingsThemeDot,
+html:not(.light) #settingsSoundDot,
+html:not(.light) #settingsParticlesDot {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
