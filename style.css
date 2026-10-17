@@ -1007,6 +1007,7 @@ html.light #notePinBtn.active {
   background: var(--bg-input);
   cursor: pointer;
   line-height: 1;
+  touch-action: manipulation;
 }
 .note-format-toolbar button:hover,
 .note-format-toolbar button:focus-visible {
