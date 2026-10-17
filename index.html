@@ -107,7 +107,7 @@
     </button>
 
     <!-- NEW: Credit Balance Badge -->
-    <div id="headerCredits" class="hidden items-center justify-center px-2 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold" title="AI Credits">
+    <div onclick="openCreditsModal()" id="headerCredits" class="hidden cursor-pointer hover:bg-white/20 items-center justify-center px-2 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold transition" title="Buy AI Credits">
       <i class="fa-solid fa-coins text-amber-400 mr-1"></i>
       <span id="headerCreditsCount">0</span>
     </div>
@@ -639,6 +639,7 @@
   <p class="text-center text-[10px] opacity-40 mt-2">
     Powered by <strong>Gemini</strong> · auto-fallback to Grok
     <span id="usageHint" class="ml-2 font-semibold"></span>
+    <button onclick="openCreditsModal()" class="ml-1 text-indigo-400 hover:text-indigo-300 font-bold underline transition">Buy Credits</button>
   </p>
 
 
@@ -1581,10 +1582,13 @@
       </div>
       <p class="text-xs opacity-70 mb-3" id="authSubtitle">Login to save your data and access all features.</p>
       
-      <!-- NEW: Credit Balance inside Modal -->
+      <!-- Credit Balance inside Modal -->
       <div id="modalCreditsContainer" class="hidden mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
         <p class="text-[10px] uppercase tracking-wider font-bold text-emerald-400 mb-1">Credit Balance</p>
-        <p class="text-2xl font-bold text-emerald-300"><span id="modalCreditsCount">0</span> <i class="fa-solid fa-coins text-lg opacity-70"></i></p>
+        <p class="text-2xl font-bold text-emerald-300 mb-2"><span id="modalCreditsCount">0</span> <i class="fa-solid fa-coins text-lg opacity-70"></i></p>
+        <button onclick="closeAuthModal(); openCreditsModal();" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition">
+          <i class="fa-solid fa-plus mr-1"></i> Buy Credits
+        </button>
       </div>
 
       <p id="authReason" class="hidden text-xs mb-3 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300"></p>
@@ -1892,6 +1896,54 @@
       </div>
     </div>
   </div>
+
+<!-- ===== BUY CREDITS MODAL ===== -->
+<div id="creditsModal" data-modal class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="if(event.target === this) closeCreditsModal()">
+  <div class="glass-card w-full max-w-2xl rounded-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+    <button onclick="closeCreditsModal()" class="absolute top-3 right-3 text-xs opacity-50 hover:opacity-100 btn-hover">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <h3 class="text-xl font-bold mb-1 text-center"><i class="fa-solid fa-coins text-amber-400 mr-2"></i>Get AI Credits</h3>
+    <p class="text-xs opacity-60 text-center mb-6">1 Credit = 1 Complete Generation (Reviewer, Test, or Summary)</p>
+
+    <!-- Pricing Grid -->
+    <div id="pricingGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      
+      <!-- Pack 1 -->
+      <div class="border border-white/10 rounded-xl p-5 text-center relative hover:border-indigo-400/50 transition bg-white/5">
+        <p class="text-sm font-bold mb-1">Reviewer Pack</p>
+        <p class="text-xs opacity-50 mb-3">Entry Level</p>
+        <p class="text-3xl font-bold mb-1">₱49</p>
+        <p class="text-xs font-semibold text-indigo-400 mb-4">30 Credits</p>
+        <p class="text-[10px] opacity-60 mb-4 h-8">Great for a single Prelim exam.</p>
+        <button onclick="showNotification('Payment gateway coming soon!', 'info')" class="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold transition">Select</button>
+      </div>
+
+      <!-- Pack 2 (Best Value) -->
+      <div class="border-2 border-indigo-500 rounded-xl p-5 text-center relative bg-indigo-500/10">
+        <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap">BEST VALUE</span>
+        <p class="text-sm font-bold mb-1">Midterm Bundle</p>
+        <p class="text-xs opacity-50 mb-3">Most Popular</p>
+        <p class="text-3xl font-bold mb-1">₱99</p>
+        <p class="text-xs font-semibold text-indigo-400 mb-4">75 Credits</p>
+        <p class="text-[10px] opacity-60 mb-4 h-8">Perfect for Midterms across 5-6 subjects.</p>
+        <button onclick="showNotification('Payment gateway coming soon!', 'info')" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition">Select</button>
+      </div>
+
+      <!-- Pack 3 -->
+      <div class="border border-white/10 rounded-xl p-5 text-center relative hover:border-indigo-400/50 transition bg-white/5">
+        <p class="text-sm font-bold mb-1">Finals Bundle</p>
+        <p class="text-xs opacity-50 mb-3">Pro</p>
+        <p class="text-3xl font-bold mb-1">₱199</p>
+        <p class="text-xs font-semibold text-indigo-400 mb-4">200 Credits</p>
+        <p class="text-[10px] opacity-60 mb-4 h-8">For heavy users covering entire semesters.</p>
+        <button onclick="showNotification('Payment gateway coming soon!', 'info')" class="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold transition">Select</button>
+      </div>
+
+    </div>
+  </div>
+</div>
 
   <!-- ===== FIREBASE SDK ===== -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>

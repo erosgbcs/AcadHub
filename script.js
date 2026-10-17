@@ -8010,3 +8010,16 @@ function updateCreditDisplay(amount) {
     }
   }
 }
+
+// ============================================================
+// CREDIT PRICING MODAL LOGIC
+// ============================================================
+function openCreditsModal() {
+  if (typeof SoundEngine !== 'undefined') SoundEngine.play('open');
+  document.getElementById('creditsModal').classList.remove('hidden');
+}
+
+function closeCreditsModal() {
+  if (typeof SoundEngine !== 'undefined') SoundEngine.play('close');
+  document.getElementById('creditsModal').classList.add('hidden');
+}
