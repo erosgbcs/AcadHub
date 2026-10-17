@@ -8,7 +8,7 @@ const SoundEngine = (function () {
   let lastTapAt = 0;
 
   const LS_KEY = 'acadhub_sounds_enabled';
-  const MASTER_VOLUME = 1.5;
+  const MASTER_VOLUME = 1.0;
   const TAP_COOLDOWN_MS = 90;
 
   // ---- Load preference ----
