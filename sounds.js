@@ -5,8 +5,11 @@ const SoundEngine = (function () {
   let ctx = null;
   let masterGain = null;
   let enabled = true;
+  let lastTapAt = 0;
 
   const LS_KEY = 'acadhub_sounds_enabled';
+  const MASTER_VOLUME = 0.28;
+  const TAP_COOLDOWN_MS = 90;
 
   // ---- Load preference ----
   try {
@@ -22,7 +25,7 @@ const SoundEngine = (function () {
       if (!Ctx) return null;
       ctx = new Ctx();
       masterGain = ctx.createGain();
-      masterGain.gain.value = 1.0;   
+      masterGain.gain.value = MASTER_VOLUME;
       masterGain.connect(ctx.destination);
     } catch (e) {
       console.warn('AudioContext unavailable:', e);
@@ -37,6 +40,13 @@ const SoundEngine = (function () {
     if (c && c.state === 'suspended') {
       c.resume().catch(() => {});
     }
+  }
+
+  function setMasterLevel(value, rampTime = 0.04) {
+    if (!masterGain || !ctx) return;
+    const level = Math.max(0, Math.min(1, value));
+    masterGain.gain.cancelScheduledValues(ctx.currentTime);
+    masterGain.gain.setTargetAtTime(level, ctx.currentTime, rampTime);
   }
 
   // ---- Core tone generator ----
@@ -56,10 +66,10 @@ const SoundEngine = (function () {
     }
 
     // Envelope: quick attack, smooth decay
-    const peak = 0.9 * volume;
+    const peak = Math.max(0.0001, 0.9 * volume);
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(peak, start + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    gain.gain.exponentialRampToValueAtTime(peak, start + Math.min(0.012, duration * 0.25));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + Math.max(0.02, duration));
 
     osc.connect(gain);
     gain.connect(masterGain);
@@ -101,24 +111,26 @@ const SoundEngine = (function () {
     },
 
     success: () => {
-      tone({ freq: 660, duration: 0.09, type: 'sine', volume: 0.6 });
-      tone({ freq: 990, duration: 0.11, type: 'sine', volume: 0.5, delay: 0.08 });
+      tone({ freq: 523.25, duration: 0.1, type: 'sine', volume: 0.65 });
+      tone({ freq: 659.25, duration: 0.12, type: 'sine', volume: 0.5, delay: 0.07 });
+      tone({ freq: 783.99, duration: 0.16, type: 'sine', volume: 0.4, delay: 0.14 });
     },
 
     error: () => {
-      tone({ freq: 300, duration: 0.11, type: 'sawtooth', volume: 0.4 });
-      tone({ freq: 220, duration: 0.13, type: 'sawtooth', volume: 0.35, delay: 0.09 });
+      tone({ freq: 220, duration: 0.12, type: 'triangle', volume: 0.45, sweep: -35 });
+      tone({ freq: 174.61, duration: 0.15, type: 'triangle', volume: 0.32, delay: 0.09, sweep: -25 });
     },
 
     warning: () => {
-      tone({ freq: 620, duration: 0.08, type: 'square', volume: 0.35 });
-      tone({ freq: 620, duration: 0.08, type: 'square', volume: 0.35, delay: 0.14 });
+      tone({ freq: 440, duration: 0.08, type: 'triangle', volume: 0.42 });
+      tone({ freq: 440, duration: 0.08, type: 'triangle', volume: 0.35, delay: 0.14 });
     },
 
     info: () => tone({ freq: 880, duration: 0.06, type: 'sine', volume: 0.4 }),
 
     flip: () => {
-      tone({ freq: 780, duration: 0.07, type: 'sine', volume: 0.5, sweep: 300 });
+      tone({ freq: 520, duration: 0.09, type: 'sine', volume: 0.4, sweep: 420 });
+      noise({ duration: 0.055, volume: 0.035, delay: 0.015 });
     },
 
     rateEasy: () => {
@@ -138,7 +150,7 @@ const SoundEngine = (function () {
     },
 
     swipe: () => {
-      noise({ duration: 0.09, volume: 0.12 });
+      noise({ duration: 0.07, volume: 0.07 });
     },
 
     complete: () => {
@@ -159,6 +171,11 @@ const SoundEngine = (function () {
     if (!enabled) return;
     const fn = SOUNDS[name];
     if (!fn) return;
+    if (name === 'tapSoft') {
+      const now = performance.now();
+      if (now - lastTapAt < TAP_COOLDOWN_MS) return;
+      lastTapAt = now;
+    }
     try { fn(); } catch (e) { console.warn('Sound play failed:', name, e); }
   }
 
