@@ -1,30 +1,75 @@
-"""AcadHub backend — Gemini primary, Grok fallback. Keys from env vars."""
+"""AcadHub backend — Gemini primary, Grok fallback. Keys from env vars.
+
+Adds Firebase Admin usage tracking + per-user daily limits.
+"""
 
 from __future__ import annotations
 
 import asyncio
+import base64
 import io
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-app = FastAPI(title="AcadHub API", version="2.0.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ------------------------------------------------------------------
+# Firebase Admin init (best-effort; endpoints fail closed if missing)
+# ------------------------------------------------------------------
+try:
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+    _FB_AVAILABLE = True
+except Exception as _exc:  # pragma: no cover
+    _FB_AVAILABLE = False
+    print(f"[usage] firebase-admin not installed: {_exc}")
 
+_DB = None
+_FB_READY = False
+
+
+def _init_firebase():
+    global _DB, _FB_READY
+    if _FB_READY:
+        return
+    if not _FB_AVAILABLE:
+        print("[usage] firebase-admin missing — limits disabled")
+        return
+    raw = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "").strip()
+    if not raw:
+        print("[usage] FIREBASE_SERVICE_ACCOUNT not set — limits disabled")
+        return
+    try:
+        # Accept raw JSON or base64-encoded JSON
+        decoded = raw
+        if not raw.startswith("{"):
+            decoded = base64.b64decode(raw).decode("utf-8")
+        cred_dict = json.loads(decoded)
+        cred = credentials.Certificate(cred_dict)
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(cred)
+        _DB = firestore.client()
+        _FB_READY = True
+        print("[usage] firebase-admin initialized")
+    except Exception as exc:  # pragma: no cover
+        print(f"[usage] firebase-admin init failed: {exc}")
+
+
+_init_firebase()
+
+# ------------------------------------------------------------------
+# Config
+# ------------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "").strip()
 GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp").strip()
@@ -33,6 +78,20 @@ GROQ_MODEL     = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b").strip()
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+# ---- Limit config ----
+DEFAULT_DAILY_LIMIT = int(os.environ.get("DEFAULT_DAILY_LIMIT", "20"))
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "gabrielagsamosam@gmail.com").strip().lower()
+
+app = FastAPI(title="AcadHub API", version="2.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Usage-Remaining", "X-Usage-Limit"],
+)
+
 STOP_WORDS = {
     "about","after","again","against","also","because","before","being",
     "between","could","first","from","have","into","more","other","over",
@@ -40,16 +99,156 @@ STOP_WORDS = {
     "were","which","with","would","your","that","then","than","where",
 }
 
+# ------------------------------------------------------------------
+# Usage tracking helpers
+# ------------------------------------------------------------------
+def _today_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _usage_doc_ref(uid: str, day: str):
+    return _DB.collection("users").doc(uid).collection("usage_daily").doc(day)
+
+
+def _meta_doc_ref(uid: str):
+    return _DB.collection("users").doc(uid).collection("usage_meta").doc("config")
+
+
+def _events_col(uid: str):
+    return _DB.collection("users").doc(uid).collection("usage_events")
+
+
+def _resolve_identity(request: Request) -> tuple[str, str]:
+    """Read Firebase ID token (Authorization: Bearer ...) and return (uid, email).
+    Returns ("", "") when auth is unavailable."""
+    if not _FB_READY:
+        # Admin SDK not ready — endpoints will fail closed upstream.
+        return "", ""
+    auth_header = request.headers.get("Authorization") or request.headers.get("authorization") or ""
+    if not auth_header.startswith("Bearer "):
+        return "", ""
+    token = auth_header[7:].strip()
+    if not token:
+        return "", ""
+    try:
+        from firebase_admin import auth as fb_auth
+        decoded = fb_auth.verify_id_token(token, check_revoked=False)
+        return decoded.get("uid", ""), (decoded.get("email") or "").lower()
+    except Exception as exc:
+        print(f"[usage] token verify failed: {exc}")
+        return "", ""
+
+
+def _get_limit_for(uid: str, email: str = "") -> int:
+    if not _FB_READY or not uid:
+        return DEFAULT_DAILY_LIMIT
+    if email and email.lower() == ADMIN_EMAIL:
+        return 10**9  # effectively unlimited
+    try:
+        snap = _meta_doc_ref(uid).get()
+        if snap.exists:
+            data = snap.to_dict() or {}
+            cl = data.get("customLimit")
+            if isinstance(cl, int) and cl > 0:
+                return cl
+    except Exception as exc:
+        print(f"[usage] meta read failed: {exc}")
+    return DEFAULT_DAILY_LIMIT
+
+
+def _get_used_today(uid: str) -> int:
+    if not _FB_READY or not uid:
+        return 0
+    try:
+        snap = _usage_doc_ref(uid, _today_utc()).get()
+        if not snap.exists:
+            return 0
+        data = snap.to_dict() or {}
+        return int(data.get("total", 0) or 0)
+    except Exception as exc:
+        print(f"[usage] read failed: {exc}")
+        return 0
+
+
+def check_usage(request: Request, kind: str) -> tuple[str, str, int, int]:
+    """Raise 429 if over limit. Return (uid, email, used, limit)."""
+    if not _FB_READY:
+        # Fail closed: refuse AI calls when usage tracking isn't configured.
+        raise HTTPException(
+            500,
+            "Usage tracking is not configured on the server. "
+            "Set FIREBASE_SERVICE_ACCOUNT to enable AI endpoints.",
+        )
+
+    uid, email = _resolve_identity(request)
+    if not uid:
+        raise HTTPException(401, "Sign in required to use AI features.")
+
+    limit = _get_limit_for(uid, email)
+    used = _get_used_today(uid)
+    if used >= limit:
+        raise HTTPException(
+            429,
+            f"Daily limit reached ({used}/{limit}). "
+            f"Resets at midnight UTC. Contact the admin to raise your limit.",
+        )
+    return uid, email, used, limit
+
+
+def record_usage(
+    uid: str,
+    email: str,
+    kind: str,
+    provider: str | None,
+    elapsed_ms: int,
+) -> tuple[int, int]:
+    """Increment counters + append event. Returns (new_used, limit)."""
+    if not _FB_READY or not uid:
+        return 0, DEFAULT_DAILY_LIMIT
+    day = _today_utc()
+    limit = _get_limit_for(uid, email)
+    try:
+        from google.cloud.firestore_v1 import Increment
+        _usage_doc_ref(uid, day).set(
+            {
+                "date": day,
+                "total": Increment(1),
+                kind: Increment(1),
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            },
+            merge=True,
+        )
+        # Rolling event log (capped at 50 by client-side pruning on read)
+        _events_col(uid).add(
+            {
+                "kind": kind,
+                "provider": provider,
+                "elapsedMs": elapsed_ms,
+                "at": firestore.SERVER_TIMESTAMP,
+            }
+        )
+    except Exception as exc:
+        print(f"[usage] write failed: {exc}")
+    new_used = _get_used_today(uid)
+    return new_used, limit
+
+
+# ------------------------------------------------------------------
+# Quality / text helpers (unchanged from prior version)
+# ------------------------------------------------------------------
 def clean_text(v: str) -> str:
     return re.sub(r"\s+", " ", v or "").strip()
 
+
 def split_sentences(text: str) -> list[str]:
     return [clean_text(s) for s in re.split(r"(?<=[.!?])\s+|\n+", text) if clean_text(s)]
+
 
 def keywords(text: str, limit: int = 20) -> list[str]:
     words = re.findall(r"[A-Za-z][A-Za-z'-]{3,}", text.lower())
     counts = Counter(w for w in words if w not in STOP_WORDS)
     return [w for w, _ in counts.most_common(limit)]
+
 
 def assess_quality(materials: dict, source_text: str) -> dict:
     source = source_text.casefold()
@@ -74,6 +273,7 @@ def assess_quality(materials: dict, source_text: str) -> dict:
     score = round(sum(checks) / len(checks) * 100) if checks else 0
     return {"score": score, "basis": "source grounding and answer consistency"}
 
+
 def parse_quiz_types(raw: str | None) -> dict[str, int]:
     if not raw:
         return {"truefalse": 3, "identification": 3, "enumeration": 2, "multiplechoice": 3}
@@ -90,6 +290,7 @@ def parse_quiz_types(raw: str | None) -> dict[str, int]:
         except (TypeError, ValueError):
             continue
     return out
+
 
 def build_materials(text: str, quiz_types: dict, flashcard_count: int) -> dict:
     text = clean_text(text)
@@ -221,6 +422,7 @@ def build_materials(text: str, quiz_types: dict, flashcard_count: int) -> dict:
     materials["quality"] = assess_quality(materials, text)
     return materials
 
+
 async def read_notes(notes: str | None, files: list[UploadFile] | None) -> str:
     chunks = [clean_text(notes or "")]
     for f in (files or []):
@@ -249,6 +451,7 @@ async def read_notes(notes: str | None, files: list[UploadFile] | None) -> str:
         raise HTTPException(400, "Please provide notes or a readable document.")
     return text
 
+
 def parse_json_response(v: str) -> dict:
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", v.strip(), flags=re.IGNORECASE)
     try:
@@ -258,6 +461,7 @@ def parse_json_response(v: str) -> dict:
     if not isinstance(parsed, dict):
         raise HTTPException(502, "AI returned invalid shape.")
     return parsed
+
 
 def build_ai_prompt(text: str, quiz_types: dict, flashcard_count: int) -> str:
     return f"""Create study materials from the notes below.
@@ -275,6 +479,7 @@ NOTES:
 {text}
 """
 
+
 def build_summary_prompt(text: str) -> str:
     return f"""Summarize the notes below into a JSON object with exactly one key:
 summary: array of concise standalone bullet-point strings (max 8 items)
@@ -282,6 +487,7 @@ summary: array of concise standalone bullet-point strings (max 8 items)
 NOTES:
 {text}
 """
+
 
 async def generate_with_gemini(text: str, quiz_types: dict, flashcard_count: int) -> dict:
     if not GEMINI_API_KEY:
@@ -318,6 +524,7 @@ async def generate_with_gemini(text: str, quiz_types: dict, flashcard_count: int
     result["_provider"] = "gemini"
     return result
 
+
 async def generate_summary_with_gemini(text: str) -> list[str]:
     if not GEMINI_API_KEY:
         raise HTTPException(500, "GEMINI_API_KEY not configured.")
@@ -349,6 +556,7 @@ async def generate_summary_with_gemini(text: str) -> list[str]:
     s = parsed.get("summary", [])
     return [str(i) for i in s][:8] if isinstance(s, list) else []
 
+
 async def generate_with_groq(text: str, quiz_types: dict, flashcard_count: int) -> dict:
     if not GROQ_API_KEY:
         raise HTTPException(500, "GROQ_API_KEY not configured.")
@@ -367,7 +575,7 @@ async def generate_with_groq(text: str, quiz_types: dict, flashcard_count: int) 
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GROQ_API_KEY}",
-            "User-Agent": "AcadHub/2.0 (python-urllib)",
+            "User-Agent": "AcadHub/2.1 (python-urllib)",
         },
         method="POST",
     )
@@ -393,6 +601,7 @@ async def generate_with_groq(text: str, quiz_types: dict, flashcard_count: int) 
     result["_provider"] = "groq"
     return result
 
+
 async def generate_summary_with_groq(text: str) -> list[str]:
     if not GROQ_API_KEY:
         raise HTTPException(500, "GROQ_API_KEY not configured.")
@@ -411,7 +620,7 @@ async def generate_summary_with_groq(text: str) -> list[str]:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GROQ_API_KEY}",
-            "User-Agent": "AcadHub/2.0 (python-urllib)",
+            "User-Agent": "AcadHub/2.1 (python-urllib)",
         },
         method="POST",
     )
@@ -433,6 +642,7 @@ async def generate_summary_with_groq(text: str) -> list[str]:
     s = parsed.get("summary", [])
     return [str(i) for i in s][:8] if isinstance(s, list) else []
 
+
 async def generate_with_ai(text: str, quiz_types: dict, flashcard_count: int) -> dict:
     errors: list[str] = []
     if GEMINI_API_KEY:
@@ -447,6 +657,7 @@ async def generate_with_ai(text: str, quiz_types: dict, flashcard_count: int) ->
         except HTTPException as exc:
             errors.append(f"Grok: {exc.detail}")
     raise HTTPException(502, "All AI providers failed. " + " | ".join(errors) if errors else "No AI provider configured.")
+
 
 async def generate_summary_ai(text: str) -> list[str]:
     errors: list[str] = []
@@ -463,33 +674,65 @@ async def generate_summary_ai(text: str) -> list[str]:
             errors.append(f"Grok: {exc.detail}")
     return split_sentences(text)[:8]
 
+
+# ------------------------------------------------------------------
+# Routes
+# ------------------------------------------------------------------
 @app.get("/api/health")
 def health() -> dict:
     return {
         "status": "ok",
         "service": "acadhub-api",
         "providers": {"gemini": bool(GEMINI_API_KEY), "grok": bool(GROQ_API_KEY)},
+        "usageTracking": _FB_READY,
+        "defaultDailyLimit": DEFAULT_DAILY_LIMIT,
     }
+
 
 @app.post("/api/generate-reviewer")
 async def generate_reviewer(
+    request: Request,
     notes: str | None = Form(None),
     file: list[UploadFile] = File(default=[]),
     quiz_types: str | None = Form(None),
     num_flashcards: int = Form(10),
     use_internet: bool = Form(False),
     enrich_count: int = Form(5),
-) -> dict:
+):
     text = await read_notes(notes, file)
-    return await generate_with_ai(text, parse_quiz_types(quiz_types), max(1, min(num_flashcards, 50)))
+    uid, email, used, limit = check_usage(request, "reviewer")
+    started = time.time()
+    result = await generate_with_ai(text, parse_quiz_types(quiz_types), max(1, min(num_flashcards, 50)))
+    new_used, limit = record_usage(uid, email, "reviewer", result.get("_provider"), int((time.time() - started) * 1000))
+    headers = {
+        "X-Usage-Remaining": str(max(0, limit - new_used)),
+        "X-Usage-Limit": str(limit),
+    }
+    return JSONResponse(content=result, headers=headers)
+
 
 @app.post("/api/summary")
-async def summary(notes: str | None = Form(None), file: list[UploadFile] = File(default=[])) -> dict:
+async def summary(
+    request: Request,
+    notes: str | None = Form(None),
+    file: list[UploadFile] = File(default=[]),
+):
     text = await read_notes(notes, file)
-    return {"summary": await generate_summary_ai(text)}
+    uid, email, used, limit = check_usage(request, "summary")
+    started = time.time()
+    summary_list = await generate_summary_ai(text)
+    provider = "gemini" if GEMINI_API_KEY else ("groq" if GROQ_API_KEY else None)
+    new_used, limit = record_usage(uid, email, "summary", provider, int((time.time() - started) * 1000))
+    headers = {
+        "X-Usage-Remaining": str(max(0, limit - new_used)),
+        "X-Usage-Limit": str(limit),
+    }
+    return JSONResponse(content={"summary": summary_list}, headers=headers)
+
 
 @app.post("/api/generate-test")
 async def generate_test(
+    request: Request,
     notes: str | None = Form(None),
     file: list[UploadFile] = File(default=[]),
     difficulty: str = Form("easy"),
@@ -497,8 +740,9 @@ async def generate_test(
     question_count: int | None = Form(None),
     question_types: str | None = Form(None),
     topic: str | None = Form(None),
-) -> dict:
+):
     text = await read_notes(notes, file)
+    uid, email, used, limit = check_usage(request, "test")
     default_count = {"easy": 8, "medium": 15, "hard": 26}.get(difficulty, 8)
     count = max(1, min(question_count or default_count, 30))
     requested_types = []
@@ -517,18 +761,27 @@ async def generate_test(
     }
     if topic:
         text = f"Focus the questions on this topic: {topic}\n\n{text}"
+    started = time.time()
     materials = build_materials(text, quiz_types, 1)
-    return {"questions": materials["quiz"]}
+    new_used, limit = record_usage(uid, email, "test", None, int((time.time() - started) * 1000))
+    headers = {
+        "X-Usage-Remaining": str(max(0, limit - new_used)),
+        "X-Usage-Limit": str(limit),
+    }
+    return JSONResponse(content={"questions": materials["quiz"]}, headers=headers)
+
 
 @app.post("/api/flashcards")
 async def flashcards(notes: str = Form(""), num_flashcards: int = Form(10)) -> dict:
     text = await read_notes(notes, None)
     return {"flashcards": build_materials(text, {}, num_flashcards)["flashcards"]}
 
+
 @app.post("/api/quiz")
 async def quiz(notes: str = Form(""), quiz_types: str | None = Form(None)) -> dict:
     text = await read_notes(notes, None)
     return {"quiz": build_materials(text, parse_quiz_types(quiz_types), 1)["quiz"]}
+
 
 @app.post("/api/enrich")
 async def enrich(notes: str = Form(""), enrich_count: int = Form(5)) -> dict:

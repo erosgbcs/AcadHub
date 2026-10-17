@@ -87,6 +87,54 @@ function getDeckMastery(item) {
 
 
 let actionSheetIndex = null;
+
+// ---- Auth gating helpers ----
+// Holds the action to run after a successful sign-in / sign-up
+let pendingAuthAction = null;
+let pendingAuthReason = '';
+
+function isUserSignedIn() {
+  return !!(firebaseAvailable && auth && auth.currentUser);
+}
+
+/**
+ * Gate an action behind sign-in.
+ * @param {string} reason     — message shown in the auth modal
+ * @param {function} callback — run after successful login/signup
+ * @returns {boolean} true if the user was signed in and callback ran immediately
+ */
+function requireAuth(reason, callback) {
+  if (!firebaseAvailable) {
+    showNotification('Sign-in is unavailable right now. Please try again later.', 'warning');
+    return false;
+  }
+  if (isUserSignedIn()) {
+    try { callback(); } catch (e) { console.error('Post-auth action failed:', e); }
+    return true;
+  }
+  pendingAuthAction = typeof callback === 'function' ? callback : null;
+  pendingAuthReason = reason || 'Sign in to continue.';
+  openAuthModal();
+  return false;
+}
+
+function showAuthReason() {
+  const reasonEl = document.getElementById('authReason');
+  if (!reasonEl) return;
+  if (pendingAuthReason) {
+    reasonEl.textContent = pendingAuthReason;
+    reasonEl.classList.remove('hidden');
+  } else {
+    reasonEl.textContent = '';
+    reasonEl.classList.add('hidden');
+  }
+}
+
+function clearPendingAuth() {
+  pendingAuthAction = null;
+  pendingAuthReason = '';
+  showAuthReason();
+}
 try {
   if (typeof firebase !== 'undefined') {
     firebase.initializeApp(firebaseConfig);
@@ -482,6 +530,16 @@ async function apiCall(endpoint, options = {}) {
     }
   };
 
+  // Attach Firebase ID token so the backend can enforce per-user limits.
+  if (firebaseAvailable && auth && auth.currentUser) {
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      config.headers['Authorization'] = 'Bearer ' + idToken;
+    } catch (e) {
+      console.warn('Could not get auth token:', e);
+    }
+  }
+
   if (options.formData) {
   config.body = options.formData;
 } else if (options.json) {
@@ -853,6 +911,30 @@ function updateSoundToggleUI() {
   dot.style.left = on ? '1.25rem' : '0.25rem';
 }
 
+function updateVolumeSliderUI() {
+  if (typeof SoundEngine === 'undefined') return;
+  const slider = document.getElementById('settingsVolumeSlider');
+  const valueEl = document.getElementById('settingsVolumeValue');
+  if (!slider) return;
+  const vol = Math.round(SoundEngine.getVolume() * 100);
+  slider.value = vol;
+  if (valueEl) valueEl.textContent = vol + '%';
+}
+
+function onVolumeSliderChange(v) {
+  if (typeof SoundEngine === 'undefined') return;
+  SoundEngine.setVolume(parseFloat(v) / 100);
+  const valueEl = document.getElementById('settingsVolumeValue');
+  if (valueEl) valueEl.textContent = v + '%';
+}
+
+function onVolumeSliderCommit(v) {
+  if (typeof SoundEngine === 'undefined') return;
+  if (SoundEngine.isEnabled() && Number(v) > 0) {
+    SoundEngine.play('tapSoft');
+  }
+}
+
 // ============================================================
 // PARTICLE CONTROLS
 // ============================================================
@@ -1219,9 +1301,11 @@ async function handleGenerate() {
     showNotification('Please paste notes or upload a document.', 'warning');
     return;
   }
-  
-  // Move on to asking for subject / term / semester
-  openGenerateMetaSheet();
+
+  // Gate AI generation behind sign-in (costs real credits)
+  requireAuth('Sign in to generate your reviewer. It\'s free and takes 10 seconds.', () => {
+    openGenerateMetaSheet();
+  });
 }
 
 async function runGenerateWithMeta(meta = {}) {
@@ -1270,6 +1354,7 @@ async function runGenerateWithMeta(meta = {}) {
     formData.append('enrich_count', document.getElementById('enrichCount').value || '5');
     
     const result = await apiCall(API_ENDPOINTS.generateAI, { formData, signal });
+    updateUsageHintFromResponse(result);
     
     const transformedData = transformBackendResponse(result);
     
@@ -1473,6 +1558,48 @@ async function buildShareableLink(meta, data) {
 
 // ---- Share modal ----
 async function openShareModal() {
+  if (!currentResults) {
+    showNotification('Nothing to share yet.', 'warning');
+    return;
+  }
+
+  // Gate share behind sign-in (writes to Firestore)
+  const ok = requireAuth('Sign in to share reviewers with others.', () => {
+    openShareModalForReal();
+  });
+  if (!ok) return;
+
+  return;
+
+  // (unreachable — kept for reference)
+  document.getElementById('shareModal').classList.remove('hidden');
+  document.getElementById('shareSetup').classList.remove('hidden');
+  document.getElementById('shareResult').classList.add('hidden');
+  document.getElementById('shareError').classList.add('hidden');
+  document.getElementById('shareLoading').classList.add('hidden');
+  document.getElementById('shareLinkInput').value = '';
+  document.getElementById('shareModeNote').textContent = '';
+  document.getElementById('shareNativeBtn').classList.add('hidden');
+
+  const titleInput = document.getElementById('shareTitleInput');
+  titleInput.value = currentResults.title || `Reviewer — ${new Date().toLocaleDateString()}`;
+
+  const select = document.getElementById('shareSubjectSelect');
+  const subjects = getNoteSubjects();
+  select.innerHTML = '<option value="">— No subject —</option>' +
+    subjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+
+  if (currentResults.subject && currentResults.subject.id) {
+    select.value = currentResults.subject.id;
+  }
+
+  const authorEl = document.getElementById('shareAuthorName');
+  authorEl.textContent = 'Loading…';
+  const author = await getCurrentAuthorInfo();
+  authorEl.textContent = author.name;
+}
+
+async function openShareModalForReal() {
   if (!currentResults) {
     showNotification('Nothing to share yet.', 'warning');
     return;
@@ -3502,6 +3629,22 @@ async function startTest() {
     return;
   }
 
+  // Gate AI test generation behind sign-in
+  requireAuth('Sign in to generate your test.', () => {
+    runStartTest();
+  });
+}
+
+async function runStartTest() {
+  const notes = document.getElementById('testNotes').value.trim();
+  const selectedFiles = fileStore.test;
+  const hasFile = selectedFiles.length > 0;
+
+  if (!notes && !hasFile) {
+    showNotification('Please paste notes or upload a document.', 'warning');
+    return;
+  }
+
   testDifficulty = getAdaptiveDifficulty();
   const formData = new FormData();
 if (notes) formData.append('notes', notes);
@@ -3523,6 +3666,7 @@ if (hasFile) {
 
   try {
     const result = await apiCall(API_ENDPOINTS.generateTest, { formData });
+    updateUsageHintFromResponse(result);
 
     testQuestions = (result.questions || []).map(q => {
       const options = q.options || [];
@@ -4824,6 +4968,22 @@ async function quickSummarize() {
     return;
   }
 
+  // Gate AI summarize behind sign-in
+  requireAuth('Sign in to generate a quick summary.', () => {
+    runQuickSummarize();
+  });
+}
+
+async function runQuickSummarize() {
+  const notes = document.getElementById('studyNotes').value.trim();
+  const fileInput = document.getElementById('fileInput');
+  const hasFile = fileInput.files.length > 0;
+
+  if (!notes && !hasFile) {
+    showNotification('Please paste notes or upload a document first.', 'warning');
+    return;
+  }
+
   openQuickSummarySheet();
   document.getElementById('quickSummaryLoading').classList.remove('hidden');
   document.getElementById('quickSummaryList').innerHTML = '';
@@ -4831,6 +4991,7 @@ async function quickSummarize() {
 
   try {
     const summary = await requestSummaryOnly();
+    updateUsageHintFromResponseFromSummary();
     renderQuickSummaryList(summary, 'quickSummaryList');
 
     const saveBtn = document.getElementById('saveQuickSummaryBtn');
@@ -4904,10 +5065,15 @@ function initQuickSummaryListeners() {
 // ============================================================
 function closeAuthModal() {
   document.getElementById('authModal').classList.add('hidden');
+  // If the user dismissed the modal without signing in, forget the pending action
+  if (!isUserSignedIn()) {
+    clearPendingAuth();
+  }
 }
 
 function updateAuthUI() {
   const user = (firebaseAvailable && auth) ? auth.currentUser : null;
+  showAuthReason();
   const emailInput = document.getElementById('authEmail');
   const passInput = document.getElementById('authPassword');
   const nameFields = document.getElementById('authNameFields');
@@ -5009,6 +5175,14 @@ async function handleAuth() {
     }
 
     closeAuthModal();
+
+    // Run the action the user originally tried to perform
+    const action = pendingAuthAction;
+    pendingAuthAction = null;
+    pendingAuthReason = '';
+    if (action) {
+      try { action(); } catch (e) { console.error('Pending auth action failed:', e); }
+    }
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove('hidden');
@@ -5074,6 +5248,10 @@ if (firebaseAvailable && auth) {
       document.getElementById('profileButton').title = 'Logged in as ' + user.email;
 const _logoutBtn = document.getElementById('logoutButton');
 if (_logoutBtn) _logoutBtn.classList.remove('hidden');
+
+      // Hide the "Sign in to unlock AI" banner
+      const aiBanner = document.getElementById('aiSignInBanner');
+      if (aiBanner) aiBanner.classList.add('hidden');
       try {
   // 🔥 Run migration to fix old Firestore document IDs
   await migrateFirestoreData(user);
@@ -5168,6 +5346,10 @@ if (userDoc.exists) {
       document.getElementById('profileButton').title = 'Login / Sign Up';
 const _logoutBtn2 = document.getElementById('logoutButton');
 if (_logoutBtn2) _logoutBtn2.classList.add('hidden');
+
+      // Show the "Sign in to unlock AI" banner
+      const aiBanner2 = document.getElementById('aiSignInBanner');
+      if (aiBanner2) aiBanner2.classList.remove('hidden');
     }
 
     updateAuthUI();
@@ -5759,6 +5941,7 @@ function toggleSettingsModal() {
     updateSettingsUI();
     syncThemeControls();
     renderThemePresets();
+    updateVolumeSliderUI();
   }
 }
 
@@ -7714,4 +7897,43 @@ async function mergeExtendIntoExisting(newData) {
   cancelExtend();
   renderSavedList();
   renderHomeDashboard();
+}
+
+// ============================================================
+// USAGE HINT — shown under the Generate button after AI calls
+// ============================================================
+function updateUsageHintFromResponse(res) {
+  // The backend returns X-Usage-Remaining via fetch, but our apiCall
+  // returns JSON only. So we read the stored header from a side channel.
+  // Simpler: read a dedicated response header if apiCall exposes it.
+  // Fallback: refresh from Firestore.
+  refreshUsageHint();
+}
+
+function updateUsageHintFromResponseFromSummary() {
+  refreshUsageHint();
+}
+
+async function refreshUsageHint() {
+  const el = document.getElementById('usageHint');
+  if (!el) return;
+  if (!firebaseAvailable || !auth || !auth.currentUser) {
+    el.textContent = '';
+    return;
+  }
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const snap = await db.collection('users').doc(auth.currentUser.uid)
+      .collection('usage_daily').doc(today).get();
+    const used = snap.exists ? Number((snap.data() || {}).total || 0) : 0;
+    const meta = await db.collection('users').doc(auth.currentUser.uid)
+      .collection('usage_meta').doc('config').get();
+    const customLimit = meta.exists ? (meta.data() || {}).customLimit : null;
+    const limit = (typeof customLimit === 'number' && customLimit > 0) ? customLimit : 20;
+    const remaining = Math.max(0, limit - used);
+    el.textContent = `${remaining} left today`;
+    el.style.color = remaining === 0 ? '#f87171' : '';
+  } catch (e) {
+    el.textContent = '';
+  }
 }

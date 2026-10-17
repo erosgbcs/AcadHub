@@ -442,6 +442,20 @@
     <i class="fa-solid fa-arrow-left mr-2"></i>Back to Generator
   </button>
 
+<div id="aiSignInBanner" class="shared-strip hidden" style="background:linear-gradient(135deg,rgba(99,102,241,0.10),var(--bg-card) 60%);border-color:rgba(99,102,241,0.28);">
+  <div class="shared-strip-icon" style="background:rgba(99,102,241,0.18);color:#a5b4fc;">
+    <i class="fa-solid fa-lock"></i>
+  </div>
+  <div class="shared-strip-body">
+    <p class="text-xs font-bold">Sign in to unlock AI</p>
+    <p class="text-[11px] opacity-60 mt-0.5">Generate reviewers, tests, summaries, and share links — all free.</p>
+  </div>
+  <button onclick="openAuthModal()" class="shared-strip-save" style="background:var(--accent);">
+    <i class="fa-solid fa-right-to-bracket"></i>
+    <span class="hidden sm:inline">Sign in</span>
+  </button>
+</div>
+
 <div id="sharedBanner" class="hidden shared-strip">
   <div class="shared-strip-icon">
     <i class="fa-solid fa-share-nodes"></i>
@@ -618,6 +632,7 @@
   </div>
   <p class="text-center text-[10px] opacity-40 mt-2">
     Powered by <strong>Gemini</strong> · auto-fallback to Grok
+    <span id="usageHint" class="ml-2 font-semibold"></span>
   </p>
 
 
@@ -1558,7 +1573,8 @@
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i><span id="authTitle">Login</span></h3>
       </div>
-      <p class="text-xs opacity-70 mb-4" id="authSubtitle">Login to save your data and access all features.</p>
+      <p class="text-xs opacity-70 mb-3" id="authSubtitle">Login to save your data and access all features.</p>
+      <p id="authReason" class="hidden text-xs mb-3 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300"></p>
       <div class="space-y-3">
         <input type="email" id="authEmail" placeholder="Email" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
         <input type="password" id="authPassword" placeholder="Password" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
@@ -1641,6 +1657,22 @@
         </button>
       </div>
 
+      <!-- Volume slider -->
+      <div class="pt-1 pb-2">
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-semibold">Volume</label>
+          <span id="settingsVolumeValue" class="text-[10px] opacity-60 font-mono">100%</span>
+        </div>
+        <input
+          type="range"
+          id="settingsVolumeSlider"
+          min="0" max="100" step="5" value="100"
+          oninput="onVolumeSliderChange(this.value)"
+          onchange="onVolumeSliderCommit(this.value)"
+          aria-label="Sound effects volume"
+        />
+      </div>
+
       <!-- Touch particles toggle -->
       <div class="flex items-center justify-between pt-2 pb-2">
         <div class="flex items-center gap-2">
@@ -1659,6 +1691,12 @@
       <button onclick="resetThemeOverrides()"
               class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold border border-white/10">
         <i class="fa-solid fa-rotate-left mr-1"></i> Reset theme overrides
+      </button>
+
+      <!-- Replay tutorial -->
+      <button onclick="Tour.restart()"
+              class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold border border-white/10">
+        <i class="fa-solid fa-circle-question mr-1"></i> Replay tutorial
       </button>
 <!-- ===== AI Provider info (read-only) ===== -->
 <div class="pt-4 border-t border-white/10">
@@ -1853,6 +1891,7 @@
   <script src="sounds.js"></script>
   <script src="particles.js"></script>
   <script src="script.js"></script>
+  <script src="tour.js"></script>
 
   <!-- ===== SERVICE WORKER (offline support) ===== -->
   <script>

@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Admin check ----
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email == 'gabrielagsamosam@gmail.com';
+    }
+
+    function isOwner(uid) {
+      return request.auth != null
+          && request.auth.uid == uid;
+    }
+
+    // ---- User tree ----
+    match /users/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+
+      // Usage: server (Admin SDK) writes only.
+      match /usage_daily/{day} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+      match /usage_events/{eventId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+      match /usage_meta/{docId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if isAdmin();
+      }
+
+      // Existing subcollections: unchanged behavior
+      match /{sub}/{docId} {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+    }
+
+    // ---- Shared reviewers ----
+    match /shared_reviewers/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.author.uid;
+    }
+
+    // ---- Evaluations ----
+    match /evaluations/{docId} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null;
+    }
+  }
+}
