@@ -1980,7 +1980,7 @@ function renderNotesList() {
     const q = currentNoteSearchQuery.toLowerCase();
     filtered = filtered.filter(n =>
       (n.title || '').toLowerCase().includes(q) ||
-      (n.body || '').toLowerCase().includes(q)
+      noteBodyToText(n.body).toLowerCase().includes(q)
     );
   }
 
@@ -2020,7 +2020,7 @@ function renderNotesList() {
       ? `<span class="note-subject-pill" style="background:${subject.color}22; color:${subject.color}; border:1px solid ${subject.color}55;"><span class="note-subject-dot" style="background:${subject.color};"></span>${escapeHtml(subject.name)}</span>`
       : `<span class="note-subject-pill" style="background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);"><span class="note-subject-dot" style="background:#94a3b8;"></span>Uncategorized</span>`;
 
-    const preview = (note.body || '').trim() || 'Empty note';
+    const preview = noteBodyToText(note.body).trim() || 'Empty note';
     const pinIcon = note.pinned ? '<i class="fa-solid fa-thumbtack text-amber-400 text-xs mr-1.5"></i>' : '';
 
     return `
@@ -2041,6 +2041,35 @@ function renderNotesList() {
       </article>
     `;
   }).join('');
+}
+
+function noteBodyToText(html) {
+  if (!html) return '';
+  const template = document.createElement('template');
+  template.innerHTML = sanitizeNoteHtml(html);
+  return (template.content.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function sanitizeNoteHtml(html) {
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  const allowed = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'P', 'DIV']);
+
+  const clean = (node) => {
+    [...node.childNodes].forEach(child => {
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      if (!allowed.has(child.tagName)) {
+        while (child.firstChild) child.parentNode.insertBefore(child.firstChild, child);
+        child.remove();
+        return;
+      }
+      [...child.attributes].forEach(attr => child.removeAttribute(attr.name));
+      clean(child);
+    });
+  };
+
+  clean(template.content);
+  return template.innerHTML;
 }
 
 function renderSubjectFilters() {
@@ -2098,10 +2127,13 @@ function openNoteEditor(noteId) {
   currentNoteIsPinned = note?.pinned || false;
 
   document.getElementById('noteTitleInput').value = note?.title || '';
-  document.getElementById('noteBodyInput').value = note?.body || '';
+  const bodyEl = document.getElementById('noteBodyInput');
+  bodyEl.innerHTML = note?.body && /<\/?(b|strong|i|em|u|br|p|div)\b/i.test(note.body)
+    ? sanitizeNoteHtml(note.body)
+    : escapeHtml(note?.body || '').replace(/\n/g, '<br>');
 
   noteLastSavedSnapshot = JSON.stringify({
-    title: note?.title || '', body: note?.body || '',
+    title: note?.title || '', body: sanitizeNoteHtml(bodyEl.innerHTML),
     subjectId: currentNoteSubjectId, pinned: currentNoteIsPinned
   });
 
@@ -2133,9 +2165,16 @@ function onNoteEditorInput() {
 }
 
 function updateNoteWordCount() {
-  const body = document.getElementById('noteBodyInput').value;
+  const body = document.getElementById('noteBodyInput').innerText;
   const words = body.trim() ? body.trim().split(/\s+/).length : 0;
   document.getElementById('noteWordCount').textContent = `${words} words · ${body.length} characters`;
+}
+
+function formatNoteText(command) {
+  const bodyEl = document.getElementById('noteBodyInput');
+  bodyEl.focus();
+  document.execCommand(command, false);
+  onNoteEditorInput();
 }
 
 function setNoteSaveStatus(text) {
@@ -2146,7 +2185,7 @@ function setNoteSaveStatus(text) {
 async function autosaveNote() {
   if (!currentEditingNoteId) return;
   const title = document.getElementById('noteTitleInput').value.trim();
-  const body = document.getElementById('noteBodyInput').value;
+  const body = sanitizeNoteHtml(document.getElementById('noteBodyInput').innerHTML);
   const snapshot = JSON.stringify({ title, body, subjectId: currentNoteSubjectId, pinned: currentNoteIsPinned });
   if (snapshot === noteLastSavedSnapshot) return;
   await doSaveNote({ title, body, silent: true });
@@ -2193,7 +2232,7 @@ if (isNew) {
 
 async function saveNoteNow() {
   const title = document.getElementById('noteTitleInput').value.trim();
-  const body = document.getElementById('noteBodyInput').value;
+  const body = sanitizeNoteHtml(document.getElementById('noteBodyInput').innerHTML);
   if (!title && !body) { closeNoteEditor(); return; }
   clearTimeout(noteAutosaveTimer);
   await doSaveNote({ title, body, silent: false });
@@ -2202,7 +2241,7 @@ async function saveNoteNow() {
 
 function closeNoteEditor() {
   const title = document.getElementById('noteTitleInput').value.trim();
-  const body = document.getElementById('noteBodyInput').value;
+  const body = sanitizeNoteHtml(document.getElementById('noteBodyInput').innerHTML);
   const snapshot = JSON.stringify({ title, body, subjectId: currentNoteSubjectId, pinned: currentNoteIsPinned });
   if (snapshot !== noteLastSavedSnapshot && (title || body)) {
     if (!confirm('You have unsaved changes. Discard them?')) return;
@@ -2486,7 +2525,7 @@ async function actionShareNote() {
   if (!id) return;
   const note = getNotes().find(n => n.id === id);
   if (!note) return;
-  const text = `${note.title || 'Note'}\n\n${note.body || ''}`;
+  const text = `${note.title || 'Note'}\n\n${noteBodyToText(note.body)}`;
   closeNoteActionSheet();
 
   if (navigator.share) {

@@ -994,6 +994,46 @@ html.light #notePinBtn.active {
   line-height: 1.65;
 }
 
+.note-format-toolbar {
+  display: flex;
+  gap: 0.25rem;
+}
+.note-format-toolbar button {
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.45rem;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  cursor: pointer;
+  line-height: 1;
+}
+.note-format-toolbar button:hover,
+.note-format-toolbar button:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
+}
+.note-editor {
+  min-height: 40vh;
+  padding: 0.7rem 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 0.75rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+.note-editor:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+.note-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
 #noteSearchInput::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 /* ============ FLASHCARD STUDY MODE ============ */

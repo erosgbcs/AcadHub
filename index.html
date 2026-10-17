@@ -1347,8 +1347,15 @@
         </div>
       </div>
       <div class="flex-1 flex flex-col">
-        <label class="block text-xs font-semibold mb-1">Body</label>
-        <textarea id="noteBodyInput" placeholder="Start writing..." class="text-sm flex-1 resize-none" style="min-height:40vh;"></textarea>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-semibold" for="noteBodyInput">Body</label>
+          <div class="note-format-toolbar" role="toolbar" aria-label="Text formatting">
+            <button type="button" onclick="formatNoteText('bold')" aria-label="Bold" title="Bold"><strong>B</strong></button>
+            <button type="button" onclick="formatNoteText('italic')" aria-label="Italic" title="Italic"><em>I</em></button>
+            <button type="button" onclick="formatNoteText('underline')" aria-label="Underline" title="Underline"><u>U</u></button>
+          </div>
+        </div>
+        <div id="noteBodyInput" class="note-editor text-sm flex-1" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note body" data-placeholder="Start writing..."></div>
       </div>
     </div>
     <div class="p-3 border-t border-white/10 flex items-center justify-between text-xs opacity-60 shrink-0">
