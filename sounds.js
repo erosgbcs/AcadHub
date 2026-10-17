@@ -8,7 +8,7 @@ const SoundEngine = (function () {
   let lastTapAt = 0;
 
   const LS_KEY = 'acadhub_sounds_enabled';
-  const MASTER_VOLUME = 0.28;
+  const MASTER_VOLUME = 1.5;
   const TAP_COOLDOWN_MS = 90;
 
   // ---- Load preference ----
@@ -176,7 +176,18 @@ const SoundEngine = (function () {
       if (now - lastTapAt < TAP_COOLDOWN_MS) return;
       lastTapAt = now;
     }
-    try { fn(); } catch (e) { console.warn('Sound play failed:', name, e); }
+    const c = ensureCtx();
+    if (!c) return;
+
+    const playNow = () => {
+      try { fn(); } catch (e) { console.warn('Sound play failed:', name, e); }
+    };
+
+    if (c.state === 'suspended') {
+      c.resume().then(playNow).catch(() => {});
+      return;
+    }
+    playNow();
   }
 
   function setEnabled(val) {
