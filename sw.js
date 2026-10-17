@@ -1,8 +1,8 @@
-const CACHE_NAME = 'acadhub-v21';
+const CACHE_NAME = 'acadhub-v22';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './style.css',
+  './style.css?v=2',
   './tailwind-build.css',
   './animations.js',
   './sounds.js',

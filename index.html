@@ -19,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2" />
 </head>
 <body>
 <!-- ===== SPLASH / LOADING SCREEN ===== -->
@@ -1120,7 +1120,7 @@
         <div class="glass-card">
           <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4"><i class="fa-solid fa-bolt mr-2"></i>Test My Limits</h2>
           <p class="text-xs opacity-70 mb-3 sm:mb-4">Answer questions based on your notes. Choose difficulty and see how well you know the material.</p>
-          <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
             <button onclick="setDifficulty('easy')" id="diffEasy" class="py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 transition btn-hover" data-tooltip="8 questions, no timer">
               <i class="fa-solid fa-circle text-emerald-400 mr-1"></i>Easy
             </button>
@@ -1131,6 +1131,24 @@
               <i class="fa-solid fa-circle text-rose-400 mr-1"></i>Hard
             </button>
           </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <label class="text-xs font-semibold">Questions
+              <input id="testQuestionCount" type="number" min="1" max="30" value="8" class="mt-1 text-sm" aria-label="Number of test questions" />
+            </label>
+            <label class="text-xs font-semibold">Topic (optional)
+              <input id="testTopic" type="text" placeholder="e.g. cell biology" class="mt-1 text-sm" aria-label="Test topic" />
+            </label>
+          </div>
+          <fieldset class="mb-4">
+            <legend class="text-xs font-semibold mb-2">Question types</legend>
+            <div class="test-type-picker" role="group" aria-label="Question types">
+              <label><input type="checkbox" name="testType" value="multiplechoice" checked /> Multiple choice</label>
+              <label><input type="checkbox" name="testType" value="truefalse" /> True/False</label>
+              <label><input type="checkbox" name="testType" value="identification" /> Short answer</label>
+              <label><input type="checkbox" name="testType" value="fillblank" /> Fill in the blank</label>
+              <label><input type="checkbox" name="testType" value="matching" /> Matching</label>
+            </div>
+          </fieldset>
           <div class="mb-3 sm:mb-4">
             <label class="block text-xs font-semibold mb-1">Notes</label>
             <textarea id="testNotes" rows="4" placeholder="Paste your study notes here..." class="text-sm"></textarea>
@@ -1168,18 +1186,27 @@
           <button id="startTestBtn" onclick="startTest()" class="btn-primary w-full text-sm sm:text-base btn-hover">
             <i class="fa-solid fa-play mr-2"></i>Start Test
           </button>
+          <button id="resumeTestBtn" onclick="resumeTestAttempt()" class="hidden w-full mt-2 test-secondary-btn" type="button">
+            <i class="fa-solid fa-clock-rotate-left mr-2"></i>Resume saved test
+          </button>
 
           <div id="testQuizContainer" class="hidden mt-4 sm:mt-6 space-y-3 sm:space-y-4">
             <div class="flex items-center justify-between">
-              <span class="text-sm font-semibold" id="questionCounter">Question 1 / 10</span>
-              <span class="text-sm font-mono text-amber-400 hidden" id="timerDisplay">⏱ 30s</span>
+              <span class="text-sm font-semibold" id="questionCounter" aria-live="polite">Question 1 / 10</span>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-mono text-amber-400 hidden" id="timerDisplay" aria-live="polite">30s</span>
+                <button id="pauseTestBtn" type="button" class="hidden test-inline-btn" onclick="toggleTestPause()" aria-label="Pause test">Pause</button>
+              </div>
             </div>
             <div id="testQuestionCard" class="bg-white/5 border border-white/10 p-4 sm:p-6 rounded-xl">
               <p class="text-base sm:text-lg font-semibold mb-3 sm:mb-4" id="testQuestionText"></p>
               <div id="testOptionsContainer" class="space-y-2 sm:space-y-3"></div>
             </div>
             <div class="flex justify-end">
-              <button id="nextTestBtn" class="hidden px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition btn-hover" onclick="nextTestQuestion()">Next <i class="fa-solid fa-arrow-right ml-2"></i></button>
+              <div class="flex gap-2 w-full sm:w-auto">
+                <button id="submitTestBtn" type="button" class="hidden test-secondary-btn" onclick="submitTestEarly()">Submit</button>
+                <button id="nextTestBtn" class="hidden px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition btn-hover" onclick="nextTestQuestion()">Next <i class="fa-solid fa-arrow-right ml-2"></i></button>
+              </div>
             </div>
           </div>
 
@@ -1194,9 +1221,19 @@
             <button onclick="showReview()" id="reviewBtn" class="hidden mt-2 px-4 sm:px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition btn-hover">
               <i class="fa-solid fa-list-check mr-2"></i>Review Answers
             </button>
+            <button onclick="retryMissedQuestions()" id="retryMissedBtn" class="hidden mt-2 px-4 sm:px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm rounded-lg transition btn-hover">
+              <i class="fa-solid fa-bullseye mr-2"></i>Retry Missed
+            </button>
+            <button onclick="practiceTest()" id="practiceTestBtn" class="hidden mt-2 px-4 sm:px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded-lg transition btn-hover">
+              <i class="fa-solid fa-dumbbell mr-2"></i>Practice Again
+            </button>
+            <button onclick="toggleTestHistory()" class="mt-2 px-4 sm:px-6 py-2 bg-white/10 hover:bg-white/20 text-sm rounded-lg transition btn-hover">
+              <i class="fa-solid fa-chart-line mr-2"></i>History
+            </button>
           </div>
 
           <div id="reviewContainer" class="hidden mt-4 sm:mt-6 space-y-2"></div>
+          <div id="testHistoryContainer" class="hidden mt-4 sm:mt-6 text-left"></div>
         </div>
       </div>
 

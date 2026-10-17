@@ -191,7 +191,72 @@ html.light .tab-inactive {
 
 .quiz-option {
   cursor: pointer;
+  min-height: 44px;
+  overflow-wrap: anywhere;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+#viewTest fieldset {
+  min-width: 0;
+}
+#viewTest .test-type-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+  width: 100%;
+  min-width: 0;
+}
+.test-type-picker label,
+.test-inline-btn,
+.test-secondary-btn {
+  min-height: 44px;
+}
+.test-type-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-card);
+  border-radius: 0.65rem;
+  background: rgba(255,255,255,0.05);
+  font-size: 0.75rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.test-inline-btn,
+.test-secondary-btn {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border-card);
+  border-radius: 0.65rem;
+  background: rgba(255,255,255,0.08);
+  font-size: 0.8rem;
+}
+.test-secondary-btn { width: 100%; }
+.test-paused { opacity: 0.65; }
+.test-history-panel {
+  padding: 0.9rem;
+  border: 1px solid var(--border-card);
+  border-radius: 0.75rem;
+  background: rgba(255,255,255,0.04);
+}
+.test-history-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 0.75rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--border-card);
+  font-size: 0.75rem;
+}
+.test-history-row span:last-child { grid-column: 1 / -1; opacity: 0.6; }
+:is(.test-inline-btn, .test-secondary-btn, #testOptionsContainer button, #testOptionsContainer select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (min-width: 640px) {
+  #viewTest .test-type-picker {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .quiz-option:hover {
   background: rgba(99, 102, 241, 0.08);

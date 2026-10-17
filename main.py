@@ -153,6 +153,10 @@ def build_materials(text: str, quiz_types: dict, flashcard_count: int) -> dict:
         term = terms[i % len(terms)] if terms else "concept"
         quiz.append({"type": "identification", "question": ident_stems[i % len(ident_stems)].format(term=term.title()), "answer": term.title()})
 
+    for i in range(quiz_types.get("fillblank", 0)):
+        term = terms[i % len(terms)] if terms else "concept"
+        quiz.append({"type": "fillblank", "question": f"Fill in the blank: ________ refers to {term.title()}.", "answer": term.title()})
+
     enum_stems = [
         ("List three important concepts from the notes.", 3),
         ("Enumerate two key terms discussed in the material.", 2),
@@ -162,6 +166,15 @@ def build_materials(text: str, quiz_types: dict, flashcard_count: int) -> dict:
         stem, n = enum_stems[i % len(enum_stems)]
         items = ", ".join(terms[(i + o) % len(terms)] for o in range(n)) if terms else "the main ideas"
         quiz.append({"type": "enumeration", "question": stem, "answer": items})
+
+    for i in range(quiz_types.get("matching", 0)):
+        match_terms = [terms[(i + offset) % len(terms)].title() for offset in range(min(4, len(terms)))] if terms else ["concept"]
+        quiz.append({
+            "type": "matching",
+            "question": "Match each concept with its definition.",
+            "pairs": [{"left": term, "right": f"Definition of {term}"} for term in match_terms],
+            "answer": [f"Definition of {term}" for term in match_terms],
+        })
 
     distractor_pool = [t.title() for t in terms if len(t) >= 4]
     fb = ["An unrelated concept", "A secondary detail", "None of these"]
@@ -481,10 +494,30 @@ async def generate_test(
     file: list[UploadFile] = File(default=[]),
     difficulty: str = Form("easy"),
     use_internet: bool = Form(False),
+    question_count: int | None = Form(None),
+    question_types: str | None = Form(None),
+    topic: str | None = Form(None),
 ) -> dict:
     text = await read_notes(notes, file)
-    count = {"easy": 8, "medium": 15, "hard": 26}.get(difficulty, 8)
-    materials = build_materials(text, {"multiplechoice": count}, 1)
+    default_count = {"easy": 8, "medium": 15, "hard": 26}.get(difficulty, 8)
+    count = max(1, min(question_count or default_count, 30))
+    requested_types = []
+    if question_types:
+        try:
+            requested_types = [str(item).lower() for item in json.loads(question_types)]
+        except (TypeError, json.JSONDecodeError):
+            requested_types = []
+    supported_types = [item for item in requested_types if item in {"multiplechoice", "truefalse", "identification", "fillblank", "enumeration", "matching"}]
+    if not supported_types:
+        supported_types = ["multiplechoice"]
+    base, remainder = divmod(count, len(supported_types))
+    quiz_types = {
+        question_type: base + (1 if index < remainder else 0)
+        for index, question_type in enumerate(supported_types)
+    }
+    if topic:
+        text = f"Focus the questions on this topic: {topic}\n\n{text}"
+    materials = build_materials(text, quiz_types, 1)
     return {"questions": materials["quiz"]}
 
 @app.post("/api/flashcards")

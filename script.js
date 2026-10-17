@@ -177,6 +177,18 @@ let testQuestions = [];
 let currentQuestionIndex = 0;
 let testScore = 0;
 let testDifficulty = 'easy';
+let testTimer = null;
+let testSecondsRemaining = 0;
+let testQuestionStartedAt = 0;
+let testPaused = false;
+let testElapsedSeconds = 0;
+let testMode = 'standard';
+let testQuestionTimes = [];
+let testHistory = [];
+let testKeyboardBound = false;
+const TEST_ATTEMPT_LS = 'acadhub_test_attempt';
+const TEST_HISTORY_LS = 'acadhub_test_history';
+const TEST_TIME_LIMITS = { easy: 0, medium: 20, hard: 15 };
 let currentResults = null;
 let lastQuickSummary = null;
 let offlineQueue = [];
@@ -3481,8 +3493,8 @@ function setDifficulty(difficulty) {
 
 async function startTest() {
   const notes = document.getElementById('testNotes').value.trim();
-const selectedFiles = fileStore.test;
-const hasFile = selectedFiles.length > 0;
+  const selectedFiles = fileStore.test;
+  const hasFile = selectedFiles.length > 0;
 
   
   if (!notes && !hasFile) {
@@ -3490,6 +3502,7 @@ const hasFile = selectedFiles.length > 0;
     return;
   }
 
+  testDifficulty = getAdaptiveDifficulty();
   const formData = new FormData();
 if (notes) formData.append('notes', notes);
 if (hasFile) {
@@ -3497,6 +3510,11 @@ if (hasFile) {
 }
   formData.append('difficulty', testDifficulty);
   formData.append('use_internet', document.getElementById('useTestInternet').checked);
+  formData.append('question_count', Math.max(1, Math.min(30, Number(document.getElementById('testQuestionCount').value) || 8)));
+  formData.append('topic', document.getElementById('testTopic').value.trim());
+  formData.append('question_types', JSON.stringify(
+    [...document.querySelectorAll('input[name="testType"]:checked')].map(input => input.value)
+  ));
 
   const startBtn = document.getElementById('startTestBtn');
   const originalText = startBtn.innerHTML;
@@ -3509,25 +3527,34 @@ if (hasFile) {
     testQuestions = (result.questions || []).map(q => {
       const options = q.options || [];
       let correctIndex = options.indexOf(q.answer);
+      const type = String(q.type || 'multiplechoice').toLowerCase();
       
-      if (q.type === 'truefalse') {
+      if (type === 'truefalse') {
         return {
-          question: q.question.replace(/^True or False: ["']?|["']?$/g, ''),
+          question: String(q.question || '').replace(/^True or False: ["']?|["']?$/g, ''),
           options: ['True', 'False'],
-          correct: q.answer === 'True' ? 0 : 1,
+          correct: String(q.answer).toLowerCase() === 'true' ? 0 : 1,
+          correctAnswer: String(q.answer),
           userAnswer: null,
-          type: q.type,
-          explanation: q.explanation || ''
+          isCorrect: false,
+          type,
+          explanation: q.explanation || '',
+          topic: q.topic || document.getElementById('testTopic').value.trim()
         };
       }
       
       return {
-        question: q.question,
+        question: String(q.question || 'Question'),
         options: options,
         correct: correctIndex,
+        correctAnswer: q.answer,
+        acceptableAnswers: q.acceptable_answers || [],
+        pairs: q.pairs || [],
         userAnswer: null,
-        type: q.type,
-        explanation: q.explanation || ''
+        isCorrect: false,
+        type,
+        explanation: q.explanation || '',
+        topic: q.topic || document.getElementById('testTopic').value.trim()
       };
     });
 
@@ -3537,6 +3564,12 @@ if (hasFile) {
 
     currentQuestionIndex = 0;
     testScore = 0;
+    testMode = 'standard';
+    testPaused = false;
+    testElapsedSeconds = 0;
+    testQuestionTimes = [];
+    loadTestHistory();
+    clearSavedTestAttempt();
 
     document.getElementById('startTestBtn').classList.add('hidden');
     document.getElementById('testQuizContainer').classList.remove('hidden');
@@ -3563,21 +3596,47 @@ function showTestQuestion() {
   counter.textContent = 'Question ' + (currentQuestionIndex + 1) + ' / ' + testQuestions.length;
   questionText.textContent = question.question;
   optionsContainer.innerHTML = '';
+  testQuestionStartedAt = Date.now();
+  startTestTimer();
 
   if (question.options && question.options.length > 0) {
     question.options.forEach((option, index) => {
       const button = document.createElement('button');
+      button.type = 'button';
       button.className = 'quiz-option w-full text-left px-4 py-3 bg-white/10 rounded-lg text-sm mt-2';
       button.textContent = String.fromCharCode(65 + index) + '. ' + option;
+      button.setAttribute('aria-label', `Answer ${String.fromCharCode(65 + index)}: ${option}`);
       button.onclick = () => answerTestQuestion(index);
       optionsContainer.appendChild(button);
     });
+  } else if (question.type === 'matching' && Array.isArray(question.pairs)) {
+    question.pairs.forEach((pair, index) => {
+      const row = document.createElement('label');
+      row.className = 'flex items-center gap-2 text-sm';
+      row.textContent = `${pair.left}:`;
+      const select = document.createElement('select');
+      select.className = 'flex-1 px-3 py-3 bg-white/10 rounded-lg';
+      select.dataset.matchIndex = index;
+      select.setAttribute('aria-label', `Match for ${pair.left}`);
+      select.innerHTML = '<option value="">Choose a match</option>' +
+        question.pairs.map(item => `<option value="${escapeHtml(item.right)}">${escapeHtml(item.right)}</option>`).join('');
+      row.appendChild(select);
+      optionsContainer.appendChild(row);
+    });
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'quiz-option w-full text-left px-4 py-3 bg-indigo-600 rounded-lg text-sm mt-2';
+    submitBtn.textContent = 'Submit Answer';
+    submitBtn.onclick = () => answerTestQuestion(
+      [...optionsContainer.querySelectorAll('select')].map(select => select.value)
+    );
+    optionsContainer.appendChild(submitBtn);
   } else {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Type your answer...';
     input.className = 'w-full px-4 py-3 bg-white/10 border border-white/10 rounded-lg text-sm mt-2';
     input.id = 'testAnswerInput';
+    input.setAttribute('aria-label', 'Type your answer');
     optionsContainer.appendChild(input);
     
     const submitBtn = document.createElement('button');
@@ -3588,19 +3647,107 @@ function showTestQuestion() {
       answerTestQuestion(userAnswer);
     };
     optionsContainer.appendChild(submitBtn);
+
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') submitBtn.click();
+    });
   }
 
   document.getElementById('nextTestBtn').classList.add('hidden');
+  const submitBtn = document.getElementById('submitTestBtn');
+  if (submitBtn) submitBtn.classList.remove('hidden');
+  bindTestKeyboard();
+}
+
+function bindTestKeyboard() {
+  if (testKeyboardBound) return;
+  testKeyboardBound = true;
+  document.addEventListener('keydown', event => {
+    const quiz = document.getElementById('testQuizContainer');
+    if (!quiz || quiz.classList.contains('hidden') || testPaused) return;
+    if (event.target.matches('input, textarea, select')) return;
+    const question = testQuestions[currentQuestionIndex];
+    if (!question) return;
+    if (!question.userAnswer && question.options?.length && /^[1-9]$/.test(event.key)) {
+      const index = Number(event.key) - 1;
+      if (index < question.options.length) answerTestQuestion(index);
+    } else if (event.key === 'Enter' && question.userAnswer !== null) {
+      event.preventDefault();
+      nextTestQuestion();
+    } else if (event.key === 'Escape') {
+      toggleTestPause();
+    }
+  });
+}
+
+function startTestTimer() {
+  clearInterval(testTimer);
+  const limit = TEST_TIME_LIMITS[testDifficulty] || 0;
+  const display = document.getElementById('timerDisplay');
+  const pauseBtn = document.getElementById('pauseTestBtn');
+  if (!limit) {
+    display.classList.add('hidden');
+    pauseBtn.classList.add('hidden');
+    return;
+  }
+  testSecondsRemaining = limit;
+  testPaused = false;
+  display.classList.remove('hidden');
+  pauseBtn.classList.remove('hidden');
+  updateTestTimerUI();
+  testTimer = setInterval(() => {
+    if (testPaused) return;
+    testSecondsRemaining--;
+    testElapsedSeconds++;
+    updateTestTimerUI();
+    if (testSecondsRemaining <= 0) {
+      clearInterval(testTimer);
+      answerTestQuestion(null);
+    }
+  }, 1000);
+}
+
+function updateTestTimerUI() {
+  const display = document.getElementById('timerDisplay');
+  const pauseBtn = document.getElementById('pauseTestBtn');
+  if (display) display.textContent = `${testPaused ? 'Paused · ' : ''}${testSecondsRemaining}s`;
+  if (pauseBtn) {
+    pauseBtn.textContent = testPaused ? 'Resume' : 'Pause';
+    pauseBtn.setAttribute('aria-label', testPaused ? 'Resume test' : 'Pause test');
+  }
+}
+
+function toggleTestPause() {
+  testPaused = !testPaused;
+  updateTestTimerUI();
+  const card = document.getElementById('testQuestionCard');
+  if (card) card.classList.toggle('test-paused', testPaused);
+}
+
+function submitTestEarly() {
+  const question = testQuestions[currentQuestionIndex];
+  if (!question || question.userAnswer !== null) return;
+  if (question.options?.length) {
+    showNotification('Choose an answer first.', 'warning');
+    return;
+  }
+  const input = document.getElementById('testAnswerInput');
+  if (input) answerTestQuestion(input.value);
 }
 
 function answerTestQuestion(userAnswer) {
   const question = testQuestions[currentQuestionIndex];
+
+  if (question.userAnswer !== null) return;
+  const timedOut = userAnswer === null;
+  if (timedOut) userAnswer = question.options?.length ? -1 : '';
+  clearInterval(testTimer);
+  testQuestionTimes[currentQuestionIndex] = Math.max(0, Math.round((Date.now() - testQuestionStartedAt) / 1000));
   
   if (question.options && question.options.length > 0) {
     question.userAnswer = userAnswer;
-    if (userAnswer === question.correct) {
-      testScore++;
-    }
+    question.isCorrect = userAnswer === question.correct;
+    if (question.isCorrect) testScore++;
     
     const buttons = document.querySelectorAll('#testOptionsContainer .quiz-option');
     buttons.forEach((btn, index) => {
@@ -3613,19 +3760,155 @@ function answerTestQuestion(userAnswer) {
         btn.classList.add('bg-rose-500/20', 'text-rose-400');
       }
     });
+  } else if (question.type === 'matching') {
+    question.userAnswer = Array.isArray(userAnswer) ? userAnswer : [];
+    question.isCorrect = question.pairs.every((pair, index) => normalizeTestAnswer(question.userAnswer[index]) === normalizeTestAnswer(pair.right));
+    if (question.isCorrect) testScore++;
+    document.querySelectorAll('#testOptionsContainer select, #testOptionsContainer .quiz-option').forEach(control => {
+      control.disabled = true;
+    });
   } else {
     question.userAnswer = userAnswer;
-    if (userAnswer && userAnswer.trim().length > 0) {
-      testScore++;
-    }
+    const expected = normalizeTestAnswer(question.correctAnswer);
+    const accepted = [question.correctAnswer, ...(question.acceptableAnswers || [])]
+      .map(normalizeTestAnswer).filter(Boolean);
+    question.isCorrect = Boolean(expected) && accepted.includes(normalizeTestAnswer(userAnswer));
+    if (question.isCorrect) testScore++;
+
+    const input = document.getElementById('testAnswerInput');
+    const submitBtn = document.querySelector('#testOptionsContainer .quiz-option');
+    if (input) input.disabled = true;
+    if (submitBtn) submitBtn.disabled = true;
   }
 
   const nextBtn = document.getElementById('nextTestBtn');
   nextBtn.classList.remove('hidden');
   nextBtn.textContent = (currentQuestionIndex === testQuestions.length - 1) ? 'Finish' : 'Next';
+  document.getElementById('submitTestBtn')?.classList.add('hidden');
+  saveTestAttempt();
+}
+
+function normalizeTestAnswer(answer) {
+  return String(answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function saveTestAttempt() {
+  if (!testQuestions.length || testMode === 'retry') return;
+  safeLocalStorageSet(TEST_ATTEMPT_LS, {
+    questions: testQuestions,
+    currentQuestionIndex,
+    testScore,
+    testDifficulty,
+    testElapsedSeconds,
+    testQuestionTimes,
+    testMode,
+    savedAt: new Date().toISOString()
+  });
+}
+
+function clearSavedTestAttempt() {
+  try { localStorage.removeItem(TEST_ATTEMPT_LS); } catch (err) { console.warn('Could not clear test attempt:', err); }
+  document.getElementById('resumeTestBtn')?.classList.add('hidden');
+}
+
+function restoreTestAttemptPrompt() {
+  const attempt = safeLocalStorageGet(TEST_ATTEMPT_LS, null);
+  const resumeBtn = document.getElementById('resumeTestBtn');
+  if (resumeBtn) resumeBtn.classList.toggle('hidden', !attempt?.questions?.length);
+}
+
+function resumeTestAttempt() {
+  const attempt = safeLocalStorageGet(TEST_ATTEMPT_LS, null);
+  if (!attempt?.questions?.length) return;
+  testQuestions = attempt.questions;
+  currentQuestionIndex = attempt.currentQuestionIndex || 0;
+  testScore = attempt.testScore || 0;
+  testDifficulty = attempt.testDifficulty || 'easy';
+  testElapsedSeconds = attempt.testElapsedSeconds || 0;
+  testQuestionTimes = attempt.testQuestionTimes || [];
+  testMode = attempt.testMode || 'standard';
+  document.getElementById('startTestBtn').classList.add('hidden');
+  document.getElementById('resumeTestBtn').classList.add('hidden');
+  document.getElementById('testQuizContainer').classList.remove('hidden');
+  document.getElementById('testResultsContainer').classList.add('hidden');
+  showTestQuestion();
+}
+
+function loadTestHistory() {
+  testHistory = safeLocalStorageGet(TEST_HISTORY_LS, []);
+}
+
+function saveCompletedTest({ percentage }) {
+  loadTestHistory();
+  const topic = document.getElementById('testTopic')?.value.trim() || 'General';
+  const typeStats = {};
+  testQuestions.forEach(question => {
+    const key = question.type || 'multiplechoice';
+    if (!typeStats[key]) typeStats[key] = { correct: 0, total: 0 };
+    typeStats[key].total++;
+    if (question.isCorrect) typeStats[key].correct++;
+  });
+  testHistory.unshift({
+    date: new Date().toISOString(),
+    score: testScore,
+    total: testQuestions.length,
+    percentage,
+    difficulty: testDifficulty,
+    topic,
+    durationSeconds: testElapsedSeconds + testQuestionTimes.reduce((sum, time) => sum + time, 0),
+    typeStats,
+    weakTopics: testQuestions.filter(question => !question.isCorrect).map(question => question.topic || topic)
+  });
+  safeLocalStorageSet(TEST_HISTORY_LS, testHistory.slice(0, 20));
+  clearSavedTestAttempt();
+}
+
+function getAdaptiveDifficulty() {
+  loadTestHistory();
+  const recent = testHistory.slice(0, 3);
+  if (!recent.length) return testDifficulty;
+  const average = recent.reduce((sum, item) => sum + item.percentage, 0) / recent.length;
+  if (average >= 85 && testDifficulty !== 'hard') return testDifficulty === 'easy' ? 'medium' : 'hard';
+  if (average < 55 && testDifficulty !== 'easy') return testDifficulty === 'hard' ? 'medium' : 'easy';
+  return testDifficulty;
+}
+
+function retryMissedQuestions() {
+  const missed = testQuestions.filter(question => !question.isCorrect);
+  if (!missed.length) return;
+  testQuestions = missed.map(question => ({ ...question, userAnswer: null, isCorrect: false }));
+  currentQuestionIndex = 0;
+  testScore = 0;
+  testMode = 'retry';
+  testQuestionTimes = [];
+  document.getElementById('testResultsContainer').classList.add('hidden');
+  document.getElementById('reviewContainer').classList.add('hidden');
+  document.getElementById('testQuizContainer').classList.remove('hidden');
+  showTestQuestion();
+}
+
+function toggleTestHistory() {
+  const container = document.getElementById('testHistoryContainer');
+  if (!container) return;
+  container.classList.toggle('hidden');
+  if (container.classList.contains('hidden')) return;
+  loadTestHistory();
+  const attempts = testHistory.length;
+  const average = attempts ? Math.round(testHistory.reduce((sum, item) => sum + item.percentage, 0) / attempts) : 0;
+  const weakTopics = {};
+  testHistory.forEach(item => (item.weakTopics || []).forEach(topic => { weakTopics[topic] = (weakTopics[topic] || 0) + 1; }));
+  const weakest = Object.entries(weakTopics).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  container.innerHTML = `<div class="test-history-panel">
+    <p class="text-sm font-semibold">${attempts} attempt${attempts === 1 ? '' : 's'} · ${average}% average accuracy</p>
+    <p class="text-xs opacity-70 mt-1">Weak topics: ${weakest.length ? weakest.map(([topic, count]) => `${escapeHtml(topic)} (${count})`).join(', ') : 'Not enough data yet'}</p>
+    <div class="mt-3 space-y-2">${testHistory.slice(0, 5).map(item => `<div class="test-history-row">
+      <span>${new Date(item.date).toLocaleDateString()}</span><strong>${item.percentage}%</strong><span>${escapeHtml(item.difficulty)} · ${item.durationSeconds}s</span>
+    </div>`).join('')}</div>
+  </div>`;
 }
 
 function nextTestQuestion() {
+  if (testQuestions[currentQuestionIndex]?.userAnswer === null) return;
   currentQuestionIndex++;
 
   if (currentQuestionIndex < testQuestions.length) {
@@ -3636,6 +3919,7 @@ function nextTestQuestion() {
 }
 
 function showTestResults() {
+  clearInterval(testTimer);
   document.getElementById('testQuizContainer').classList.add('hidden');
   document.getElementById('testResultsContainer').classList.remove('hidden');
 
@@ -3645,12 +3929,16 @@ function showTestResults() {
 const percentage = Math.round((testScore / testQuestions.length) * 100);
 document.getElementById('testPercentage').textContent = percentage + '% ' + getGradeMessage(percentage);
 
+saveCompletedTest({ percentage });
+
 // XP: +20 for completing a test
 if (testQuestions.length > 0) {
   addXp(XP_REWARDS.test);
 }
 
 document.getElementById('reviewBtn').classList.remove('hidden');
+document.getElementById('retryMissedBtn').classList.toggle('hidden', testQuestions.every(question => question.isCorrect));
+  document.getElementById('practiceTestBtn').classList.remove('hidden');
 }
 
 function getGradeMessage(percentage) {
@@ -3660,8 +3948,22 @@ function getGradeMessage(percentage) {
   if (percentage >= 60) return 'Keep practicing! 📚';
   return 'Needs improvement. Don\'t give up! 🌟';
 }
+	
+function practiceTest() {
+  testQuestions = testQuestions.map(question => ({ ...question, userAnswer: null, isCorrect: false }));
+  currentQuestionIndex = 0;
+  testScore = 0;
+  testMode = 'practice';
+  testQuestionTimes = [];
+  document.getElementById('testResultsContainer').classList.add('hidden');
+  document.getElementById('reviewContainer').classList.add('hidden');
+  document.getElementById('testQuizContainer').classList.remove('hidden');
+  showTestQuestion();
+}
 
 function resetTest() {
+  clearInterval(testTimer);
+  clearSavedTestAttempt();
   document.getElementById('testResultsContainer').classList.add('hidden');
   document.getElementById('reviewContainer').classList.add('hidden');
   document.getElementById('startTestBtn').classList.remove('hidden');
@@ -3673,6 +3975,8 @@ clearSelectedFiles('test');
   testScore = 0;
   currentQuestionIndex = 0;
   testQuestions = [];
+  testMode = 'standard';
+  testQuestionTimes = [];
 }
 
 function showReview() {
@@ -3682,14 +3986,24 @@ function showReview() {
 
   testQuestions.forEach((question, index) => {
     const div = document.createElement('div');
-    const isCorrect = question.userAnswer === question.correct;
+    const isCorrect = question.isCorrect;
     div.className = 'review-item ' + (isCorrect ? 'correct' : 'incorrect');
+
+    const correctAnswer = question.options
+      ? question.options[question.correct]
+      : question.type === 'matching'
+        ? question.pairs.map(pair => pair.right).join(', ')
+      : question.correctAnswer || 'N/A';
+    const userAnswer = question.options
+      ? question.options[question.userAnswer] || 'No answer'
+      : question.userAnswer || 'No answer';
 
     div.innerHTML = `
       <p class="text-sm font-semibold">${index + 1}. ${question.question}</p>
       <p class="text-xs mt-1">
-        <span class="text-emerald-400">Correct: ${question.options ? question.options[question.correct] : 'N/A'}</span>
-        ${!isCorrect ? `<br><span class="text-rose-400">Your answer: ${question.options ? question.options[question.userAnswer] || 'No answer' : question.userAnswer || 'No answer'}</span>` : ''}
+        <span class="text-emerald-400">Correct: ${correctAnswer}</span>
+        ${!isCorrect ? `<br><span class="text-rose-400">Your answer: ${userAnswer}</span>` : ''}
+        ${question.explanation ? `<br><span class="opacity-70">Why: ${escapeHtml(question.explanation)}</span>` : ''}
       </p>
     `;
 
@@ -5188,6 +5502,8 @@ renderThemePresets();
   updateSavedCount();
   initQuickSummaryListeners();
   initAdvancedOptions();
+  loadTestHistory();
+  restoreTestAttemptPrompt();
 
   setTimeout(() => {
     enableTabButtons();
