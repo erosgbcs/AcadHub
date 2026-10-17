@@ -88,6 +88,53 @@
     .admin-gate button:hover { background: var(--accent2); }
     .admin-gate .err { color: #f87171; font-size: 0.8rem; margin-top: 0.5rem; min-height: 1.2em; }
     .admin-gate .signed-in { font-size: 0.85rem; opacity: 0.7; margin-bottom: 1rem; }
+
+    /* Mobile Responsiveness for Admin Dashboard */
+    @media (max-width: 640px) {
+      .admin-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        padding: 1rem 0.5rem;
+        border-bottom: 1px solid var(--border-card);
+        border-radius: 0;
+      }
+      .admin-row:hover { background: transparent; }
+      .admin-row.header { display: none; } /* Hide table headers on mobile */
+      
+      .admin-row .cell-email {
+        font-weight: 700;
+        width: 100%;
+        white-space: normal;
+        word-break: break-word;
+        font-size: 0.9rem;
+      }
+      
+      .admin-row .cell-num {
+        text-align: left;
+        font-size: 0.85rem;
+      }
+      
+      /* Add a label before the credit number on mobile */
+      .admin-row .cell-num::before {
+        content: 'Credits: ';
+        opacity: 0.6;
+        font-weight: normal;
+      }
+      
+      .admin-row .cell-actions {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: 0.5rem;
+      }
+      
+      .admin-row .cell-actions button {
+        flex: 1; /* Make the + Credits and Reset buttons stretch to fill the space */
+        padding: 0.5rem;
+        font-size: 0.8rem;
+      }
+    }
   </style>
 </head>
 <body>

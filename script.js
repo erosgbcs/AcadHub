@@ -5141,6 +5141,8 @@ async function handleAuth() {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value.trim();
   const errorEl = document.getElementById('authError');
+  const authBtn = document.querySelector('#authModal button.btn-primary');
+  const btnText = document.getElementById('authBtnText');
 
   errorEl.classList.add('hidden');
 
@@ -5148,6 +5150,13 @@ async function handleAuth() {
     errorEl.textContent = 'Please fill in all fields.';
     errorEl.classList.remove('hidden');
     return;
+  }
+
+  // Add loading state
+  if (authBtn) authBtn.disabled = true;
+  if (btnText) {
+    btnText.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>' + 
+      (isSignUpMode ? 'Signing Up...' : 'Logging In...');
   }
 
   try {
@@ -5187,6 +5196,10 @@ async function handleAuth() {
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove('hidden');
+  } finally {
+    // Restore button state (even if it failed)
+    if (authBtn) authBtn.disabled = false;
+    updateAuthUI(); // This function automatically resets the button text to "Login" or "Sign Up"
   }
 }
 
