@@ -5276,6 +5276,21 @@ if (_logoutBtn) _logoutBtn.classList.remove('hidden');
   // 🔥 Run migration to fix old Firestore document IDs
   await migrateFirestoreData(user);
 
+// NEW: Listen for real-time credit notifications
+db.collection('users').doc(user.uid).collection('notifications')
+  .where('read', '==', false)
+  .onSnapshot(snap => {
+    snap.docChanges().forEach(change => {
+      if (change.type === 'added') {
+        const data = change.doc.data();
+        // Show the notification to the user
+        showNotification(data.message, 'success');
+        // Mark it as read so it doesn't show up again
+        change.doc.ref.update({ read: true }).catch(err => console.warn(err));
+      }
+    });
+  });
+
 // Load collections from Firestore
 const firestoreLibrary = await loadFromFirestore('library');
 

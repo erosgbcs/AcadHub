@@ -31,6 +31,12 @@ service cloud.firestore {
         allow write: if isAdmin();
       }
 
+      // NEW: Notifications (Admin creates, User reads/updates)
+      match /notifications/{docId} {
+        allow read, update, delete: if isOwner(uid) || isAdmin();
+        allow create: if isAdmin();
+      }
+
       // Existing subcollections: unchanged behavior
       match /{sub}/{docId} {
         allow read, write: if isOwner(uid) || isAdmin();

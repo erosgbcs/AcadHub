@@ -450,8 +450,24 @@
         const ref = db.collection('users').doc(uid);
         const doc = await ref.get();
         const currentCredits = doc.exists ? (doc.data().credits || 0) : 0;
-        await ref.set({ credits: currentCredits + amount }, { merge: true });
+        
+        // Use a batch to update credits AND send notification atomically
+        const batch = db.batch();
+        
+        // 1. Update Credits
+        batch.set(ref, { credits: currentCredits + amount }, { merge: true });
+        
+        // 2. Create Notification
+        const notifRef = ref.collection('notifications').doc();
+        batch.set(notifRef, {
+          message: `You have been credited with ${amount} AI credits by the Developer!`,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          read: false
+        });
+        
+        await batch.commit();
         await adminRefresh();
+        alert(`Successfully added ${amount} credits and sent a notification to the user.`);
       } catch (err) { alert('Failed: ' + err.message); }
     }
 
