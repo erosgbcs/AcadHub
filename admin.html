@@ -16,7 +16,7 @@
     .admin-kpi-value { font-size: 1.75rem; font-weight: 800; line-height: 1.1; margin-top: 0.25rem; }
     .admin-row {
       display: grid;
-      grid-template-columns: 1fr 5rem 5rem 5rem 6rem 9rem;
+      grid-template-columns: 1fr 6rem 12rem;
       gap: 0.5rem;
       align-items: center;
       padding: 0.7rem 0.85rem;
@@ -149,7 +149,7 @@
         <div class="admin-kpi-value" id="kpiWeek">0</div>
       </div>
       <div class="admin-kpi">
-        <div class="admin-kpi-label">At cap today</div>
+        <div class="admin-kpi-label">Out of Credits</div>
         <div class="admin-kpi-value" id="kpiAtCap">0</div>
       </div>
     </div>
@@ -166,10 +166,7 @@
 
       <div class="admin-row header">
         <span>User</span>
-        <span class="cell-num">Today</span>
-        <span class="cell-num">7d</span>
-        <span class="cell-num">All</span>
-        <span class="cell-num">Limit</span>
+        <span class="cell-num">Credits</span>
         <span class="cell-actions">Actions</span>
       </div>
 
@@ -308,7 +305,7 @@
           });
         });
 
-        // 2) For each user, fetch usage_daily for last 7 days (parallel)
+        // 2) For each user, fetch usage and credits
         const today = todayUTC();
         const weekAgo = dateMinusDays(7);
 
@@ -325,30 +322,25 @@
               weekCount += total;
               if (d.date === today) todayCount = total;
             });
-            return { ...u, today: todayCount, week: weekCount };
+            
+            const userDoc = await db.collection('users').doc(u.uid).get();
+            const credits = userDoc.exists ? (userDoc.data().credits !== undefined ? userDoc.data().credits : 10) : 10;
+            
+            return { ...u, today: todayCount, week: weekCount, credits };
           } catch (e) {
-            return { ...u, today: 0, week: 0 };
+            return { ...u, today: 0, week: 0, credits: 0 };
           }
         }));
 
-        // 3) Fetch all-time totals and meta (limit) per user
+        // 3) Fetch all-time totals per user
         const enriched = await Promise.all(usages.map(async u => {
-          let all = 0, customLimit = null;
-          try {
-            const meta = await db.collection('users').doc(u.uid)
-              .collection('usage_meta').doc('config').get();
-            if (meta.exists) {
-              const m = meta.data() || {};
-              if (typeof m.customLimit === 'number') customLimit = m.customLimit;
-            }
-          } catch (e) {}
-          // All-time: sum from all usage_daily docs (best-effort, cap reads)
+          let all = 0;
           try {
             const snap = await db.collection('users').doc(u.uid)
               .collection('usage_daily').get();
             snap.forEach(doc => { all += Number((doc.data() || {}).total || 0); });
           } catch (e) {}
-          return { ...u, all, customLimit, limit: customLimit || 20 };
+          return { ...u, all };
         }));
 
         allUsers = enriched;
@@ -364,11 +356,11 @@
       const today = todayUTC();
       const todayTotal = allUsers.reduce((s, u) => s + (u.today || 0), 0);
       const weekTotal  = allUsers.reduce((s, u) => s + (u.week  || 0), 0);
-      const atCap = allUsers.filter(u => (u.today || 0) >= (u.limit || 20)).length;
+      const zeroCredits = allUsers.filter(u => (u.credits || 0) <= 0).length;
       document.getElementById('kpiUsers').textContent = allUsers.length;
       document.getElementById('kpiToday').textContent = todayTotal;
       document.getElementById('kpiWeek').textContent  = weekTotal;
-      document.getElementById('kpiAtCap').textContent = atCap;
+      document.getElementById('kpiAtCap').textContent = zeroCredits;
     }
 
     function renderUsers() {
@@ -386,13 +378,10 @@
       rows.innerHTML = filtered.map(u => `
         <div class="admin-row" data-uid="${u.uid}">
           <span class="cell-email" title="${escapeHtml(u.email || u.uid)}">${escapeHtml(u.email || u.uid)}</span>
-          <span class="cell-num">${u.today || 0}</span>
-          <span class="cell-num">${u.week  || 0}</span>
-          <span class="cell-num">${u.all   || 0}</span>
-          <span class="cell-num">${u.limit || 20}</span>
+          <span class="cell-num font-bold ${u.credits <= 0 ? 'text-rose-400' : 'text-emerald-400'}">${u.credits}</span>
           <span class="cell-actions">
-            <button class="admin-btn" onclick="adminSetLimit('${u.uid}', ${u.limit || 20})">Limit</button>
-            <button class="admin-btn danger" onclick="adminResetToday('${u.uid}')">Reset</button>
+            <button class="admin-btn primary" onclick="adminAddCredits('${u.uid}', ${u.credits})">+ Credits</button>
+            <button class="admin-btn danger" onclick="adminResetCredits('${u.uid}')">Reset</button>
           </span>
         </div>
       `).join('');
@@ -403,37 +392,28 @@
     // ============================================================
     // ACTIONS
     // ============================================================
-    async function adminSetLimit(uid, current) {
-      const input = prompt(`Set custom daily limit for ${uid}\n(current: ${current}, default is 20, blank = clear)`, current);
+    async function adminAddCredits(uid, current) {
+      const input = prompt(`Add credits for ${uid}\n(Current: ${current})`, "50");
       if (input === null) return;
-      const trimmed = String(input).trim();
-      const ref = db.collection('users').doc(uid).collection('usage_meta').doc('config');
-      try {
-        if (!trimmed) {
-          await ref.delete();
-        } else {
-          const n = parseInt(trimmed, 10);
-          if (!Number.isFinite(n) || n < 0 || n > 100000) {
-            alert('Enter a number between 0 and 100000');
-            return;
-          }
-          await ref.set({ customLimit: n, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        }
-        await adminRefresh();
-      } catch (err) {
-        alert('Failed: ' + err.message);
+      const amount = parseInt(input, 10);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        alert('Enter a positive number'); return;
       }
+      try {
+        const ref = db.collection('users').doc(uid);
+        const doc = await ref.get();
+        const currentCredits = doc.exists ? (doc.data().credits || 0) : 0;
+        await ref.set({ credits: currentCredits + amount }, { merge: true });
+        await adminRefresh();
+      } catch (err) { alert('Failed: ' + err.message); }
     }
 
-    async function adminResetToday(uid) {
-      if (!confirm(`Reset today's counter for ${uid}?`)) return;
-      const day = todayUTC();
+    async function adminResetCredits(uid) {
+      if (!confirm(`Set credits to 0 for ${uid}?`)) return;
       try {
-        await db.collection('users').doc(uid).collection('usage_daily').doc(day).delete();
+        await db.collection('users').doc(uid).set({ credits: 0 }, { merge: true });
         await adminRefresh();
-      } catch (err) {
-        alert('Failed: ' + err.message);
-      }
+      } catch (err) { alert('Failed: ' + err.message); }
     }
 
     function escapeHtml(s) {

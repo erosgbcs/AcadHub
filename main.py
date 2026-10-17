@@ -141,19 +141,18 @@ def _resolve_identity(request: Request) -> tuple[str, str]:
 
 def _get_limit_for(uid: str, email: str = "") -> int:
     if not _FB_READY or not uid:
-        return DEFAULT_DAILY_LIMIT
+        return 0
     if email and email.lower() == ADMIN_EMAIL:
-        return 10**9  # effectively unlimited
+        return 10**9  # Admin has infinite credits
     try:
-        snap = _meta_doc_ref(uid).get()
+        # Read the "credits" field from the user's main document
+        snap = _DB.collection("users").doc(uid).get()
         if snap.exists:
             data = snap.to_dict() or {}
-            cl = data.get("customLimit")
-            if isinstance(cl, int) and cl > 0:
-                return cl
+            return int(data.get("credits", 10)) # Default to 10 if field is missing
     except Exception as exc:
-        print(f"[usage] meta read failed: {exc}")
-    return DEFAULT_DAILY_LIMIT
+        print(f"[credits] read failed: {exc}")
+    return 0
 
 
 def _get_used_today(uid: str) -> int:
@@ -170,45 +169,40 @@ def _get_used_today(uid: str) -> int:
         return 0
 
 
-def check_usage(request: Request, kind: str) -> tuple[str, str, int, int]:
-    """Raise 429 if over limit. Return (uid, email, used, limit)."""
+def check_usage(request: Request, kind: str) -> tuple[str, str, int]:
+    """Raise 402 if out of credits. Return (uid, email, credits_remaining)."""
     if not _FB_READY:
-        # Fail closed: refuse AI calls when usage tracking isn't configured.
-        raise HTTPException(
-            500,
-            "Usage tracking is not configured on the server. "
-            "Set FIREBASE_SERVICE_ACCOUNT to enable AI endpoints.",
-        )
-
+        raise HTTPException(500, "Usage tracking is not configured on the server.")
+    
     uid, email = _resolve_identity(request)
     if not uid:
         raise HTTPException(401, "Sign in required to use AI features.")
 
-    limit = _get_limit_for(uid, email)
-    used = _get_used_today(uid)
-    if used >= limit:
+    credits = _get_limit_for(uid, email)
+    if credits <= 0:
         raise HTTPException(
-            429,
-            f"Daily limit reached ({used}/{limit}). "
-            f"Resets at midnight UTC. Contact the admin to raise your limit.",
+            402, # 402 Payment Required (standard for SaaS out-of-credits)
+            "You are out of AI credits. Please contact the admin to top up.",
         )
-    return uid, email, used, limit
+    return uid, email, credits
 
 
-def record_usage(
-    uid: str,
-    email: str,
-    kind: str,
-    provider: str | None,
-    elapsed_ms: int,
-) -> tuple[int, int]:
-    """Increment counters + append event. Returns (new_used, limit)."""
+def record_usage(uid: str, email: str, kind: str, provider: str | None, elapsed_ms: int) -> tuple[int, int]:
+    """Deduct 1 credit + append event. Returns (credits_remaining, 0)."""
     if not _FB_READY or not uid:
-        return 0, DEFAULT_DAILY_LIMIT
+        return 0, 0
+    if email and email.lower() == ADMIN_EMAIL:
+        return 999999, 999999 # Admin bypass
+        
     day = _today_utc()
-    limit = _get_limit_for(uid, email)
     try:
         from google.cloud.firestore_v1 import Increment
+        # Deduct 1 credit from the user's document
+        _DB.collection("users").doc(uid).set(
+            {"credits": Increment(-1)},
+            merge=True,
+        )
+        # Keep incrementing usage_daily so admin dashboard KPIs still work
         _usage_doc_ref(uid, day).set(
             {
                 "date": day,
@@ -218,19 +212,18 @@ def record_usage(
             },
             merge=True,
         )
-        # Rolling event log (capped at 50 by client-side pruning on read)
-        _events_col(uid).add(
-            {
-                "kind": kind,
-                "provider": provider,
-                "elapsedMs": elapsed_ms,
-                "at": firestore.SERVER_TIMESTAMP,
-            }
-        )
+        # Log the event
+        _events_col(uid).add({
+            "kind": kind,
+            "provider": provider,
+            "elapsedMs": elapsed_ms,
+            "at": firestore.SERVER_TIMESTAMP,
+        })
     except Exception as exc:
-        print(f"[usage] write failed: {exc}")
-    new_used = _get_used_today(uid)
-    return new_used, limit
+        print(f"[credits] write failed: {exc}")
+    
+    new_credits = _get_limit_for(uid, email)
+    return new_credits, new_credits
 
 
 # ------------------------------------------------------------------
@@ -700,13 +693,13 @@ async def generate_reviewer(
     enrich_count: int = Form(5),
 ):
     text = await read_notes(notes, file)
-    uid, email, used, limit = check_usage(request, "reviewer")
+    uid, email, credits_left = check_usage(request, "reviewer")
     started = time.time()
     result = await generate_with_ai(text, parse_quiz_types(quiz_types), max(1, min(num_flashcards, 50)))
     new_used, limit = record_usage(uid, email, "reviewer", result.get("_provider"), int((time.time() - started) * 1000))
     headers = {
-        "X-Usage-Remaining": str(max(0, limit - new_used)),
-        "X-Usage-Limit": str(limit),
+        "X-Usage-Remaining": str(credits_left),
+        "X-Usage-Limit": "0",
     }
     return JSONResponse(content=result, headers=headers)
 
@@ -718,14 +711,14 @@ async def summary(
     file: list[UploadFile] = File(default=[]),
 ):
     text = await read_notes(notes, file)
-    uid, email, used, limit = check_usage(request, "summary")
+    uid, email, credits_left = check_usage(request, "summary")
     started = time.time()
     summary_list = await generate_summary_ai(text)
     provider = "gemini" if GEMINI_API_KEY else ("groq" if GROQ_API_KEY else None)
     new_used, limit = record_usage(uid, email, "summary", provider, int((time.time() - started) * 1000))
     headers = {
-        "X-Usage-Remaining": str(max(0, limit - new_used)),
-        "X-Usage-Limit": str(limit),
+        "X-Usage-Remaining": str(credits_left),
+        "X-Usage-Limit": "0",
     }
     return JSONResponse(content={"summary": summary_list}, headers=headers)
 
@@ -742,7 +735,7 @@ async def generate_test(
     topic: str | None = Form(None),
 ):
     text = await read_notes(notes, file)
-    uid, email, used, limit = check_usage(request, "test")
+    uid, email, credits_left = check_usage(request, "test")
     default_count = {"easy": 8, "medium": 15, "hard": 26}.get(difficulty, 8)
     count = max(1, min(question_count or default_count, 30))
     requested_types = []
@@ -765,8 +758,8 @@ async def generate_test(
     materials = build_materials(text, quiz_types, 1)
     new_used, limit = record_usage(uid, email, "test", None, int((time.time() - started) * 1000))
     headers = {
-        "X-Usage-Remaining": str(max(0, limit - new_used)),
-        "X-Usage-Limit": str(limit),
+        "X-Usage-Remaining": str(credits_left),
+        "X-Usage-Limit": "0",
     }
     return JSONResponse(content={"questions": materials["quiz"]}, headers=headers)
 

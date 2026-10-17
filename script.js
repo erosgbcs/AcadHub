@@ -5166,6 +5166,7 @@ async function handleAuth() {
         firstName,
         lastName,
         email,
+        credits: 10, // <--- GIVE 10 FREE CREDITS ON SIGNUP
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       showNotification('Account created successfully!', 'success');
@@ -7922,17 +7923,18 @@ async function refreshUsageHint() {
     return;
   }
   try {
-    const today = new Date().toISOString().slice(0, 10);
-    const snap = await db.collection('users').doc(auth.currentUser.uid)
-      .collection('usage_daily').doc(today).get();
-    const used = snap.exists ? Number((snap.data() || {}).total || 0) : 0;
-    const meta = await db.collection('users').doc(auth.currentUser.uid)
-      .collection('usage_meta').doc('config').get();
-    const customLimit = meta.exists ? (meta.data() || {}).customLimit : null;
-    const limit = (typeof customLimit === 'number' && customLimit > 0) ? customLimit : 20;
-    const remaining = Math.max(0, limit - used);
-    el.textContent = `${remaining} left today`;
-    el.style.color = remaining === 0 ? '#f87171' : '';
+    const snap = await db.collection('users').doc(auth.currentUser.uid).get();
+    const credits = snap.exists ? Number((snap.data() || {}).credits || 0) : 0;
+    
+    // If admin, show infinity symbol
+    if (auth.currentUser.email === 'gabrielagsamosam@gmail.com') {
+       el.textContent = `∞ credits`;
+       el.style.color = '#10b981';
+       return;
+    }
+
+    el.textContent = `${credits} credits left`;
+    el.style.color = credits <= 0 ? '#f87171' : '';
   } catch (e) {
     el.textContent = '';
   }
