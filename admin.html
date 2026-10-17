@@ -324,7 +324,7 @@
             });
             
             const userDoc = await db.collection('users').doc(u.uid).get();
-            const credits = userDoc.exists ? (userDoc.data().credits !== undefined ? userDoc.data().credits : 10) : 10;
+            const credits = userDoc.exists ? (userDoc.data().credits !== undefined ? userDoc.data().credits : 0) : 0;
             
             return { ...u, today: todayCount, week: weekCount, credits };
           } catch (e) {

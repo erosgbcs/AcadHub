@@ -5166,7 +5166,7 @@ async function handleAuth() {
         firstName,
         lastName,
         email,
-        credits: 10, // <--- GIVE 10 FREE CREDITS ON SIGNUP
+        credits: 0, // <--- NEW USERS START WITH 0 CREDITS
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       showNotification('Account created successfully!', 'success');
