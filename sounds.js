@@ -8,7 +8,7 @@ const SoundEngine = (function () {
   let lastTapAt = 0;
 
   const LS_KEY = 'acadhub_sounds_enabled';
-  const MASTER_VOLUME = 1.5;
+  const MASTER_VOLUME = 3.0;
   const TAP_COOLDOWN_MS = 90;
 
   // ---- Load preference ----
@@ -44,7 +44,7 @@ const SoundEngine = (function () {
 
   function setMasterLevel(value, rampTime = 0.04) {
     if (!masterGain || !ctx) return;
-    const level = Math.max(0, Math.min(1, value));
+    const level = Math.max(0, Math.min(3, value));
     masterGain.gain.cancelScheduledValues(ctx.currentTime);
     masterGain.gain.setTargetAtTime(level, ctx.currentTime, rampTime);
   }
