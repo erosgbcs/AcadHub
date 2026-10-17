@@ -5092,7 +5092,13 @@ function updateAuthUI() {
     toggleText.textContent = '';
     toggleBtn.textContent = '';
     btn.textContent = 'Logout';
+    // NEW: Show credit container in modal
+    const modalCred = document.getElementById('modalCreditsContainer');
+    if (modalCred) modalCred.classList.remove('hidden');
   } else {
+    // NEW: Hide credit container in modal
+    const modalCred = document.getElementById('modalCreditsContainer');
+    if (modalCred) modalCred.classList.add('hidden');
     title.textContent = isSignUpMode ? 'Sign Up' : 'Login';
     subtitle.textContent = isSignUpMode ? 'Create an account to save your data.' : 'Login to save your data and access all features.';
     emailInput.classList.remove('hidden');
@@ -5329,6 +5335,9 @@ const userDoc = await db.collection('users').doc(user.uid).get();
 if (userDoc.exists) {
   const userData = userDoc.data();
   
+  // NEW: Sync the credit balances
+  updateCreditDisplay(userData.credits || 0);
+
   if (userData.mode) {
     document.documentElement.classList.remove('dark', 'light');
     document.documentElement.classList.add(userData.mode);
@@ -5358,6 +5367,9 @@ if (userDoc.exists) {
       document.getElementById('userIcon').classList.remove('fa-user-check');
       document.getElementById('userIcon').classList.add('fa-user');
       document.getElementById('profileButton').title = 'Login / Sign Up';
+      // NEW: Hide credit displays when logged out
+      const hc = document.getElementById('headerCredits');
+      if (hc) { hc.classList.add('hidden'); hc.classList.remove('flex'); }
 const _logoutBtn2 = document.getElementById('logoutButton');
 if (_logoutBtn2) _logoutBtn2.classList.add('hidden');
 
@@ -7943,12 +7955,58 @@ async function refreshUsageHint() {
     if (auth.currentUser.email === 'gabrielagsamosam@gmail.com') {
        el.textContent = `∞ credits`;
        el.style.color = '#10b981';
-       return;
+    } else {
+      el.textContent = `${credits} credits left`;
+      el.style.color = credits <= 0 ? '#f87171' : '';
     }
 
-    el.textContent = `${credits} credits left`;
-    el.style.color = credits <= 0 ? '#f87171' : '';
+    // NEW: Update the header badge and modal
+    updateCreditDisplay(credits);
+
   } catch (e) {
     el.textContent = '';
+  }
+}
+// ============================================================
+// CREDIT UI DISPLAY
+// ============================================================
+function updateCreditDisplay(amount) {
+  const headerEl = document.getElementById('headerCredits');
+  const headerCount = document.getElementById('headerCreditsCount');
+  const modalCount = document.getElementById('modalCreditsCount');
+  const isAdmin = auth && auth.currentUser && auth.currentUser.email === 'gabrielagsamosam@gmail.com';
+
+  // Update Header Badge
+  if (headerEl) {
+    headerEl.classList.remove('hidden');
+    headerEl.classList.add('flex');
+    
+    if (isAdmin) {
+      headerEl.className = 'flex items-center justify-center px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-400';
+      if (headerCount) headerCount.textContent = '∞';
+    } else {
+      if (amount <= 0) {
+        headerEl.className = 'flex items-center justify-center px-2 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-xs font-bold text-rose-400';
+      } else {
+        headerEl.className = 'flex items-center justify-center px-2 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold';
+      }
+      if (headerCount) headerCount.textContent = amount;
+    }
+  }
+
+  // Update Modal Badge
+  if (modalCount) {
+    modalCount.textContent = isAdmin ? '∞' : amount;
+    if (isAdmin || amount > 0) {
+      modalCount.className = 'text-2xl font-bold text-emerald-300';
+      if (modalCount.parentElement.parentElement) {
+        modalCount.parentElement.parentElement.className = 'mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center';
+      }
+    } else {
+      modalCount.className = 'text-2xl font-bold text-rose-400';
+      if (modalCount.parentElement.parentElement) {
+        modalCount.parentElement.parentElement.className = 'mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-center';
+      }
+    }
   }
 }

@@ -106,6 +106,12 @@
       <span class="hidden sm:inline ml-1">Library</span>
     </button>
 
+    <!-- NEW: Credit Balance Badge -->
+    <div id="headerCredits" class="hidden items-center justify-center px-2 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold" title="AI Credits">
+      <i class="fa-solid fa-coins text-amber-400 mr-1"></i>
+      <span id="headerCreditsCount">0</span>
+    </div>
+
     <button onclick="openAuthModal()" id="profileButton"
             class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition btn-hover"
             title="Account">
@@ -1574,6 +1580,13 @@
         <h3 class="text-sm font-semibold"><i class="fa-solid fa-user-lock mr-2"></i><span id="authTitle">Login</span></h3>
       </div>
       <p class="text-xs opacity-70 mb-3" id="authSubtitle">Login to save your data and access all features.</p>
+      
+      <!-- NEW: Credit Balance inside Modal -->
+      <div id="modalCreditsContainer" class="hidden mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
+        <p class="text-[10px] uppercase tracking-wider font-bold text-emerald-400 mb-1">Credit Balance</p>
+        <p class="text-2xl font-bold text-emerald-300"><span id="modalCreditsCount">0</span> <i class="fa-solid fa-coins text-lg opacity-70"></i></p>
+      </div>
+
       <p id="authReason" class="hidden text-xs mb-3 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300"></p>
       <div class="space-y-3">
         <input type="email" id="authEmail" placeholder="Email" required class="w-full py-3 px-4 bg-white/10 border border-white/10 rounded-xl text-sm" />
