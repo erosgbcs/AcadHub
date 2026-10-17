@@ -910,10 +910,26 @@ html.light .results-nav-btn.active .results-nav-count {
 .note-card {
   transition: background 0.15s, border-color 0.15s;
   cursor: pointer;
+  min-height: 8.5rem;
 }
 .note-card:hover {
   background: var(--bg-hover);
   border-color: rgba(255,255,255,0.2);
+}
+.note-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.notes-count {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.notes-filter-empty {
+  grid-column: 1 / -1;
+  padding: 1.5rem 0;
+  text-align: center;
 }
 html.light .note-card:hover {
   border-color: rgba(0,0,0,0.15);

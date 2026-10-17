@@ -384,6 +384,7 @@
     <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
       <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
         <i class="fa-solid fa-book-open text-indigo-400"></i>My Notes
+        <span id="notesCount" class="notes-count" aria-live="polite">0 notes</span>
       </h2>
       <button onclick="openNoteEditor(null)" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg btn-hover">
         <i class="fa-solid fa-plus mr-1"></i> New Note
@@ -393,11 +394,11 @@
     <div id="noteSubjectFilters" class="flex gap-2 mb-3 overflow-x-auto pb-1"></div>
 
     <div class="relative mb-3">
-      <input type="text" id="noteSearchInput" placeholder="Search notes..." oninput="onNoteSearchInput()" class="text-sm pl-10" />
+      <input type="search" id="noteSearchInput" placeholder="Search notes..." aria-label="Search notes" oninput="onNoteSearchInput()" class="text-sm pl-10" />
       <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs opacity-50 pointer-events-none"></i>
     </div>
 
-    <div id="notesList" class="space-y-2"></div>
+    <div id="notesList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
 
     <div id="emptyNotes" class="text-center py-10">
       <div class="w-16 h-16 mx-auto rounded-full bg-indigo-500/10 flex items-center justify-center mb-3">

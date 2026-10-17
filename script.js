@@ -1958,6 +1958,7 @@ function renderNotesList() {
   const container = document.getElementById('notesList');
   const emptyMsg = document.getElementById('emptyNotes');
   const noResults = document.getElementById('noSearchResults');
+  const countEl = document.getElementById('notesCount');
   if (!container) return;
 
   const allNotes = getNotes();
@@ -1985,6 +1986,7 @@ function renderNotesList() {
 
   if (allNotes.length === 0) {
     container.innerHTML = '';
+    if (countEl) countEl.textContent = '0 notes';
     if (emptyMsg) emptyMsg.classList.remove('hidden');
     if (noResults) noResults.classList.add('hidden');
     return;
@@ -1993,6 +1995,7 @@ function renderNotesList() {
 
   if (filtered.length === 0 && currentNoteSearchQuery) {
     container.innerHTML = '';
+    if (countEl) countEl.textContent = `0 of ${allNotes.length} notes`;
     if (noResults) {
       noResults.classList.remove('hidden');
       const t = document.getElementById('searchTermDisplay');
@@ -2003,9 +2006,13 @@ function renderNotesList() {
   if (noResults) noResults.classList.add('hidden');
 
   if (filtered.length === 0) {
-    container.innerHTML = '<p class="text-sm opacity-50 text-center py-6">No notes in this category.</p>';
+    if (countEl) countEl.textContent = `0 of ${allNotes.length} notes`;
+    container.innerHTML = '<div class="notes-filter-empty"><p class="text-sm opacity-60">No notes in this category.</p><button type="button" onclick="setNoteFilter(\'all\')" class="text-xs text-indigo-400 hover:underline mt-1">Show all notes</button></div>';
     return;
   }
+  if (countEl) countEl.textContent = filtered.length === allNotes.length
+    ? `${allNotes.length} note${allNotes.length === 1 ? '' : 's'}`
+    : `${filtered.length} of ${allNotes.length} notes`;
 
   container.innerHTML = filtered.map(note => {
     const subject = note.subjectId ? subjects.find(s => s.id === note.subjectId) : null;
@@ -2017,7 +2024,7 @@ function renderNotesList() {
     const pinIcon = note.pinned ? '<i class="fa-solid fa-thumbtack text-amber-400 text-xs mr-1.5"></i>' : '';
 
     return `
-      <div class="note-card bg-white/5 border border-white/10 rounded-lg p-3" onclick="openNoteEditor('${note.id}')">
+      <article class="note-card bg-white/5 border border-white/10 rounded-lg p-3" role="button" tabindex="0" aria-label="Open note: ${escapeHtml(note.title || 'Untitled note')}" onclick="openNoteEditor('${note.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openNoteEditor('${note.id}')} ">
         <div class="flex items-start gap-2">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium truncate">${pinIcon}${escapeHtml(note.title || 'Untitled note')}</p>
@@ -2031,7 +2038,7 @@ function renderNotesList() {
             <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
           </button>
         </div>
-      </div>
+      </article>
     `;
   }).join('');
 }
