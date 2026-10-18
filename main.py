@@ -107,15 +107,16 @@ def _today_utc() -> str:
 
 
 def _usage_doc_ref(uid: str, day: str):
-    return _DB.collection("users").doc(uid).collection("usage_daily").doc(day)
+    # Using explicit path to prevent chaining errors
+    return _DB.document(f"users/{uid}/usage_daily/{day}")
 
 
 def _meta_doc_ref(uid: str):
-    return _DB.collection("users").doc(uid).collection("usage_meta").doc("config")
+    return _DB.document(f"users/{uid}/usage_meta/config")
 
 
 def _events_col(uid: str):
-    return _DB.collection("users").doc(uid).collection("usage_events")
+    return _DB.collection(f"users/{uid}/usage_events")
 
 
 def _resolve_identity(request: Request) -> tuple[str, str]:
@@ -149,7 +150,7 @@ def _get_limit_for(uid: str, email: str = "") -> int:
         snap = _DB.collection("users").doc(uid).get()
         if snap.exists:
             data = snap.to_dict() or {}
-            return int(data.get("credits", 10)) # Default to 10 if field is missing
+            return int(data.get("credits", 0)) # Default to 0 if field is missing
     except Exception as exc:
         print(f"[credits] read failed: {exc}")
     return 0

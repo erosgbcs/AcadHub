@@ -1,4 +1,4 @@
-const CACHE_NAME = 'acadhub-v23';
+const CACHE_NAME = 'acadhub-v24';
 const STATIC_ASSETS = [
   './',
   './index.html',
