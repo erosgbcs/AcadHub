@@ -147,7 +147,7 @@ def _get_limit_for(uid: str, email: str = "") -> int:
         return 10**9  # Admin has infinite credits
     try:
         # Read the "credits" field from the user's main document
-        snap = _DB.collection("users").doc(uid).get()
+        snap = _DB.document(f"users/{uid}").get()
         if snap.exists:
             data = snap.to_dict() or {}
             return int(data.get("credits", 0)) # Default to 0 if field is missing
@@ -199,7 +199,7 @@ def record_usage(uid: str, email: str, kind: str, provider: str | None, elapsed_
     try:
         from google.cloud.firestore_v1 import Increment
         # Deduct 1 credit from the user's document
-        _DB.collection("users").doc(uid).set(
+        _DB.document(f"users/{uid}").set(
             {"credits": Increment(-1)},
             merge=True,
         )
